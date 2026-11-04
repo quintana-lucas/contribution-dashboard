@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import App from './App'
 
@@ -21,6 +21,13 @@ describe('App', () => {
     render(<App />)
     expect(screen.getByRole('main')).toHaveTextContent(
       'Widgets for GitHub team collaboration will appear here.',
+    )
+  })
+
+  it('AC3: renders the four widget regions inside main', () => {
+    render(<App />)
+    expect(within(screen.getByRole('main')).getAllByRole('region')).toHaveLength(
+      4,
     )
   })
 
