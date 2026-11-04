@@ -9,9 +9,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "lint": "oxlint --deny-warnings",
     "test": "vitest run",
     "typecheck": "tsc -b",
+    "check": "npm run lint && npm run build && npm test",
     "preview": "vite preview"
   },
   "dependencies": {
