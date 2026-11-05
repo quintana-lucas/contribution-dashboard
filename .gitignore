@@ -19,6 +19,9 @@ coverage/
 !.env.example
 *.local
 
+# Local GitHub data (never commit)
+.data/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
