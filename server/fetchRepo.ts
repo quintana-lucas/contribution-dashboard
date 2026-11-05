@@ -132,6 +132,7 @@ export async function fetchRepoActivity(opts: FetchRepoOptions): Promise<FetchRe
 
       let more = pr.reviews.pageInfo
       while (more?.hasNextPage) {
+        if (!more.endCursor) return bad
         const rr = await githubGraphql<{
           repository: { pullRequest: { reviews: RawReviews } | null } | null
         }>(token, REVIEWS_QUERY, { owner, name, number: pr.number, cursor: more.endCursor }, fetchImpl)
@@ -144,6 +145,7 @@ export async function fetchRepoActivity(opts: FetchRepoOptions): Promise<FetchRe
     }
 
     if (reachedOld || !conn.pageInfo.hasNextPage) break
+    if (!conn.pageInfo.endCursor) return bad
     cursor = conn.pageInfo.endCursor
   }
 

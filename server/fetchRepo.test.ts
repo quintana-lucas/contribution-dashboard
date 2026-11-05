@@ -125,6 +125,20 @@ describe('fetchRepoActivity', () => {
     expect(result).toEqual({ ok: false, code: 'unauthorized' })
   })
 
+  it('AC3: hasNextPage without endCursor on a PR page returns bad_response (no refetch)', async () => {
+    const page = { data: { repository: { pullRequests: { pageInfo: pi(true, null), nodes: [pr(1)] } } } }
+    const { result, bodies } = await run([page, prPage([pr(2)])])
+    expect(result).toEqual({ ok: false, code: 'bad_response' })
+    expect(bodies).toHaveLength(1)
+  })
+
+  it('AC3: hasNextPage without endCursor on a review page returns bad_response (no refetch)', async () => {
+    const first = pr(1, { reviews: { pageInfo: pi(true, null), nodes: [review('R1')] } })
+    const { result, bodies } = await run([prPage([first])])
+    expect(result).toEqual({ ok: false, code: 'bad_response' })
+    expect(bodies).toHaveLength(1)
+  })
+
   it('AC5: a missing repository maps to not_found', async () => {
     const { result } = await run([{ data: { repository: null } }])
     expect(result).toEqual({ ok: false, code: 'not_found' })
