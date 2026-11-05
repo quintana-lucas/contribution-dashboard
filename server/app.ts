@@ -13,9 +13,9 @@ export type ApiRoutes = Record<string, Partial<Record<string, RouteHandler>>>
 export interface AppOptions {
   distDir: string
   apiRoutes?: ApiRoutes
+  /** Reports whether a token is present. The app never receives the token. */
+  tokenConfigured?: () => boolean
 }
-
-const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
 
 const CONTENT_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -29,31 +29,16 @@ const CONTENT_TYPES: Record<string, string> = {
   '.woff2': 'font/woff2',
 }
 
-function hostnameOf(hostHeader: string): string | undefined {
-  try {
-    return new URL(`http://${hostHeader}`).hostname
-  } catch {
-    return undefined
-  }
-}
-
-function isLocalHostname(hostname: string | undefined): boolean {
-  return hostname !== undefined && LOCAL_HOSTNAMES.has(hostname)
-}
+// Strict matching, no URL parsing: `evil.example@localhost` must not pass.
+const LOCAL_HOST_RE = /^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/i
+const LOCAL_ORIGIN_RE =
+  /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/i
 
 function passesGuard(req: IncomingMessage): boolean {
   const host = req.headers.host
-  if (!host || !isLocalHostname(hostnameOf(host))) return false
+  if (!host || !LOCAL_HOST_RE.test(host)) return false
   const origin = req.headers.origin
-  if (origin !== undefined) {
-    let originHost: string | undefined
-    try {
-      originHost = new URL(origin).hostname
-    } catch {
-      return false
-    }
-    if (!isLocalHostname(originHost)) return false
-  }
+  if (origin !== undefined && !LOCAL_ORIGIN_RE.test(origin)) return false
   return true
 }
 
@@ -145,7 +130,19 @@ async function serveStatic(
 export function createApp(
   options: AppOptions,
 ): (req: IncomingMessage, res: ServerResponse) => void {
-  const apiRoutes = options.apiRoutes ?? {}
+  const tokenConfigured = options.tokenConfigured ?? (() => false)
+  const apiRoutes: ApiRoutes = {
+    '/api/token-status': {
+      GET: (_req, res) => {
+        res.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+        })
+        res.end(JSON.stringify({ configured: tokenConfigured() === true }))
+      },
+    },
+    ...options.apiRoutes,
+  }
 
   async function handle(
     req: IncomingMessage,

@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "node scripts/dev.ts",
     "start": "node --env-file-if-exists=.env server/index.ts",
+    "sync": "node --env-file-if-exists=.env server/sync.ts",
     "build": "tsc -b && vite build",
     "lint": "oxlint --deny-warnings",
     "test": "vitest run",

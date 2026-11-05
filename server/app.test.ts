@@ -84,6 +84,24 @@ describe('AC11: bind and Host/Origin guard', () => {
     expect(res.status).toBe(403)
   })
 
+  it('AC11: rejects userinfo/delimiter tricks in Host and Origin', async () => {
+    server = await startServer({ port: 0, distDir })
+    for (const host of [
+      'evil.example@localhost',
+      'localhost@evil.example',
+      'localhost/evil',
+      'localhost\\evil',
+      'localhost evil',
+    ]) {
+      expect((await get('/', { Host: host })).status).toBe(403)
+    }
+    const h = `localhost:${port()}`
+    expect(
+      (await get('/', { Host: h, Origin: 'http://evil.example@localhost' }))
+        .status,
+    ).toBe(403)
+  })
+
   it('AC11: allows localhost and 127.0.0.1 Hosts, with or without a localhost Origin', async () => {
     server = await startServer({ port: 0, distDir })
     for (const host of ['localhost', '127.0.0.1']) {
@@ -93,6 +111,36 @@ describe('AC11: bind and Host/Origin guard', () => {
         (await get('/', { Host: h, Origin: `http://${h}` })).status,
       ).toBe(200)
     }
+  })
+})
+
+describe('AC9: /api/token-status', () => {
+  const FAKE = 'fake-token-for-tests-5'
+
+  it('AC9: returns exactly {"configured":true} with a token, never the token', async () => {
+    server = await startServer({ port: 0, distDir, tokenConfigured: () => true })
+    const res = await get('/api/token-status')
+    expect(res.status).toBe(200)
+    expect(res.type).toContain('application/json')
+    expect(res.body).toBe('{"configured":true}')
+    expect(res.body).not.toContain(FAKE)
+  })
+
+  it('AC9: returns exactly {"configured":false} without a token', async () => {
+    server = await startServer({ port: 0, distDir, tokenConfigured: () => false })
+    expect((await get('/api/token-status')).body).toBe('{"configured":false}')
+  })
+
+  it('AC9: POST is rejected with 405', async () => {
+    server = await startServer({ port: 0, distDir })
+    expect((await get('/api/token-status', {}, 'POST')).status).toBe(405)
+  })
+})
+
+describe('AC2: server without a token', () => {
+  it('AC2: still serves index.html', async () => {
+    server = await startServer({ port: 0, distDir, tokenConfigured: () => false })
+    expect((await get('/')).body).toBe('<html>shell</html>')
   })
 })
 
