@@ -90,12 +90,12 @@ Each check is testable. The owner is the follow-up issue that must implement it.
 1. With a fake token in the env, after `npm run build`, the token string appears in no file under `dist/`. Owner: #6.
 2. `git ls-files` lists no `.env` or `.env.*` except `.env.example`, and nothing under `.data/`. Owner: #6.
 3. No `VITE_`-prefixed variable in the repo mentions a token. Owner: #6.
-4. Errors and logs of the data layer never contain the token (unit test with a fake token, including the 401 path). Owner: #7.
-5. `/api/token-status` returns only `{ "configured": boolean }` (test asserts the body). Owner: #8.
-6. Code under `src/` never calls `api.github.com` (fetch-spy test, existing pattern). Owner: #8.
-7. Tests use fake fixtures and a fake token, no real network. Owner: #7 and #13.
+4. Errors and logs of the data layer never contain the token (unit test with a fake token, including the 401 path). Owner: #6 (redaction test, invalid-token 401 path; #6 AC3, AC5), #7 (sync error messages; #7 AC5).
+5. `/api/token-status` returns only `{ "configured": boolean }` (test asserts the body). Owner: #6 (#6 AC9, the endpoint and its body assertion); #8 consumes and displays it (#8 AC9).
+6. Code under `src/` never calls `api.github.com` (fetch-spy test, existing pattern). Owner: #7 (#7 AC7) and #8.
+7. Tests use fake fixtures and a fake token, no real network. Owner: every follow-up (#6 AC6, #7 AC8, #8 AC8, #13 AC6).
 8. The server binds `127.0.0.1` and rejects a foreign `Origin`/`Host` (test). Owner: #6.
-9. Stored files contain only the allowed fields (schema test). Owner: #7.
+9. Stored files contain only the allowed fields (schema test). Owner: #7 (#7 AC6) and #13 (#13 AC5).
 
 ## Data store
 
