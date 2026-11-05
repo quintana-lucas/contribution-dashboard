@@ -4,6 +4,7 @@ import { readToken } from './config.ts'
 import { validateToken } from './github.ts'
 import { fetchRepoActivity } from './fetchRepo.ts'
 import { GITHUB_UNREACHABLE, INVALID_TOKEN, MISSING_TOKEN, SYNC_MESSAGES } from './messages.ts'
+import type { SyncErrorCode } from './messages.ts'
 import { DEFAULT_DATA_DIR, readConfig, writeRepo } from './store.ts'
 import { createLogger } from './redact.ts'
 import type { Logger } from './redact.ts'
@@ -14,6 +15,35 @@ export interface SyncOptions {
   log?: Logger
   dataDir?: string
   now?: () => Date
+}
+
+export type SyncRepoResult =
+  | { ok: true; pullRequests: number; reviews: number }
+  | { ok: false; code: SyncErrorCode | 'write_failed' }
+
+/** Fetches one repo and stores it. On failure the previous file is untouched. */
+export async function syncRepo({
+  token,
+  repo,
+  dataDir = DEFAULT_DATA_DIR,
+  fetchImpl = fetch,
+  now = new Date(),
+}: {
+  token: string
+  repo: string
+  dataDir?: string
+  fetchImpl?: typeof fetch
+  now?: Date
+}): Promise<SyncRepoResult> {
+  const [owner, name] = repo.split('/')
+  const res = await fetchRepoActivity({ token, owner, name, now, fetchImpl })
+  if (!res.ok) return { ok: false, code: res.code }
+  try {
+    await writeRepo(res.repo, dataDir)
+  } catch {
+    return { ok: false, code: 'write_failed' }
+  }
+  return { ok: true, pullRequests: res.repo.pullRequests.length, reviews: res.repo.reviews.length }
 }
 
 /** Returns the process exit code. */
@@ -52,23 +82,17 @@ export async function runSync({
   }
   let failed = 0
   for (const repo of config.repos) {
-    const [owner, name] = repo.split('/')
-    const res = await fetchRepoActivity({ token, owner, name, now: now(), fetchImpl })
+    const res = await syncRepo({ token, repo, dataDir, fetchImpl, now: now() })
     if (!res.ok) {
       failed++
-      logger.error(`${repo}: sync failed. ${SYNC_MESSAGES[res.code]}`)
+      logger.error(
+        res.code === 'write_failed'
+          ? `${repo}: could not write the local data file.`
+          : `${repo}: sync failed. ${SYNC_MESSAGES[res.code]}`,
+      )
       continue
     }
-    try {
-      await writeRepo(res.repo, dataDir)
-    } catch {
-      failed++
-      logger.error(`${repo}: could not write the local data file.`)
-      continue
-    }
-    logger.info(
-      `${repo}: synced ${res.repo.pullRequests.length} pull requests and ${res.repo.reviews.length} reviews.`,
-    )
+    logger.info(`${repo}: synced ${res.pullRequests} pull requests and ${res.reviews} reviews.`)
   }
   return failed > 0 ? 1 : 0
 }

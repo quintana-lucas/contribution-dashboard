@@ -76,7 +76,7 @@ const run = (fetchImpl: typeof fetch, log = setup().log) =>
   runSync({ env: { GITHUB_TOKEN: TOKEN }, fetchImpl, log, dataDir: dir, now: () => NOW })
 
 describe('runSync', () => {
-  it('AC2: no token returns 1 and mentions GITHUB_TOKEN and .env', async () => {
+  it('#6 AC2: no token returns 1 and mentions GITHUB_TOKEN and .env', async () => {
     const { lines, log } = setup()
     const code = await runSync({ env: {}, fetchImpl: respond(200), log, dataDir: dir })
     expect(code).toBe(1)
@@ -85,7 +85,7 @@ describe('runSync', () => {
     expect(out).toContain('.env')
   })
 
-  it('AC5: a 401 returns 1, logs "invalid or expired" and never the token', async () => {
+  it('#6 AC3: a 401 returns 1, logs "invalid or expired" and never the token', async () => {
     const { lines, log } = setup()
     const code = await run(respond(401), log)
     expect(code).toBe(1)
@@ -94,7 +94,7 @@ describe('runSync', () => {
     expect(out).not.toContain(TOKEN)
   })
 
-  it('AC5: unreachable GitHub returns 1', async () => {
+  it('#6 AC5: unreachable GitHub returns 1', async () => {
     const { lines, log } = setup()
     const f = (async () => {
       throw new Error(`down ${TOKEN}`)
@@ -103,14 +103,14 @@ describe('runSync', () => {
     expect(lines.join('\n')).not.toContain(TOKEN)
   })
 
-  it('AC2: a valid token with no repos returns 0 and says none are linked', async () => {
+  it('#6 AC1: a valid token with no repos returns 0 and says none are linked', async () => {
     const { lines, log } = setup()
     expect(await run(respond(200), log)).toBe(0)
     expect(lines.join('\n')).toContain('No repositories linked yet')
     expect(lines.join('\n')).not.toContain('#7')
   })
 
-  it('AC6: syncing writes the whitelisted data to <dataDir>/repos/<owner>__<name>.json', async () => {
+  it('#7 AC6: syncing writes the whitelisted data to <dataDir>/repos/<owner>__<name>.json', async () => {
     await linkRepos('acme/widgets')
     expect(await run(githubFake(okGraphql))).toBe(0)
     const text = await readFile(file(), 'utf8')
@@ -120,7 +120,7 @@ describe('runSync', () => {
     expect(Object.keys(stored).sort()).toEqual(['pullRequests', 'repo', 'reviews', 'schemaVersion'])
   })
 
-  it('AC4: running sync twice yields identical file contents without duplicates', async () => {
+  it('#7 AC4: running sync twice yields identical file contents without duplicates', async () => {
     await linkRepos('acme/widgets')
     await run(githubFake(okGraphql))
     const first = await readFile(file(), 'utf8')
@@ -137,7 +137,7 @@ describe('runSync', () => {
     ['network', () => { throw new Error(`boom ${TOKEN}`) }],
   ]
   for (const [label, bad] of failures) {
-    it(`AC5: a failing second sync (${label}) keeps the old file byte-identical, exits 1 and does not leak the token`, async () => {
+    it(`#7 AC5: a failing second sync (${label}) keeps the old file byte-identical, exits 1 and does not leak the token`, async () => {
       await linkRepos('acme/widgets')
       await run(githubFake(okGraphql))
       const before = await readFile(file(), 'utf8')
@@ -150,7 +150,7 @@ describe('runSync', () => {
     })
   }
 
-  it('AC5: a failing repo does not stop the next one; exit code is 1', async () => {
+  it('#7 AC5: a failing repo does not stop the next one; exit code is 1', async () => {
     await linkRepos('acme/broken', 'acme/widgets')
     const f = (async (url: string, init: RequestInit) => {
       if (!String(url).endsWith('/graphql')) return new Response('{}', { status: 200 })
@@ -161,7 +161,7 @@ describe('runSync', () => {
     expect(JSON.parse(await readFile(file(), 'utf8')).repo).toBe('acme/widgets')
   })
 
-  it('AC5: an invalid config.json returns 1 without calling GitHub graphql', async () => {
+  it('#7 AC5: an invalid config.json returns 1 without calling GitHub graphql', async () => {
     await mkdir(dir, { recursive: true })
     await writeFile(path.join(dir, 'config.json'), '{"repos":["bad"]}')
     const { lines, log } = setup()

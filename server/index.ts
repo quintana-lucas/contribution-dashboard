@@ -2,6 +2,7 @@ import { createServer } from 'node:http'
 import type { Server } from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createApiRoutes } from './api.ts'
 import { createApp } from './app.ts'
 import type { AppOptions } from './app.ts'
 import { readToken } from './config.ts'
@@ -40,6 +41,7 @@ if (isMain) {
     port,
     distDir,
     tokenConfigured: () => token !== undefined,
+    apiRoutes: createApiRoutes({ getToken: () => token }),
   })
   const address = server.address()
   const actual = typeof address === 'object' && address ? address.port : port
