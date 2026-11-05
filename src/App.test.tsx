@@ -81,13 +81,27 @@ describe('App', () => {
     vi.stubGlobal('fetch', fetchSpy)
     const xhrSpy = vi.spyOn(XMLHttpRequest.prototype, 'open')
     const before = window.location.href
+    try {
+      render(<App />)
+      fireEvent.click(screen.getByRole('tab', { name: 'Team' }))
+      fireEvent.click(screen.getByRole('tab', { name: 'Overview' }))
+      expect(fetchSpy).not.toHaveBeenCalled()
+      expect(xhrSpy).not.toHaveBeenCalled()
+      expect(window.location.href).toBe(before)
+    } finally {
+      vi.unstubAllGlobals()
+      xhrSpy.mockRestore()
+    }
+  })
+
+  it('AC5: Widget 1..4 regions keep their names inside the Overview panel', () => {
     render(<App />)
-    fireEvent.click(screen.getByRole('tab', { name: 'Team' }))
-    fireEvent.click(screen.getByRole('tab', { name: 'Overview' }))
-    expect(fetchSpy).not.toHaveBeenCalled()
-    expect(xhrSpy).not.toHaveBeenCalled()
-    expect(window.location.href).toBe(before)
-    vi.unstubAllGlobals()
-    xhrSpy.mockRestore()
+    const panel = screen.getByRole('tabpanel')
+    for (const n of [1, 2, 3, 4]) {
+      expect(
+        within(panel).getByRole('region', { name: `Widget ${n}` }),
+      ).toBeInTheDocument()
+    }
+    expect(within(panel).getAllByRole('region')).toHaveLength(4)
   })
 })
