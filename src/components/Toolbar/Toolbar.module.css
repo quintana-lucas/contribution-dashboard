@@ -1,0 +1,117 @@
+.toolbar {
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.label {
+  padding: 0;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--text-lg-weight);
+  line-height: var(--text-sm-line);
+}
+
+.select {
+  min-height: 44px;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-dashed);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--text-md-line);
+}
+
+.segments {
+  display: flex;
+}
+
+.segment {
+  position: relative;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: 1px solid var(--color-border-dashed);
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+  cursor: pointer;
+}
+
+.segment + .segment {
+  margin-left: -1px;
+}
+
+.segment:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.segment:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.segment:has(input:checked) {
+  background: var(--color-bg);
+  box-shadow: inset 0 -3px 0 var(--color-focus);
+  color: var(--color-text);
+  font-weight: var(--text-lg-weight);
+}
+
+.segment:has(input:focus-visible) {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+  z-index: 1;
+}
+
+/* Visually hidden but focusable. */
+.radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.subline {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--text-sm-weight);
+  line-height: var(--text-sm-line);
+}
+
+.subline[data-state='error'] {
+  color: var(--color-text);
+}
