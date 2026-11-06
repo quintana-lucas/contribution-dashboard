@@ -20,6 +20,7 @@ interface Loaded {
   entries: RepoEntry[]
 }
 
+// No DashboardProvider.module.css: this component renders no DOM of its own.
 export default function DashboardProvider({
   children,
   listRepos = defaultListRepos,

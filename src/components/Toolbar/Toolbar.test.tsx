@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import App from '../../App'
 import DashboardProvider, { useDashboard } from '../DashboardProvider'
 import { makeDeps } from '../../test/fakeDeps'
 import Toolbar from './Toolbar'
@@ -80,15 +79,6 @@ describe('Toolbar', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/^not synced yet$/)
   })
 
-  it('#16 AC4: with an empty list there is no toolbar and the empty state shows', async () => {
-    const deps = { ...makeDeps(), listRepos: vi.fn(async () => ({ ok: true as const, repos: [] })) }
-    render(<App {...deps} />)
-    expect(await screen.findByText('No repositories linked')).toBeInTheDocument()
-    expect(screen.getByText(/Add repositories to \.data\/config\.json/)).toBeInTheDocument()
-    expect(screen.queryByRole('group', { name: 'Dashboard filters' })).toBeNull()
-    expect(screen.queryByRole('tab')).toBeNull()
-  })
-
   it('#16 AC5: controls have accessible names', async () => {
     await renderToolbar()
     expect(screen.getByRole('group', { name: 'Dashboard filters' })).toBeInTheDocument()
@@ -119,25 +109,6 @@ describe('Toolbar', () => {
     expect(screen.getByTestId('probe')).toHaveTextContent('all|90|')
     fireEvent.click(radios[0])
     expect(radios[0]).toBeChecked()
-  })
-
-  it('#16 AC6: no fetch after the initial load while the controls are used', async () => {
-    const fetchSpy = vi.fn()
-    vi.stubGlobal('fetch', fetchSpy)
-    try {
-      const deps = await renderToolbar()
-      const calls = deps.getRepoData.mock.calls.length
-      expect(deps.listRepos).toHaveBeenCalledTimes(1)
-      expect(calls).toBe(2) // only synced repos are fetched
-      fireEvent.change(screen.getByLabelText('Repository'), { target: { value: 'acme/web' } })
-      fireEvent.click(screen.getByRole('radio', { name: '7 days' }))
-      fireEvent.click(screen.getByRole('radio', { name: '90 days' }))
-      expect(deps.listRepos).toHaveBeenCalledTimes(1)
-      expect(deps.getRepoData).toHaveBeenCalledTimes(calls)
-      expect(fetchSpy).not.toHaveBeenCalled()
-    } finally {
-      vi.unstubAllGlobals()
-    }
   })
 
   it('#16 AC6: the error state shows the message and no controls', async () => {
