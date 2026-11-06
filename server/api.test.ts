@@ -17,6 +17,7 @@ const realFetch = globalThis.fetch
 const stored: StoredRepo = {
   schemaVersion: 2,
   repo: 'acme/widgets',
+  syncedAt: '2026-06-01T00:00:00.000Z',
   pullRequests: [
     {
       number: 1,

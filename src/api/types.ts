@@ -34,6 +34,7 @@ export interface StoredReview {
 export interface StoredRepo {
   schemaVersion: 2
   repo: string // "owner/name"
+  syncedAt: string // ISO time of the last successful sync of this repo
   pullRequests: StoredPullRequest[]
   reviews: StoredReview[]
 }

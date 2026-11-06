@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { getRepoData, syncRepo } from './client.ts'
 import type { StoredRepo } from './types.ts'
 
-const stored: StoredRepo = { schemaVersion: 2, repo: 'acme/widgets', pullRequests: [], reviews: [] }
+const stored: StoredRepo = { schemaVersion: 2, repo: 'acme/widgets', syncedAt: '2026-06-01T00:00:00.000Z', pullRequests: [], reviews: [] }
 
 const spy = (res: () => Response) => vi.fn(async () => res()) as unknown as typeof fetch & ReturnType<typeof vi.fn>
 

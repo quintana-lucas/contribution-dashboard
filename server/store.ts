@@ -60,6 +60,7 @@ export function toStored(input: StoredRepo): StoredRepo {
   return {
     schemaVersion: 2,
     repo: input.repo,
+    syncedAt: input.syncedAt,
     pullRequests: input.pullRequests.map(
       (p): StoredPullRequest => ({
         number: p.number,
@@ -99,7 +100,11 @@ export async function readRepo(
   dataDir: string = DEFAULT_DATA_DIR,
 ): Promise<StoredRepo | null> {
   try {
-    return JSON.parse(await readFile(repoFilePath(dataDir, repo), 'utf8')) as StoredRepo
+    const parsed = JSON.parse(await readFile(repoFilePath(dataDir, repo), 'utf8')) as StoredRepo
+    // Files from an older schema lack the newer fields; treat them as not synced
+    // so the user re-runs `npm run sync` instead of the UI reading partial data.
+    if (parsed?.schemaVersion !== 2) return null
+    return parsed
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
     throw err
