@@ -80,6 +80,54 @@ const okPage = {
   },
 }
 
+describe('GET /api/repos', () => {
+  it('#16 AC1: lists linked repos in config order with syncedAt, null when unsynced or v1', async () => {
+    await link('acme/widgets', 'acme/new', 'acme/old')
+    await writeRepo(stored, dir)
+    await mkdir(path.join(dir, 'repos'), { recursive: true })
+    await writeFile(
+      path.join(dir, 'repos', 'acme__old.json'),
+      JSON.stringify({ schemaVersion: 1, repo: 'acme/old', syncedAt: '2026-01-01T00:00:00Z' }),
+    )
+    const fetchSpy = vi.fn(async () => {
+      throw new Error('network disabled')
+    })
+    const call = await boot({ fetchImpl: fetchSpy as unknown as typeof fetch })
+    const res = await call('/api/repos')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      repos: [
+        { repo: 'acme/widgets', syncedAt: stored.syncedAt },
+        { repo: 'acme/new', syncedAt: null },
+        { repo: 'acme/old', syncedAt: null },
+      ],
+    })
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('#16 AC4: returns an empty list when there is no config', async () => {
+    const call = await boot()
+    const res = await call('/api/repos')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ repos: [] })
+  })
+
+  it('#16 AC1: invalid config returns 500 config_invalid without the config error text', async () => {
+    await writeFile(path.join(dir, 'config.json'), '{ not json')
+    const call = await boot()
+    const res = await call('/api/repos')
+    expect(res.status).toBe(500)
+    const text = await res.text()
+    expect(JSON.parse(text)).toEqual({ error: 'config_invalid' })
+    expect(text).not.toContain('config.json')
+  })
+
+  it('#16 AC1: POST is 405', async () => {
+    const call = await boot()
+    expect((await call('/api/repos', { method: 'POST' })).status).toBe(405)
+  })
+})
+
 describe('GET /api/data', () => {
   it('#7 AC2: returns the stored data and makes no network request', async () => {
     await writeRepo(stored, dir)

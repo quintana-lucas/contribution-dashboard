@@ -1,10 +1,31 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getRepoData, syncRepo } from './client.ts'
+import { getRepoData, listRepos, syncRepo } from './client.ts'
 import type { StoredRepo } from './types.ts'
 
 const stored: StoredRepo = { schemaVersion: 2, repo: 'acme/widgets', syncedAt: '2026-06-01T00:00:00.000Z', pullRequests: [], reviews: [] }
 
 const spy = (res: () => Response) => vi.fn(async () => res()) as unknown as typeof fetch & ReturnType<typeof vi.fn>
+
+describe('listRepos', () => {
+  it('#16 AC1: parses the repos from /api/repos', async () => {
+    const repos = [
+      { repo: 'acme/widgets', syncedAt: '2026-06-01T00:00:00.000Z' },
+      { repo: 'acme/new', syncedAt: null },
+    ]
+    const f = spy(() => new Response(JSON.stringify({ repos }), { status: 200 }))
+    expect(await listRepos(f)).toEqual({ ok: true, repos })
+    expect(String(f.mock.calls[0][0])).toBe('/api/repos')
+  })
+
+  it('#16 AC1: a network or HTTP error returns request_failed', async () => {
+    const down = vi.fn(async () => {
+      throw new Error('down')
+    }) as unknown as typeof fetch
+    expect(await listRepos(down)).toEqual({ ok: false, error: 'request_failed' })
+    const http = spy(() => new Response('{"error":"config_invalid"}', { status: 500 }))
+    expect(await listRepos(http)).toEqual({ ok: false, error: 'request_failed' })
+  })
+})
 
 describe('api client', () => {
   it('#7 AC7: getRepoData and syncRepo only call relative /api/ URLs, never api.github.com', async () => {

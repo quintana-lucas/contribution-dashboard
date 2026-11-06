@@ -31,6 +31,12 @@ export interface StoredReview {
   submittedAt: string
 }
 
+/** A linked repo as listed by `GET /api/repos`; `syncedAt` is null if never synced. */
+export interface LinkedRepo {
+  repo: string // "owner/name"
+  syncedAt: string | null
+}
+
 export interface StoredRepo {
   schemaVersion: 2
   repo: string // "owner/name"
