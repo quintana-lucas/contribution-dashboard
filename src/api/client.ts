@@ -1,5 +1,9 @@
 import { excludeBots } from './excludeBots.ts'
-import type { StoredRepo } from './types.ts'
+import type { LinkedRepo, StoredRepo } from './types.ts'
+
+export type ListReposResult =
+  | { ok: true; repos: LinkedRepo[] }
+  | { ok: false; error: 'request_failed' }
 
 // Relative `/api/...` URLs only: the UI never talks to GitHub directly.
 
@@ -27,6 +31,22 @@ export async function getRepoData(
     }
     if (res.status === 400) return { ok: false, error: 'invalid_repo' }
     if (res.status === 404) return { ok: false, error: 'not_synced' }
+  } catch {
+    // fall through
+  }
+  return { ok: false, error: 'request_failed' }
+}
+
+/** Lists the linked repos and when each last synced (local store only). */
+export async function listRepos(
+  fetchImpl: FetchLike = (...a) => fetch(...a),
+): Promise<ListReposResult> {
+  try {
+    const res = await fetchImpl('/api/repos')
+    if (res.ok) {
+      const body = (await res.json()) as { repos?: LinkedRepo[] }
+      if (Array.isArray(body.repos)) return { ok: true, repos: body.repos }
+    }
   } catch {
     // fall through
   }

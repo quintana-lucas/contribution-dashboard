@@ -43,6 +43,23 @@ export function createApiRoutes({
         json(res, 200, stored)
       },
     },
+    // Local store only, never the network. #8 extends this route (POST/DELETE).
+    '/api/repos': {
+      GET: async (_req, res) => {
+        const config = await readConfig(dataDir)
+        if (!config.ok) {
+          json(res, 500, { error: 'config_invalid' })
+          return
+        }
+        const repos = await Promise.all(
+          config.repos.map(async (repo) => {
+            const stored = await readRepo(repo, dataDir).catch(() => null)
+            return { repo, syncedAt: stored?.syncedAt ?? null }
+          }),
+        )
+        json(res, 200, { repos })
+      },
+    },
     '/api/repos/:owner/:name/sync': {
       POST: async (_req, res, params) => {
         const repo = `${params.owner}/${params.name}`

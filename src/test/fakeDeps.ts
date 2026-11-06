@@ -1,0 +1,45 @@
+import { vi } from 'vitest'
+import type { StoredRepo } from '../api/types'
+
+export const NOW = new Date('2026-06-15T12:00:00.000Z')
+
+export function storedRepo(repo: string, syncedAt: string, authors: string[], base = 'main'): StoredRepo {
+  return {
+    schemaVersion: 2,
+    repo,
+    syncedAt,
+    pullRequests: authors.map((author, i) => ({
+      number: i + 1,
+      author,
+      authorIsBot: false,
+      state: 'open' as const,
+      createdAt: '2026-06-10T10:00:00.000Z',
+      updatedAt: '2026-06-10T10:00:00.000Z',
+      mergedAt: null,
+      closedAt: null,
+      additions: 1,
+      deletions: 1,
+      baseBranch: base,
+      requestedReviewers: [],
+    })),
+    reviews: [],
+  }
+}
+
+/** Fake injectable deps: two synced repos and one never synced. */
+export function makeDeps() {
+  const data: Record<string, StoredRepo> = {
+    'acme/api': storedRepo('acme/api', '2026-06-15T09:00:00.000Z', ['ana', 'bob'], 'develop'),
+    'acme/web': storedRepo('acme/web', '2026-06-15T11:30:00.000Z', ['ana', 'cy', 'dee']),
+  }
+  const listRepos = vi.fn(async () => ({
+    ok: true as const,
+    repos: [
+      { repo: 'acme/api', syncedAt: '2026-06-15T09:00:00.000Z' },
+      { repo: 'acme/web', syncedAt: '2026-06-15T11:30:00.000Z' },
+      { repo: 'acme/new', syncedAt: null },
+    ],
+  }))
+  const getRepoData = vi.fn(async (repo: string) => ({ ok: true as const, data: data[repo] }))
+  return { listRepos, getRepoData, now: () => NOW }
+}
