@@ -158,5 +158,6 @@ export function toolbarSubline(
   if (!entry || entry.syncedAt === null) return 'not synced yet'
   const members = plural(selectActivity(entries, selection, period, now).teamMemberCount, 'member', 'members')
   const branch = baseBranch(entry.data)
-  return [branch, members, sync].filter((s): s is string => s !== null).join(' · ')
+  const prefix = branch === null ? '' : `Base branch ${branch} · `
+  return `${prefix}${members} · ${sync}`
 }

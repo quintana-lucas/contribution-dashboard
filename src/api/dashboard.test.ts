@@ -183,7 +183,7 @@ describe('member count, base branch and subline', () => {
 
   it('#16 AC1: subline for a single repo shows base branch, members and sync', () => {
     const a = entry('a/x', ago(5 * 60000), [pr({ author: 'ana' }), pr({ number: 2, author: 'cy' })])
-    expect(toolbarSubline([a], 'a/x', 30, NOW)).toBe('main · 2 members · synced 5 min ago')
+    expect(toolbarSubline([a], 'a/x', 30, NOW)).toBe('Base branch main · 2 members · synced 5 min ago')
   })
 
   it('#16 AC1: a single repo with no PRs omits the branch segment', () => {
