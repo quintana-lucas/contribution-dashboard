@@ -58,7 +58,11 @@ The local server exposes:
 - `GET /api/data?repo=owner/name` returns the stored data (200), `{"error":"invalid_repo"}` (400) or `{"error":"not_synced"}` (404). It never calls GitHub.
 - `POST /api/repos/:owner/:name/sync` syncs one repo listed in `config.json`. It returns `{"ok":true}` (200), `{"error":"not_linked"}` (404) or `{"ok":false,"code","message"}` (502); without a token it returns 503.
 
-The UI uses these through the typed client in `src/api/client.ts` and never calls api.github.com.
+Each stored pull request has its number, author (and `authorIsBot`), state (open, merged or closed), dates, lines added and removed (`additions`, `deletions`), base branch and pending requested reviewers (users with `isBot`, or teams by slug). Each review has its reviewer (and `reviewerIsBot`), outcome (approved, changes requested, commented or dismissed) and date. Each repo file also has `syncedAt`, the time of its last successful sync; a failed sync leaves it unchanged.
+
+The UI uses these through the typed client in `src/api/client.ts` and never calls api.github.com. `getRepoData(repo, { includeBots }, fetchImpl)` excludes bot accounts (Dependabot, GitHub Actions and similar) by default; pass `{ includeBots: true }` to keep them.
+
+Files synced before this change use an older schema and read as not synced. Re-run `npm run sync` to refresh them.
 
 ### Revoke or rotate
 
