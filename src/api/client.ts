@@ -1,3 +1,4 @@
+import { excludeBots } from './excludeBots.ts'
 import type { StoredRepo } from './types.ts'
 
 // Relative `/api/...` URLs only: the UI never talks to GitHub directly.
@@ -12,14 +13,18 @@ export type SyncResult =
 
 type FetchLike = typeof fetch
 
-/** Reads the locally stored data of a repo through the server. */
+/** Reads the locally stored data of a repo through the server. Bots are excluded unless `includeBots` is true. */
 export async function getRepoData(
   repo: string,
+  { includeBots = false }: { includeBots?: boolean } = {},
   fetchImpl: FetchLike = (...a) => fetch(...a),
 ): Promise<RepoDataResult> {
   try {
     const res = await fetchImpl(`/api/data?repo=${encodeURIComponent(repo)}`)
-    if (res.ok) return { ok: true, data: (await res.json()) as StoredRepo }
+    if (res.ok) {
+      const data = (await res.json()) as StoredRepo
+      return { ok: true, data: includeBots ? data : excludeBots(data) }
+    }
     if (res.status === 400) return { ok: false, error: 'invalid_repo' }
     if (res.status === 404) return { ok: false, error: 'not_synced' }
   } catch {

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { fetchRepoActivity } from './fetchRepo.ts'
+import { fetchRepoActivity, isBotAccount, mapOutcome } from './fetchRepo.ts'
 
 const TOKEN = 'fake-token-for-tests-7'
 const NOW = new Date('2026-06-01T00:00:00Z')
@@ -11,7 +11,7 @@ const review = (id: string, state = 'APPROVED', login: string | null = 'rev-user
   id,
   state,
   submittedAt,
-  author: login ? { login } : null,
+  author: login ? { login, __typename: 'User' } : null,
 })
 const pr = (number: number, over: Record<string, unknown> = {}) => ({
   number,
@@ -20,7 +20,11 @@ const pr = (number: number, over: Record<string, unknown> = {}) => ({
   updatedAt: daysAgo(2),
   mergedAt: null,
   closedAt: null,
-  author: { login: 'fake-author' },
+  additions: 10,
+  deletions: 4,
+  baseRefName: 'main',
+  author: { login: 'fake-author', __typename: 'User' },
+  reviewRequests: { nodes: [] as unknown[] },
   reviews: { pageInfo: pi(), nodes: [] as unknown[] },
   ...over,
 })
@@ -98,14 +102,19 @@ describe('fetchRepoActivity', () => {
       updatedAt: daysAgo(2),
       mergedAt: daysAgo(3),
       closedAt: daysAgo(3),
+      authorIsBot: false,
+      additions: 10,
+      deletions: 4,
+      baseBranch: 'main',
+      requestedReviewers: [],
     })
     expect(p2).toMatchObject({ state: 'closed', author: null })
     expect(p3.state).toBe('open')
     expect(result.repo.reviews).toEqual([
-      { id: 'A', pullRequestNumber: 3, reviewer: 'rev-one', state: 'CHANGES_REQUESTED', submittedAt: '2026-05-30T10:00:00Z' },
-      { id: 'D', pullRequestNumber: 3, reviewer: null, state: 'APPROVED', submittedAt: daysAgo(1) },
+      { id: 'A', pullRequestNumber: 3, reviewer: 'rev-one', reviewerIsBot: false, outcome: 'changes_requested', submittedAt: '2026-05-30T10:00:00Z' },
+      { id: 'D', pullRequestNumber: 3, reviewer: null, reviewerIsBot: false, outcome: 'approved', submittedAt: daysAgo(1) },
     ])
-    expect(result.repo).toMatchObject({ schemaVersion: 1, repo: 'acme/widgets' })
+    expect(result.repo).toMatchObject({ schemaVersion: 2, repo: 'acme/widgets' })
     expect(JSON.stringify(result.repo)).not.toMatch(/secret|a@b\.c/)
   })
 
@@ -142,5 +151,117 @@ describe('fetchRepoActivity', () => {
   it('AC5: a missing repository maps to not_found', async () => {
     const { result } = await run([{ data: { repository: null } }])
     expect(result).toEqual({ ok: false, code: 'not_found' })
+  })
+
+  it('#13 AC1: stores additions, deletions, base branch, requested users and teams, and the three states', async () => {
+    const nodes = [
+      pr(1, { state: 'OPEN', additions: 120, deletions: 0, baseRefName: 'develop' }),
+      pr(2, { state: 'MERGED', mergedAt: daysAgo(3), closedAt: daysAgo(3) }),
+      pr(3, {
+        state: 'CLOSED',
+        closedAt: daysAgo(3),
+        reviewRequests: {
+          nodes: [
+            { requestedReviewer: { __typename: 'Team', slug: 'core' } },
+            { requestedReviewer: { __typename: 'User', login: 'zed' } },
+            { requestedReviewer: { __typename: 'Mannequin', login: 'imported' } },
+            { requestedReviewer: { __typename: 'User', login: 'amy' } },
+            { requestedReviewer: null },
+          ],
+        },
+      }),
+    ]
+    const { result, bodies } = await run([prPage(nodes)])
+    if (!result.ok) throw new Error('expected ok')
+    const [p1, p2, p3] = result.repo.pullRequests
+    expect(p1).toMatchObject({ state: 'open', additions: 120, deletions: 0, baseBranch: 'develop' })
+    expect(p2.state).toBe('merged')
+    expect(p3.state).toBe('closed')
+    expect(p3.requestedReviewers).toEqual([
+      { kind: 'team', slug: 'core' },
+      { kind: 'user', login: 'amy', isBot: false },
+      { kind: 'user', login: 'imported', isBot: false },
+      { kind: 'user', login: 'zed', isBot: false },
+    ])
+    expect(bodies[0].query).not.toMatch(/email/i)
+  })
+
+  it('#13 AC1: non-numeric additions or a missing base branch returns bad_response', async () => {
+    expect((await run([prPage([pr(1, { additions: 'x' })])])).result).toEqual({ ok: false, code: 'bad_response' })
+    expect((await run([prPage([pr(1, { deletions: null })])])).result).toEqual({ ok: false, code: 'bad_response' })
+    expect((await run([prPage([pr(1, { baseRefName: undefined })])])).result).toEqual({ ok: false, code: 'bad_response' })
+  })
+
+  it('#13 AC2: maps each outcome, keeps dismissed, drops PENDING', async () => {
+    const reviews = {
+      pageInfo: pi(),
+      nodes: [
+        review('A', 'APPROVED'),
+        review('B', 'CHANGES_REQUESTED'),
+        review('C', 'COMMENTED'),
+        review('D', 'DISMISSED'),
+        review('E', 'PENDING'),
+      ],
+    }
+    const { result } = await run([prPage([pr(1, { reviews })])])
+    if (!result.ok) throw new Error('expected ok')
+    expect(result.repo.reviews.map((r) => [r.id, r.outcome])).toEqual([
+      ['A', 'approved'],
+      ['B', 'changes_requested'],
+      ['C', 'commented'],
+      ['D', 'dismissed'],
+    ])
+  })
+
+  it('#13 AC2: an unknown review state returns bad_response', async () => {
+    const reviews = { pageInfo: pi(), nodes: [review('A', 'WEIRD')] }
+    const { result } = await run([prPage([pr(1, { reviews })])])
+    expect(result).toEqual({ ok: false, code: 'bad_response' })
+  })
+
+  it('#13 AC4: flags Bot-typename and [bot] accounts as bots, and a User is not', async () => {
+    const botReview = { id: 'B1', state: 'COMMENTED', submittedAt: daysAgo(1), author: { login: 'github-actions', __typename: 'Bot' } }
+    const suffixReview = { id: 'B2', state: 'COMMENTED', submittedAt: daysAgo(1), author: { login: 'dependabot[bot]' } }
+    const nodes = [
+      pr(1, {
+        author: { login: 'dependabot', __typename: 'Bot' },
+        reviewRequests: {
+          nodes: [
+            { requestedReviewer: { __typename: 'Bot', login: 'copilot' } },
+            { requestedReviewer: { __typename: 'User', login: 'human' } },
+          ],
+        },
+        reviews: { pageInfo: pi(), nodes: [botReview, suffixReview, review('H1')] },
+      }),
+      pr(2, { author: { login: 'renovate[bot]' } }),
+      pr(3),
+    ]
+    const { result } = await run([prPage(nodes)])
+    if (!result.ok) throw new Error('expected ok')
+    const [p1, p2, p3] = result.repo.pullRequests
+    expect([p1.authorIsBot, p2.authorIsBot, p3.authorIsBot]).toEqual([true, true, false])
+    expect(p1.requestedReviewers).toEqual([
+      { kind: 'user', login: 'copilot', isBot: true },
+      { kind: 'user', login: 'human', isBot: false },
+    ])
+    expect(result.repo.reviews.map((r) => [r.id, r.reviewerIsBot])).toEqual([
+      ['B1', true],
+      ['B2', true],
+      ['H1', false],
+    ])
+  })
+})
+
+describe('helpers', () => {
+  it('#13 AC4: isBotAccount', () => {
+    expect(isBotAccount('x', 'Bot')).toBe(true)
+    expect(isBotAccount('x[bot]', 'User')).toBe(true)
+    expect(isBotAccount('x', 'User')).toBe(false)
+    expect(isBotAccount(null, undefined)).toBe(false)
+  })
+
+  it('#13 AC2: mapOutcome', () => {
+    expect(mapOutcome('PENDING')).toBeNull()
+    expect(mapOutcome('DISMISSED')).toBe('dismissed')
   })
 })

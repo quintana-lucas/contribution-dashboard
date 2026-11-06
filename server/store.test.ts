@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -16,21 +16,27 @@ afterEach(async () => {
 })
 
 const sample: StoredRepo = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   repo: 'acme/widgets',
+  syncedAt: '2026-06-01T00:00:00.000Z',
   pullRequests: [
     {
       number: 1,
       author: 'fake-author',
+      authorIsBot: false,
       state: 'merged',
       createdAt: '2026-05-01T00:00:00Z',
       updatedAt: '2026-05-02T00:00:00Z',
       mergedAt: '2026-05-02T00:00:00Z',
       closedAt: '2026-05-02T00:00:00Z',
+      additions: 5,
+      deletions: 2,
+      baseBranch: 'main',
+      requestedReviewers: [{ kind: 'team', slug: 'core' }],
     },
   ],
   reviews: [
-    { id: 'R1', pullRequestNumber: 1, reviewer: 'rev', state: 'APPROVED', submittedAt: '2026-05-02T00:00:00Z' },
+    { id: 'R1', pullRequestNumber: 1, reviewer: 'rev', reviewerIsBot: false, outcome: 'approved', submittedAt: '2026-05-02T00:00:00Z' },
   ],
 }
 
@@ -64,6 +70,48 @@ describe('store', () => {
     const text = await readFile(path.join(dir, 'repos', 'acme__widgets.json'), 'utf8')
     expect(text).not.toMatch(/a@b\.c|secret body|fake-token-for-tests-7|extra/)
     expect(JSON.parse(text)).toEqual(sample)
+  })
+
+  it('#13 AC5: toStored drops unknown fields at PR, review and requested-reviewer level', async () => {
+    const dirty = JSON.parse(JSON.stringify(sample))
+    dirty.pullRequests[0].email = 'a@b.c'
+    dirty.pullRequests[0].requestedReviewers = [
+      { kind: 'team', slug: 'core', email: 'team@b.c' },
+      { kind: 'user', login: 'u', isBot: false, token: 'fake-token-for-tests-13', email: 'u@b.c' },
+    ]
+    dirty.reviews[0].email = 'r@b.c'
+    dirty.reviews[0].token = 'fake-token-for-tests-13'
+    await writeRepo(dirty, dir)
+    const text = await readFile(path.join(dir, 'repos', 'acme__widgets.json'), 'utf8')
+    expect(text).not.toMatch(/@|fake-token/)
+    const stored = JSON.parse(text)
+    expect(stored.pullRequests[0].requestedReviewers).toEqual([
+      { kind: 'team', slug: 'core' },
+      { kind: 'user', login: 'u', isBot: false },
+    ])
+    expect(Object.keys(stored.pullRequests[0]).sort()).toEqual(
+      Object.keys(sample.pullRequests[0]).sort(),
+    )
+    expect(Object.keys(stored.reviews[0]).sort()).toEqual(Object.keys(sample.reviews[0]).sort())
+  })
+
+  it('#13 AC5: .data/ is gitignored', async () => {
+    const ignore = await readFile(path.resolve(import.meta.dirname, '..', '.gitignore'), 'utf8')
+    expect(ignore.split(/\r?\n/)).toContain('.data/')
+  })
+
+  it('#13 AC3: syncedAt is stored and read back', async () => {
+    await writeRepo(sample, dir)
+    expect((await readRepo('acme/widgets', dir))?.syncedAt).toBe('2026-06-01T00:00:00.000Z')
+  })
+
+  it('#13 AC5: a file with an older schemaVersion reads as not synced', async () => {
+    await mkdir(path.join(dir, 'repos'), { recursive: true })
+    await writeFile(
+      path.join(dir, 'repos', 'acme__widgets.json'),
+      JSON.stringify({ schemaVersion: 1, repo: 'acme/widgets', pullRequests: [], reviews: [] }),
+    )
+    expect(await readRepo('acme/widgets', dir)).toBeNull()
   })
 
   it('AC6: rejects a repo name that could escape the data dir', async () => {

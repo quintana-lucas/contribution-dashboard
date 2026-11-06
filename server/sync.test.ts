@@ -37,7 +37,11 @@ const prNode = (number: number, extra: Record<string, unknown> = {}) => ({
   updatedAt: '2026-05-25T00:00:00Z',
   mergedAt: '2026-05-25T00:00:00Z',
   closedAt: '2026-05-25T00:00:00Z',
-  author: { login: 'fake-author', email: 'a@b.c' },
+  additions: 5,
+  deletions: 2,
+  baseRefName: 'main',
+  author: { login: 'fake-author', __typename: 'User', email: 'a@b.c' },
+  reviewRequests: { nodes: [] },
   body: 'secret body',
   reviews: {
     pageInfo: { hasNextPage: false, endCursor: null },
@@ -117,7 +121,25 @@ describe('runSync', () => {
     const stored = JSON.parse(text)
     expect(stored.pullRequests.map((p: { number: number }) => p.number)).toEqual([1, 2])
     expect(text).not.toMatch(/a@b\.c|secret body|fake-token/)
-    expect(Object.keys(stored).sort()).toEqual(['pullRequests', 'repo', 'reviews', 'schemaVersion'])
+    expect(Object.keys(stored).sort()).toEqual(['pullRequests', 'repo', 'reviews', 'schemaVersion', 'syncedAt'])
+  })
+
+  it('#13 AC3: a successful sync stores syncedAt = now; a later failed sync leaves the file byte-identical', async () => {
+    await linkRepos('acme/widgets')
+    expect(await run(githubFake(okGraphql))).toBe(0)
+    const before = await readFile(file(), 'utf8')
+    expect(JSON.parse(before).syncedAt).toBe(NOW.toISOString())
+    const later = new Date('2026-07-01T00:00:00Z')
+    const bad = githubFake(() => new Response('{}', { status: 403 }))
+    const code = await runSync({
+      env: { GITHUB_TOKEN: TOKEN },
+      fetchImpl: bad,
+      log: setup().log,
+      dataDir: dir,
+      now: () => later,
+    })
+    expect(code).toBe(1)
+    expect(await readFile(file(), 'utf8')).toBe(before)
   })
 
   it('#7 AC4: running sync twice yields identical file contents without duplicates', async () => {
