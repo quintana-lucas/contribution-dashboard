@@ -16,21 +16,26 @@ afterEach(async () => {
 })
 
 const sample: StoredRepo = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   repo: 'acme/widgets',
   pullRequests: [
     {
       number: 1,
       author: 'fake-author',
+      authorIsBot: false,
       state: 'merged',
       createdAt: '2026-05-01T00:00:00Z',
       updatedAt: '2026-05-02T00:00:00Z',
       mergedAt: '2026-05-02T00:00:00Z',
       closedAt: '2026-05-02T00:00:00Z',
+      additions: 5,
+      deletions: 2,
+      baseBranch: 'main',
+      requestedReviewers: [{ kind: 'team', slug: 'core' }],
     },
   ],
   reviews: [
-    { id: 'R1', pullRequestNumber: 1, reviewer: 'rev', state: 'APPROVED', submittedAt: '2026-05-02T00:00:00Z' },
+    { id: 'R1', pullRequestNumber: 1, reviewer: 'rev', reviewerIsBot: false, outcome: 'approved', submittedAt: '2026-05-02T00:00:00Z' },
   ],
 }
 

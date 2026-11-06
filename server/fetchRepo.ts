@@ -1,4 +1,10 @@
-import type { StoredPullRequest, StoredRepo, StoredReview } from '../src/api/types.ts'
+import type {
+  ReviewOutcome,
+  StoredPullRequest,
+  StoredRepo,
+  StoredRequestedReviewer,
+  StoredReview,
+} from '../src/api/types.ts'
 import { githubGraphql, type GraphqlResult } from './github.ts'
 import type { SyncErrorCode } from './messages.ts'
 
@@ -6,7 +12,7 @@ const WINDOW_DAYS = 90
 
 const REVIEW_FIELDS = `
   pageInfo { hasNextPage endCursor }
-  nodes { id state submittedAt author { login } }
+  nodes { id state submittedAt author { login __typename } }
 `
 
 const PRS_QUERY = `
@@ -16,7 +22,19 @@ query($owner: String!, $name: String!, $cursor: String) {
       pageInfo { hasNextPage endCursor }
       nodes {
         number state createdAt updatedAt mergedAt closedAt
-        author { login }
+        additions deletions baseRefName
+        author { login __typename }
+        reviewRequests(first: 20) {
+          nodes {
+            requestedReviewer {
+              __typename
+              ... on User { login }
+              ... on Bot { login }
+              ... on Mannequin { login }
+              ... on Team { slug }
+            }
+          }
+        }
         reviews(first: 100) { ${REVIEW_FIELDS} }
       }
     }
@@ -36,11 +54,20 @@ interface PageInfo {
   hasNextPage: boolean
   endCursor: string | null
 }
+interface RawAccount {
+  login: string
+  __typename?: string
+}
+interface RawRequestedReviewer {
+  __typename?: string
+  login?: string
+  slug?: string
+}
 interface RawReview {
   id: string
   state: string
   submittedAt: string | null
-  author: { login: string } | null
+  author: RawAccount | null
 }
 interface RawReviews {
   pageInfo: PageInfo
@@ -53,7 +80,11 @@ interface RawPr {
   updatedAt: string
   mergedAt: string | null
   closedAt: string | null
-  author: { login: string } | null
+  additions: number
+  deletions: number
+  baseRefName: string
+  author: RawAccount | null
+  reviewRequests?: { nodes: unknown } | null
   reviews: RawReviews
 }
 
@@ -78,18 +109,54 @@ function mapState(state: string): StoredPullRequest['state'] | null {
   return null
 }
 
-function mapReviews(prNumber: number, nodes: (RawReview | null)[], out: Map<string, StoredReview>) {
+/** A bot is a GraphQL `Bot` account, or (fallback) a login ending in `[bot]`. */
+export function isBotAccount(login: string | null | undefined, typename: string | null | undefined): boolean {
+  return typename === 'Bot' || (typeof login === 'string' && login.endsWith('[bot]'))
+}
+
+/** Maps a GitHub review state to the stored outcome. PENDING and unknown states return null. */
+export function mapOutcome(state: string): ReviewOutcome | null {
+  if (state === 'APPROVED') return 'approved'
+  if (state === 'CHANGES_REQUESTED') return 'changes_requested'
+  if (state === 'COMMENTED') return 'commented'
+  if (state === 'DISMISSED') return 'dismissed'
+  return null
+}
+
+function mapRequested(nodes: unknown): StoredRequestedReviewer[] | null {
+  if (nodes === undefined || nodes === null) return []
+  if (!Array.isArray(nodes)) return null
+  const out: StoredRequestedReviewer[] = []
+  for (const n of nodes as ({ requestedReviewer: RawRequestedReviewer | null } | null)[]) {
+    const r = n?.requestedReviewer
+    if (!r) continue
+    if (r.__typename === 'Team') {
+      if (typeof r.slug === 'string') out.push({ kind: 'team', slug: r.slug })
+    } else if (typeof r.login === 'string') {
+      out.push({ kind: 'user', login: r.login, isBot: isBotAccount(r.login, r.__typename) })
+    }
+  }
+  const key = (q: StoredRequestedReviewer) => (q.kind === 'team' ? `team:${q.slug}` : `user:${q.login}`)
+  return out.sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0))
+}
+
+/** Returns false when a review has an unknown state. */
+function mapReviews(prNumber: number, nodes: (RawReview | null)[], out: Map<string, StoredReview>): boolean {
   for (const r of nodes) {
     if (!r || typeof r.id !== 'string') continue
     if (r.state === 'PENDING' || !r.submittedAt) continue
+    const outcome = mapOutcome(r.state)
+    if (outcome === null) return false
     out.set(r.id, {
       id: r.id,
       pullRequestNumber: prNumber,
       reviewer: r.author?.login ?? null,
-      state: r.state,
+      reviewerIsBot: isBotAccount(r.author?.login, r.author?.__typename),
+      outcome,
       submittedAt: r.submittedAt,
     })
   }
+  return true
 }
 
 export async function fetchRepoActivity(opts: FetchRepoOptions): Promise<FetchRepoResult> {
@@ -118,17 +185,26 @@ export async function fetchRepoActivity(opts: FetchRepoOptions): Promise<FetchRe
         reachedOld = true
         continue
       }
+      if (!Number.isFinite(pr.additions) || !Number.isFinite(pr.deletions)) return bad
+      if (typeof pr.baseRefName !== 'string' || pr.baseRefName === '') return bad
+      const requestedReviewers = mapRequested(pr.reviewRequests?.nodes)
+      if (requestedReviewers === null) return bad
       prs.set(pr.number, {
         number: pr.number,
         author: pr.author?.login ?? null,
+        authorIsBot: isBotAccount(pr.author?.login, pr.author?.__typename),
         state,
         createdAt: pr.createdAt,
         updatedAt: pr.updatedAt,
         mergedAt: pr.mergedAt ?? null,
         closedAt: pr.closedAt ?? null,
+        additions: pr.additions,
+        deletions: pr.deletions,
+        baseBranch: pr.baseRefName,
+        requestedReviewers,
       })
       if (!pr.reviews || !Array.isArray(pr.reviews.nodes)) return bad
-      mapReviews(pr.number, pr.reviews.nodes, reviews)
+      if (!mapReviews(pr.number, pr.reviews.nodes, reviews)) return bad
 
       let more = pr.reviews.pageInfo
       while (more?.hasNextPage) {
@@ -139,7 +215,7 @@ export async function fetchRepoActivity(opts: FetchRepoOptions): Promise<FetchRe
         if (!rr.ok) return rr
         const page = rr.data.repository?.pullRequest?.reviews
         if (!page || !Array.isArray(page.nodes) || !page.pageInfo) return bad
-        mapReviews(pr.number, page.nodes, reviews)
+        if (!mapReviews(pr.number, page.nodes, reviews)) return bad
         more = page.pageInfo
       }
     }
@@ -152,7 +228,7 @@ export async function fetchRepoActivity(opts: FetchRepoOptions): Promise<FetchRe
   return {
     ok: true,
     repo: {
-      schemaVersion: 1,
+      schemaVersion: 2,
       repo: `${owner}/${name}`,
       pullRequests: [...prs.values()].sort((a, b) => a.number - b.number),
       reviews: [...reviews.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),

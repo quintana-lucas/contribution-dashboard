@@ -58,17 +58,26 @@ export function repoFilePath(dataDir: string, repo: string): string {
 /** Copies only the schema fields, so nothing else can reach disk. */
 export function toStored(input: StoredRepo): StoredRepo {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     repo: input.repo,
     pullRequests: input.pullRequests.map(
       (p): StoredPullRequest => ({
         number: p.number,
         author: p.author,
+        authorIsBot: p.authorIsBot,
         state: p.state,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
         mergedAt: p.mergedAt,
         closedAt: p.closedAt,
+        additions: p.additions,
+        deletions: p.deletions,
+        baseBranch: p.baseBranch,
+        requestedReviewers: p.requestedReviewers.map((q) =>
+          q.kind === 'team'
+            ? { kind: 'team', slug: q.slug }
+            : { kind: 'user', login: q.login, isBot: q.isBot },
+        ),
       }),
     ),
     reviews: input.reviews.map(
@@ -76,7 +85,8 @@ export function toStored(input: StoredRepo): StoredRepo {
         id: r.id,
         pullRequestNumber: r.pullRequestNumber,
         reviewer: r.reviewer,
-        state: r.state,
+        reviewerIsBot: r.reviewerIsBot,
+        outcome: r.outcome,
         submittedAt: r.submittedAt,
       }),
     ),

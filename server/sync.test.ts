@@ -37,7 +37,11 @@ const prNode = (number: number, extra: Record<string, unknown> = {}) => ({
   updatedAt: '2026-05-25T00:00:00Z',
   mergedAt: '2026-05-25T00:00:00Z',
   closedAt: '2026-05-25T00:00:00Z',
-  author: { login: 'fake-author', email: 'a@b.c' },
+  additions: 5,
+  deletions: 2,
+  baseRefName: 'main',
+  author: { login: 'fake-author', __typename: 'User', email: 'a@b.c' },
+  reviewRequests: { nodes: [] },
   body: 'secret body',
   reviews: {
     pageInfo: { hasNextPage: false, endCursor: null },
