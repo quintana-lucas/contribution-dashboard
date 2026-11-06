@@ -15,7 +15,7 @@ A local, offline-first dashboard for team contributions, built with React and Ty
 | `npm install` | Installs dependencies and updates `package-lock.json` when you change them. |
 | `npm run dev` | Starts Vite (http://localhost:5173 by default) and the local server, with `/api` proxied to the server. |
 | `npm start` | Serves the built `dist/` and `/api` on http://127.0.0.1:8787 (or `SERVER_PORT`). Run `npm run build` first. |
-| `npm run sync` | Checks that the GitHub token is set and accepted by GitHub. Real syncing arrives with #7. |
+| `npm run sync` | Checks that the GitHub token is accepted, then fetches pull requests and reviews (last 90 days) for each repo in `.data/config.json` into `.data/repos/`. |
 | `npm run build` | Type-checks with `tsc -b`, then creates the production build in `dist/`. |
 | `npm run lint` | Runs oxlint with `--deny-warnings`, so it fails on any finding, warnings included. |
 | `npm test` | Runs the Vitest suite once (no watch mode) and exits non-zero on failure. |
@@ -42,6 +42,23 @@ Copy `.env.example` to `.env` and set `GITHUB_TOKEN` to the token. `.env` is git
 A `GITHUB_TOKEN` already exported in your shell overrides the value in `.env`. If the server uses an unexpected token, unset the shell variable.
 
 Run `npm run sync` to check that the token is accepted.
+
+## Syncing repository data
+
+Until the UI can link repos, list them in `.data/config.json` (gitignored, create it by hand):
+
+```json
+{ "repos": ["owner/name", "another-owner/another-repo"] }
+```
+
+Run `npm run sync`. Each repo is saved to `.data/repos/<owner>__<name>.json` with only public activity fields (logins, states, dates). If a repo fails (not found, no access, rate limit, network), a message is printed, its previous file is kept, and the command exits with code 1. Once synced, the data is read from disk with no network.
+
+The local server exposes:
+
+- `GET /api/data?repo=owner/name` returns the stored data (200), `{"error":"invalid_repo"}` (400) or `{"error":"not_synced"}` (404). It never calls GitHub.
+- `POST /api/repos/:owner/:name/sync` syncs one repo listed in `config.json`. It returns `{"ok":true}` (200), `{"error":"not_linked"}` (404) or `{"ok":false,"code","message"}` (502); without a token it returns 503.
+
+The UI uses these through the typed client in `src/api/client.ts` and never calls api.github.com.
 
 ### Revoke or rotate
 

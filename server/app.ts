@@ -2,12 +2,18 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 
+/** `params` holds the values of `:name` segments of a parameterised route. */
 export type RouteHandler = (
   req: IncomingMessage,
   res: ServerResponse,
+  params: Record<string, string>,
 ) => void | Promise<void>
 
-/** Maps an `/api/...` path to handlers keyed by upper-case HTTP method. */
+/**
+ * Maps an `/api/...` path to handlers keyed by upper-case HTTP method. A path
+ * may contain `:name` segments (e.g. `/api/repos/:owner/:name/sync`); exact
+ * paths always win over parameterised ones.
+ */
 export type ApiRoutes = Record<string, Partial<Record<string, RouteHandler>>>
 
 export interface AppOptions {
@@ -127,6 +133,38 @@ async function serveStatic(
   sendText(res, 404, 'Not found')
 }
 
+function matchRoute(
+  apiRoutes: ApiRoutes,
+  pathname: string,
+): { methods: Partial<Record<string, RouteHandler>>; params: Record<string, string> } | undefined {
+  if (Object.hasOwn(apiRoutes, pathname)) return { methods: apiRoutes[pathname], params: {} }
+  const parts = pathname.split('/')
+  for (const [pattern, methods] of Object.entries(apiRoutes)) {
+    if (!pattern.includes('/:')) continue
+    const patternParts = pattern.split('/')
+    if (patternParts.length !== parts.length) continue
+    const params: Record<string, string> = {}
+    let matched = true
+    for (let i = 0; i < parts.length && matched; i++) {
+      const seg = patternParts[i]
+      if (seg.startsWith(':')) {
+        let value = ''
+        try {
+          value = decodeURIComponent(parts[i])
+        } catch {
+          matched = false
+        }
+        if (value === '') matched = false
+        else params[seg.slice(1)] = value
+      } else if (seg !== parts[i]) {
+        matched = false
+      }
+    }
+    if (matched) return { methods, params }
+  }
+  return undefined
+}
+
 export function createApp(
   options: AppOptions,
 ): (req: IncomingMessage, res: ServerResponse) => void {
@@ -154,20 +192,19 @@ export function createApp(
     }
     const pathname = new URL(req.url ?? '/', 'http://localhost').pathname
     if (pathname === '/api' || pathname.startsWith('/api/')) {
-      const methods = Object.hasOwn(apiRoutes, pathname)
-        ? apiRoutes[pathname]
-        : undefined
-      if (!methods) {
+      const route = matchRoute(apiRoutes, pathname)
+      if (!route) {
         sendJson(res, 404, { error: 'not_found' })
         return
       }
+      const { methods, params } = route
       const handler = methods[req.method ?? '']
       if (!handler) {
         res.setHeader('Allow', Object.keys(methods).join(', '))
         sendJson(res, 405, { error: 'method_not_allowed' })
         return
       }
-      await handler(req, res)
+      await handler(req, res, params)
       return
     }
     await serveStatic(req, res, options.distDir, pathname)
