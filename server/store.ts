@@ -50,6 +50,30 @@ export async function readConfig(dataDir: string = DEFAULT_DATA_DIR): Promise<Co
   return { ok: true, repos: [...new Set(repos as string[])] }
 }
 
+/** Atomic write of `<dataDir>/config.json` as `{ "repos": [...] }`. */
+export async function writeConfig(
+  repos: string[],
+  dataDir: string = DEFAULT_DATA_DIR,
+): Promise<void> {
+  await mkdir(dataDir, { recursive: true })
+  const file = path.join(dataDir, 'config.json')
+  const tmp = `${file}.${process.pid}.tmp`
+  await writeFile(tmp, JSON.stringify({ repos }, null, 2) + '\n', 'utf8')
+  await rename(tmp, file)
+}
+
+const REPO_INPUT_RE =
+  /^(?:https?:\/\/)?(?:github\.com\/)?([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/i
+
+/** Parses `owner/name` or a github.com URL form. Returns null when not valid. */
+export function parseRepoInput(input: unknown): string | null {
+  if (typeof input !== 'string') return null
+  const match = REPO_INPUT_RE.exec(input.trim())
+  if (!match) return null
+  const repo = `${match[1]}/${match[2]}`
+  return isValidRepo(repo) ? repo : null
+}
+
 export function repoFilePath(dataDir: string, repo: string): string {
   if (!isValidRepo(repo)) throw new Error('Invalid repo, expected "owner/name".')
   return path.join(dataDir, 'repos', `${repo.replace('/', '__')}.json`)

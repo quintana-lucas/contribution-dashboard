@@ -122,9 +122,184 @@ describe('GET /api/repos', () => {
     expect(text).not.toContain('config.json')
   })
 
-  it('#16 AC1: POST is 405', async () => {
+  // Superseded by #8: POST /api/repos now adds a repo, so PUT is the unsupported method.
+  it('#16 AC1: PUT is 405', async () => {
     const call = await boot()
-    expect((await call('/api/repos', { method: 'POST' })).status).toBe(405)
+    expect((await call('/api/repos', { method: 'PUT' })).status).toBe(405)
+  })
+})
+
+/** Fake GitHub: existence queries and sync queries are told apart by query text. */
+function github(opts: { exists?: unknown; syncFails?: boolean; status?: number } = {}) {
+  const calls: { query: string; variables: { owner: string; name: string } }[] = []
+  const f = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body))
+    calls.push(body)
+    if (String(body.query).includes('nameWithOwner')) {
+      if (opts.status) return new Response('{}', { status: opts.status })
+      return new Response(JSON.stringify(opts.exists ?? { data: { repository: { nameWithOwner: `${body.variables.owner}/${body.variables.name}` } } }))
+    }
+    if (opts.syncFails) throw new Error(`boom ${TOKEN}`)
+    return new Response(JSON.stringify(okPage))
+  }) as unknown as typeof fetch & ReturnType<typeof vi.fn>
+  return { f, calls }
+}
+
+const post = (call: ReturnType<typeof boot> extends Promise<infer C> ? C : never, input: unknown) =>
+  call('/api/repos', { method: 'POST', body: JSON.stringify({ input }) })
+const configRepos = async () => JSON.parse(await readFile(path.join(dir, 'config.json'), 'utf8')).repos
+
+describe('POST /api/repos', () => {
+  it('#8 AC2: every accepted input form is stored canonically, read-only, and persists in config', async () => {
+    const forms = [
+      'acme/widgets',
+      '  github.com/acme/widgets  ',
+      'https://github.com/acme/widgets',
+      'http://github.com/acme/widgets/',
+      'https://github.com/acme/widgets.git',
+    ]
+    for (const form of forms) {
+      await rm(path.join(dir, 'config.json'), { force: true })
+      const { f, calls } = github()
+      const call = await boot({ token: TOKEN, fetchImpl: f })
+      const res = await post(call, form)
+      expect(res.status, form).toBe(201)
+      expect(await configRepos()).toEqual(['acme/widgets'])
+      expect(calls.every((c) => !/\bmutation\b/i.test(c.query))).toBe(true)
+      await new Promise<void>((r) => server!.close(() => r()))
+      server = undefined
+    }
+  })
+
+  it('#8 AC2: uses the canonical spelling from GitHub', async () => {
+    const { f } = github({ exists: { data: { repository: { nameWithOwner: 'Acme/Widgets' } } } })
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    const res = await post(call, 'acme/widgets')
+    expect(((await res.json()) as { repo: string }).repo).toBe('Acme/Widgets')
+    expect(await configRepos()).toEqual(['Acme/Widgets'])
+  })
+
+  it('#8 AC3: invalid_format, case-insensitive duplicate and not found leave config unchanged', async () => {
+    await link('Acme/Widgets')
+    const { f } = github({ exists: { data: { repository: null }, errors: [{ type: 'NOT_FOUND' }] } })
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    for (const bad of ['nope', 'a/b/c', '', 'https://example.com/acme/widgets']) {
+      const res = await post(call, bad)
+      expect(res.status, bad).toBe(400)
+      expect(await res.json()).toEqual({ error: 'invalid_format' })
+    }
+    const dup = await post(call, 'acme/widgets')
+    expect(dup.status).toBe(409)
+    expect(await dup.json()).toEqual({ error: 'duplicate', repo: 'Acme/Widgets' })
+    expect(f).not.toHaveBeenCalled()
+    const missing = await post(call, 'acme/ghost')
+    expect(missing.status).toBe(404)
+    expect(await missing.json()).toEqual({ error: 'not_found_or_no_access' })
+    expect(await configRepos()).toEqual(['Acme/Widgets'])
+  })
+
+  it('#8 AC3: a forbidden repo is not_found_or_no_access and other failures are 502', async () => {
+    const forbidden = github({ status: 403 })
+    let call = await boot({ token: TOKEN, fetchImpl: forbidden.f })
+    let res = await post(call, 'acme/secret')
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ error: 'not_found_or_no_access' })
+    await new Promise<void>((r) => server!.close(() => r()))
+    server = undefined
+    const down = github({ status: 500 })
+    call = await boot({ token: TOKEN, fetchImpl: down.f })
+    res = await post(call, 'acme/secret')
+    expect(res.status).toBe(502)
+    expect(await res.json()).toEqual({ error: 'github_failed' })
+    await expect(readFile(path.join(dir, 'config.json'), 'utf8')).rejects.toThrow()
+  })
+
+  it('#8 AC12: a successful add returns synced and people, and writes the repo file', async () => {
+    const { f } = github()
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    const res = await post(call, 'acme/widgets')
+    expect(res.status).toBe(201)
+    expect(await res.json()).toEqual({ repo: 'acme/widgets', synced: true, people: 0 })
+    const file = JSON.parse(await readFile(path.join(dir, 'repos', 'acme__widgets.json'), 'utf8'))
+    expect(file.repo).toBe('acme/widgets')
+  })
+
+  it('#8 AC12: a sync failure after the existence check keeps the repo linked', async () => {
+    const { f } = github({ syncFails: true })
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    const res = await post(call, 'acme/widgets')
+    expect(res.status).toBe(201)
+    const text = await res.text()
+    expect(JSON.parse(text)).toEqual({ repo: 'acme/widgets', synced: false, code: 'network' })
+    expect(text).not.toContain(TOKEN)
+    expect(await configRepos()).toEqual(['acme/widgets'])
+  })
+
+  it('#8 AC7: no response body contains the token, including missing_token', async () => {
+    const call = await boot()
+    const res = await post(call, 'acme/widgets')
+    expect(res.status).toBe(503)
+    const text = await res.text()
+    expect(JSON.parse(text)).toEqual({ error: 'missing_token' })
+    expect(text).not.toContain(TOKEN)
+    await expect(readFile(path.join(dir, 'config.json'), 'utf8')).rejects.toThrow()
+  })
+
+  it('#8 AC2: two parallel POSTs both end up in config', async () => {
+    const { f } = github()
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    const [a, b] = await Promise.all([post(call, 'acme/one'), post(call, 'acme/two')])
+    expect([a.status, b.status]).toEqual([201, 201])
+    expect([...(await configRepos())].sort()).toEqual(['acme/one', 'acme/two'])
+  })
+
+  it('#8 AC3: an oversized body is 413 and bad JSON or a missing input is 400', async () => {
+    const call = await boot({ token: TOKEN })
+    const big = await call('/api/repos', {
+      method: 'POST',
+      body: JSON.stringify({ input: 'a'.repeat(20 * 1024) }),
+    })
+    expect(big.status).toBe(413)
+    expect(await big.json()).toEqual({ error: 'too_large' })
+    for (const body of ['{ nope', JSON.stringify({}), JSON.stringify({ input: 5 })]) {
+      const res = await call('/api/repos', { method: 'POST', body })
+      expect(res.status, body).toBe(400)
+      expect(await res.json()).toEqual({ error: 'invalid_format' })
+    }
+  })
+})
+
+describe('DELETE /api/repos/:owner/:name', () => {
+  it('#8 AC4: removes the config entry and the repo file without calling GitHub', async () => {
+    await link('acme/widgets', 'acme/other')
+    await writeRepo(stored, dir)
+    const f = vi.fn() as unknown as typeof fetch
+    vi.stubGlobal('fetch', f)
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    const res = await call('/api/repos/acme/widgets', { method: 'DELETE' })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(await configRepos()).toEqual(['acme/other'])
+    await expect(readFile(path.join(dir, 'repos', 'acme__widgets.json'), 'utf8')).rejects.toThrow()
+    expect(f).not.toHaveBeenCalled()
+  })
+
+  it('#8 AC4: a missing repo file still returns 200', async () => {
+    await link('acme/widgets')
+    const call = await boot()
+    const res = await call('/api/repos/acme/widgets', { method: 'DELETE' })
+    expect(res.status).toBe(200)
+    expect(await configRepos()).toEqual([])
+  })
+
+  it('#8 AC4: a repo that is not linked returns 404 not_linked', async () => {
+    await link('acme/other')
+    const f = vi.fn() as unknown as typeof fetch
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    const res = await call('/api/repos/acme/widgets', { method: 'DELETE' })
+    expect(res.status).toBe(404)
+    expect(await res.json()).toEqual({ error: 'not_linked' })
+    expect(f).not.toHaveBeenCalled()
   })
 })
 

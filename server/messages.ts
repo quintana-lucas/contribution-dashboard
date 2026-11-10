@@ -23,7 +23,7 @@ export const SYNC_MESSAGES: Record<SyncErrorCode, string> = {
     'fine-grained token (see the README "GitHub token" section) and update GITHUB_TOKEN.',
   not_found:
     'The repository does not exist or the token has no access to it. ' +
-    'Check the owner/name in .data/config.json and the token repository permissions.',
+    'Check the owner/name and the token repository permissions.',
   forbidden:
     'GitHub denied access to this repository. Grant the token read access to ' +
     'Pull requests and Metadata for it, then try again.',
