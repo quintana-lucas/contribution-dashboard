@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { GetTeamResult } from '../../api/client'
 import type { Candidate } from '../../api/team'
@@ -33,6 +34,86 @@ const field = () => screen.getByLabelText('GitHub login')
 const add = () => screen.getByRole('button', { name: 'Add' })
 
 afterEach(cleanup)
+
+describe('TeamMembersPanel save ordering', () => {
+  const deferred = () => {
+    let resolve: (r: { ok: boolean }) => void = () => {}
+    const promise = new Promise<{ ok: boolean }>((r) => (resolve = r))
+    return { promise, resolve }
+  }
+
+  it('#15 AC4: fast toggles save one at a time in order, and the stored team ends correct', async () => {
+    const stored: { selected: string[] }[] = []
+    const gates: ReturnType<typeof deferred>[] = []
+    const saveTeam = vi.fn(async (team: { selected: string[]; added: string[] }) => {
+      const gate = deferred()
+      gates.push(gate)
+      const res = await gate.promise
+      if (res.ok) stored.push({ selected: team.selected })
+      return res
+    })
+    const getTeam = vi.fn(
+      async (): Promise<GetTeamResult> => ({ ok: true, candidates: [ana, bob], selected: ['ana', 'bob'], added: [] }),
+    )
+    render(<TeamMembersPanel getTeam={getTeam} saveTeam={saveTeam} onChanged={() => {}} />)
+    await ready()
+    fireEvent.click(box('ana'))
+    fireEvent.click(box('bob'))
+    // The second toggle is applied at once, but its save waits for the first.
+    expect(box('ana')).not.toBeChecked()
+    expect(box('bob')).not.toBeChecked()
+    await waitFor(() => expect(saveTeam).toHaveBeenCalledTimes(1))
+    // Resolve the first save only after the second toggle was issued.
+    gates[0].resolve({ ok: true })
+    await waitFor(() => expect(saveTeam).toHaveBeenCalledTimes(2))
+    gates[1].resolve({ ok: true })
+    await waitFor(() => expect(stored).toHaveLength(2))
+    expect(stored[stored.length - 1].selected).toEqual([])
+    expect(box('ana')).not.toBeChecked()
+    expect(box('bob')).not.toBeChecked()
+  })
+
+  it('#15 AC4: a failed save rolls back to the last saved team, not a stale one', async () => {
+    const gates: ReturnType<typeof deferred>[] = []
+    const saveTeam = vi.fn(async (_team: { selected: string[]; added: string[] }) => {
+      const gate = deferred()
+      gates.push(gate)
+      return gate.promise
+    })
+    const getTeam = vi.fn(
+      async (): Promise<GetTeamResult> => ({ ok: true, candidates: [ana, bob], selected: ['ana', 'bob'], added: [] }),
+    )
+    render(<TeamMembersPanel getTeam={getTeam} saveTeam={saveTeam} onChanged={() => {}} />)
+    await ready()
+    fireEvent.click(box('ana'))
+    await waitFor(() => expect(saveTeam).toHaveBeenCalledTimes(1))
+    gates[0].resolve({ ok: true })
+    fireEvent.click(box('bob'))
+    await waitFor(() => expect(saveTeam).toHaveBeenCalledTimes(2))
+    gates[1].resolve({ ok: false })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save the selection. Try again.')
+    // Back to the last saved team: ana off (saved), bob on.
+    expect(box('ana')).not.toBeChecked()
+    expect(box('bob')).toBeChecked()
+  })
+
+  it('#15 AC4: first setup saves exactly once under StrictMode', async () => {
+    const saveTeam = vi.fn(async (_team: { selected: string[]; added: string[] }) => ({ ok: true }))
+    const getTeam = vi.fn(
+      async (): Promise<GetTeamResult> => ({ ok: true, candidates: [ana, bob], selected: null, added: [] }),
+    )
+    render(
+      <StrictMode>
+        <TeamMembersPanel getTeam={getTeam} saveTeam={saveTeam} onChanged={() => {}} />
+      </StrictMode>,
+    )
+    await ready()
+    await waitFor(() => expect(saveTeam).toHaveBeenCalled())
+    await new Promise((r) => setTimeout(r, 20))
+    expect(saveTeam).toHaveBeenCalledTimes(1)
+    expect(saveTeam).toHaveBeenCalledWith({ selected: ['ana', 'bob'], added: [] })
+  })
+})
 
 describe('TeamMembersPanel', () => {
   it('#15 AC1: loading text, then rows with login, counts and repos', async () => {
@@ -97,10 +178,10 @@ describe('TeamMembersPanel', () => {
     fireEvent.click(box('ana'))
     expect(box('ana')).not.toBeChecked()
     expect(screen.getByText('1 of 2 selected')).toBeInTheDocument()
-    expect(saveTeam).toHaveBeenLastCalledWith({ selected: ['bob'], added: [] })
+    await waitFor(() => expect(saveTeam).toHaveBeenLastCalledWith({ selected: ['bob'], added: [] }))
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
     fireEvent.click(box('ana'))
-    expect(saveTeam).toHaveBeenLastCalledWith({ selected: ['bob', 'ana'], added: [] })
+    await waitFor(() => expect(saveTeam).toHaveBeenLastCalledWith({ selected: ['bob', 'ana'], added: [] }))
   })
 
   it('#15 AC2: Clear then Select all, zero selected allowed, focus stays', async () => {
@@ -110,13 +191,13 @@ describe('TeamMembersPanel', () => {
     clear.focus()
     fireEvent.click(clear)
     expect(screen.getByText('0 of 2 selected')).toBeInTheDocument()
-    expect(saveTeam).toHaveBeenLastCalledWith({ selected: [], added: [] })
+    await waitFor(() => expect(saveTeam).toHaveBeenLastCalledWith({ selected: [], added: [] }))
     expect(clear).toHaveFocus()
     const all = screen.getByRole('button', { name: 'Select all team members' })
     all.focus()
     fireEvent.click(all)
     expect(screen.getByText('2 of 2 selected')).toBeInTheDocument()
-    expect(saveTeam).toHaveBeenLastCalledWith({ selected: ['ana', 'bob'], added: [] })
+    await waitFor(() => expect(saveTeam).toHaveBeenLastCalledWith({ selected: ['ana', 'bob'], added: [] }))
     expect(all).toHaveFocus()
   })
 

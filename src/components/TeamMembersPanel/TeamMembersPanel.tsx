@@ -43,6 +43,10 @@ export default function TeamMembersPanel({ getTeam, saveTeam, onChanged }: TeamM
   const inputRef = useRef<HTMLInputElement>(null)
   const live = useRef(true)
   const teamRef = useRef<Team>(team)
+  // The last team the server confirmed (or the loaded baseline), restored on a failed save.
+  const savedRef = useRef<Team>(team)
+  const chain = useRef<Promise<void>>(Promise.resolve())
+  const firstSaveStarted = useRef(false)
 
   // Callers may pass inline functions; keep the latest without refetching on every render.
   const latest = useRef({ getTeam, saveTeam, onChanged })
@@ -55,20 +59,45 @@ export default function TeamMembersPanel({ getTeam, saveTeam, onChanged }: TeamM
     setTeam(next)
   }
 
-  /** Applies `next` at once, saves it, and rolls back to the previous team on failure. */
-  const persist = useCallback(async (next: Team, prev: Team): Promise<boolean> => {
-    commit(next)
-    setSaveError(false)
-    const res = await latest.current.saveTeam(next)
-    if (!live.current) return res.ok
-    if (res.ok) {
-      latest.current.onChanged()
-    } else {
-      commit(prev)
-      setSaveError(true)
-    }
-    return res.ok
+  /**
+   * Queues a save. Saves run one at a time, in order, and each PUT sends the latest
+   * state when it starts, so a slow earlier save can never land after a later one.
+   * A failure rolls back to the last team that was saved successfully.
+   */
+  const enqueueSave = useCallback((): Promise<boolean> => {
+    const job = chain.current.then(async () => {
+      const send = teamRef.current
+      let ok = false
+      try {
+        ok = (await latest.current.saveTeam(send)).ok
+      } catch {
+        ok = false
+      }
+      if (ok) {
+        savedRef.current = send
+        if (live.current) latest.current.onChanged()
+      } else if (live.current) {
+        commit(savedRef.current)
+        setSaveError(true)
+      }
+      return ok
+    })
+    chain.current = job.then(
+      () => undefined,
+      () => undefined,
+    )
+    return job
   }, [])
+
+  /** Applies `next` at once and saves it. */
+  const persist = useCallback(
+    (next: Team): Promise<boolean> => {
+      commit(next)
+      setSaveError(false)
+      return enqueueSave()
+    },
+    [enqueueSave],
+  )
 
   const fetchTeam = useCallback(async () => {
     const res = await latest.current.getTeam()
@@ -80,16 +109,18 @@ export default function TeamMembersPanel({ getTeam, saveTeam, onChanged }: TeamM
     setCands(res.candidates)
     const firstSetup = res.selected === null
     const selected = res.selected ?? res.candidates.map((c) => c.login)
-    commit({ selected, added: res.added })
+    const loaded = { selected, added: res.added }
+    commit(loaded)
+    savedRef.current = loaded
     setLoad('ready')
-    if (firstSetup && res.candidates.length > 0) {
+    if (firstSetup && res.candidates.length > 0 && !firstSaveStarted.current) {
       // Opening the tab is enough to choose everyone; save once so setup is complete.
-      const saved = await latest.current.saveTeam({ selected, added: res.added })
-      if (!live.current) return
-      if (saved.ok) latest.current.onChanged()
-      else setSaveError(true)
+      // The ref keeps StrictMode's double effect from saving twice.
+      firstSaveStarted.current = true
+      const ok = await enqueueSave()
+      if (!ok) firstSaveStarted.current = false
     }
-  }, [])
+  }, [enqueueSave])
 
   useEffect(() => {
     live.current = true
@@ -116,12 +147,12 @@ export default function TeamMembersPanel({ getTeam, saveTeam, onChanged }: TeamM
     const k = login.toLowerCase()
     const on = prev.selected.some((l) => l.toLowerCase() === k)
     const selected = on ? prev.selected.filter((l) => l.toLowerCase() !== k) : [...prev.selected, login]
-    void persist({ ...prev, selected }, prev)
+    void persist({ ...prev, selected })
   }
 
   const setAll = (all: boolean) => {
     const prev = teamRef.current
-    void persist({ ...prev, selected: all ? [...logins] : [] }, prev)
+    void persist({ ...prev, selected: all ? [...logins] : [] })
   }
 
   const submit = async (e: FormEvent) => {
@@ -143,12 +174,12 @@ export default function TeamMembersPanel({ getTeam, saveTeam, onChanged }: TeamM
     if (existing) {
       setValue('')
       setResult(`${existing} is already in the list.`)
-      if (!selectedKeys.has(k)) await persist({ ...prev, selected: [...prev.selected, existing] }, prev)
+      if (!selectedKeys.has(k)) await persist({ ...prev, selected: [...prev.selected, existing] })
       inputRef.current?.focus()
       return
     }
     setValue('')
-    const ok = await persist({ selected: [...prev.selected, login], added: [...prev.added, login] }, prev)
+    const ok = await persist({ selected: [...prev.selected, login], added: [...prev.added, login] })
     if (ok) setResult(`Added ${login}.`)
     else setValue(value)
     inputRef.current?.focus()

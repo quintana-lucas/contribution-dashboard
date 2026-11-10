@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import type { GetTeamResult } from '../api/client'
 import type { StoredRepo } from '../api/types'
 
 export const NOW = new Date('2026-06-15T12:00:00.000Z')
@@ -50,5 +51,30 @@ export function makeDeps() {
   const removeRepo = vi.fn(async (_repo: string) => ({ ok: true as const }))
   const syncRepo = vi.fn(async (_repo: string) => ({ ok: true as const, people: 2 }))
   const getTokenStatus = vi.fn(async () => ({ ok: true as const, configured: true }))
-  return { listRepos, getRepoData, addRepo, removeRepo, syncRepo, getTokenStatus, now: () => NOW }
+  // The team is already chosen (everyone), so the dashboard shows instead of the empty state.
+  const getTeam = vi.fn(
+    async (): Promise<GetTeamResult> => ({
+      ok: true,
+      candidates: ['ana', 'bob', 'cy', 'dee'].map((login) => ({
+        login,
+        pullRequests: 1,
+        reviews: 0,
+        repos: ['acme/api'],
+      })),
+      selected: ['ana', 'bob', 'cy', 'dee'],
+      added: [],
+    }),
+  )
+  const saveTeam = vi.fn(async (_team: { selected: string[]; added: string[] }) => ({ ok: true }))
+  return {
+    listRepos,
+    getRepoData,
+    addRepo,
+    removeRepo,
+    syncRepo,
+    getTokenStatus,
+    getTeam,
+    saveTeam,
+    now: () => NOW,
+  }
 }

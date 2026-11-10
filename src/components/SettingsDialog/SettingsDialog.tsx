@@ -29,6 +29,8 @@ export interface SettingsDialogProps {
   getTeam?: TeamMembersPanelProps['getTeam']
   saveTeam?: TeamMembersPanelProps['saveTeam']
   now?: () => Date
+  /** Tab shown each time the dialog opens. Defaults to Repositories. */
+  initialTab?: 'repositories' | 'team'
 }
 
 const defaultNow = () => new Date()
@@ -45,7 +47,8 @@ export default function SettingsDialog({
   getTeam = () => defaultGetTeam(),
   saveTeam = (team) => defaultSaveTeam(team),
   now = defaultNow,
-}: SettingsDialogProps) {
+  initialTab = 'repositories',
+}:SettingsDialogProps) {
   const titleId = useId()
   const changed = useRef(false)
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -71,6 +74,8 @@ export default function SettingsDialog({
         <div className={styles.tabs}>
           <Tabs
             label="Settings sections"
+            initialKey={initialTab}
+            lazy
             tabs={[
               {
                 key: 'repositories',

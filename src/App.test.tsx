@@ -182,8 +182,10 @@ describe('App settings', () => {
     await waitFor(() => expect(openSettingsButton()).toHaveFocus())
     expect(deps.listRepos).toHaveBeenCalledTimes(listCalls)
     expect(deps.getRepoData).toHaveBeenCalledTimes(dataCalls)
-    // The Team members panel (mounted, hidden) reads /api/team on open; nothing else hits the network.
-    expect(fetchSpy.mock.calls.filter(([url]) => url !== '/api/team')).toEqual([])
+    // Settings panels are lazy: without visiting Team members, nothing hits the network.
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(deps.getTeam).toHaveBeenCalledTimes(1)
+    expect(deps.saveTeam).not.toHaveBeenCalled()
   })
 
   it('#8 AC11: after an add and close, the empty state is gone and focus lands on the Header button', async () => {
@@ -239,6 +241,9 @@ describe('App settings', () => {
         return json({ repo, synced: true, people: 2 }, 201)
       }
       if (url === '/api/token-status') return json({ configured: true })
+      if (url === '/api/team' && method === 'GET') {
+        return json({ candidates: [], selected: ['ana'], added: [] })
+      }
       if (url.startsWith('/api/data?repo=')) {
         const repo = decodeURIComponent(url.split('=')[1])
         return json(storedRepo(repo, SYNCED_AT, ['ana']))

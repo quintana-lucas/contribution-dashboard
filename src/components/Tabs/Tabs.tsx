@@ -11,11 +11,18 @@ export interface TabItem {
 interface TabsProps {
   label: string
   tabs: TabItem[]
+  /** Key of the tab selected on mount. Defaults to the first tab. */
+  initialKey?: string
+  /** Mount only the selected panel, so a panel's effects run when it is shown. */
+  lazy?: boolean
 }
 
-export default function Tabs({ label, tabs }: TabsProps) {
+export default function Tabs({ label, tabs, initialKey, lazy = false }: TabsProps) {
   const baseId = useId()
-  const [selected, setSelected] = useState(0)
+  const [selected, setSelected] = useState(() => {
+    const i = tabs.findIndex((t) => t.key === initialKey)
+    return i === -1 ? 0 : i
+  })
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   const tabId = (i: number) => `${baseId}-tab-${tabs[i].key}`
@@ -81,7 +88,7 @@ export default function Tabs({ label, tabs }: TabsProps) {
           hidden={i !== selected}
           className={styles.panel}
         >
-          {tab.content}
+          {lazy && i !== selected ? null : tab.content}
         </div>
       ))}
     </div>

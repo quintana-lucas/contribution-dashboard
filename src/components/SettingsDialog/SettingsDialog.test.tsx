@@ -78,7 +78,7 @@ describe('SettingsDialog', () => {
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Repositories', 'Team members'])
     expect(screen.getByRole('tab', { name: 'Repositories' })).toHaveFocus()
     fireEvent.click(screen.getByRole('tab', { name: 'Team members' }))
-    expect(screen.getByRole('list', { name: 'Team members' })).toBeVisible()
+    expect(await screen.findByRole('list', { name: 'Team members' })).toBeVisible()
   })
 
   it('#15 AC2: a team change marks the dialog changed', async () => {
@@ -89,6 +89,46 @@ describe('SettingsDialog', () => {
     await waitFor(() => expect(screen.getByRole('checkbox', { name: 'ana' })).not.toBeChecked())
     fireEvent.click(screen.getByRole('button', { name: 'Close settings' }))
     expect(onClose).toHaveBeenCalledWith(true)
+  })
+
+  it('#15 AC5: Team members is only mounted once visited, and remounts (refetches) on each visit', async () => {
+    const { deps } = setup()
+    await ready()
+    expect(deps.getTeam).not.toHaveBeenCalled()
+    expect(deps.saveTeam).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('tab', { name: 'Team members' }))
+    await screen.findByRole('checkbox', { name: 'ana' })
+    expect(deps.getTeam).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('tab', { name: 'Repositories' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Team members' }))
+    await screen.findByRole('checkbox', { name: 'ana' })
+    expect(deps.getTeam).toHaveBeenCalledTimes(2)
+  })
+
+  it('#15 AC5: initialTab="team" opens on Team members with focus on that tab, on every open', async () => {
+    const getTeam = vi.fn(async () => ({
+      ok: true as const,
+      candidates: [{ login: 'ana', pullRequests: 1, reviews: 0, repos: ['acme/api'] }],
+      selected: ['ana'],
+      added: [],
+    }))
+    const props = {
+      onClose: () => {},
+      getTeam,
+      saveTeam: async () => ({ ok: true }),
+      listRepos: async () => ({ ok: true as const, repos: [] }),
+      getTokenStatus: async () => ({ ok: true as const, configured: true }),
+      initialTab: 'team' as const,
+    }
+    const { rerender } = render(<SettingsDialog open {...props} />)
+    await screen.findByRole('checkbox', { name: 'ana' })
+    expect(screen.getByRole('tab', { name: 'Team members' })).toHaveAttribute('aria-selected', 'true')
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Team members' })).toHaveFocus())
+    // Switch away, close and reopen: it opens on Team members again.
+    fireEvent.click(screen.getByRole('tab', { name: 'Repositories' }))
+    rerender(<SettingsDialog open={false} {...props} />)
+    rerender(<SettingsDialog open {...props} />)
+    expect(screen.getByRole('tab', { name: 'Team members' })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('#8 AC11: onClose(false) with no change, onClose(true) after a success', async () => {
