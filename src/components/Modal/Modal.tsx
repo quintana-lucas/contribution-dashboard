@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './Modal.module.css'
@@ -45,9 +45,22 @@ export default function Modal({
     latest.current = { initialFocus, fallbackFocus, appRoot }
   })
 
+  // Captured during render, before any child effect or autoFocus can move focus.
+  // The state update during render re-renders before children mount or commit.
+  const [wasOpen, setWasOpen] = useState(false)
+  const [opener, setOpener] = useState<HTMLElement | null>(null)
+  const downOnBackdrop = useRef(false)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      const active = document.activeElement as HTMLElement | null
+      // Some browsers leave focus on <body> after a click; that is not a real opener.
+      setOpener(active && active !== document.body ? active : null)
+    }
+  }
+
   useEffect(() => {
     if (!open) return
-    const opener = document.activeElement as HTMLElement | null
     const root = (latest.current.appRoot ?? (() => document.getElementById('root')))()
     root?.setAttribute('inert', '')
 
@@ -65,7 +78,7 @@ export default function Modal({
         latest.current.fallbackFocus?.()?.focus()
       }
     }
-  }, [open])
+  }, [open, opener])
 
   if (!open) return null
 
@@ -97,8 +110,13 @@ export default function Modal({
     <div
       className={styles.backdrop}
       data-testid="modal-backdrop"
+      onMouseDown={(e) => {
+        downOnBackdrop.current = e.target === e.currentTarget
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        // A drag that began inside the panel must not close the dialog.
+        if (e.target === e.currentTarget && downOnBackdrop.current) onClose()
+        downOnBackdrop.current = false
       }}
       onKeyDown={onKeyDown}
     >

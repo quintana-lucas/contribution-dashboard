@@ -1,0 +1,37 @@
+.dialog {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'title close'
+    'tabs tabs';
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.title {
+  grid-area: title;
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--text-lg-weight);
+  line-height: var(--text-lg-line);
+}
+
+.tabs {
+  grid-area: tabs;
+}
+
+.close {
+  grid-area: close;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border-dashed);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}

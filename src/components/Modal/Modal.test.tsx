@@ -20,10 +20,13 @@ function Harness({
   onClose = () => {},
   removeOpener = false,
   initialFocus,
+  autoFocusField = false,
 }: {
   onClose?: () => void
   removeOpener?: boolean
   initialFocus?: () => HTMLElement | null
+  autoFocusField?: boolean
+  focusOpener?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [showOpener, setShowOpener] = useState(true)
@@ -48,7 +51,7 @@ function Harness({
       >
         <h2 id="t">Settings</h2>
         <button>First</button>
-        <input aria-label="Field" />
+        <input aria-label="Field" autoFocus={autoFocusField} />
         <button>Last</button>
       </Modal>
     </>
@@ -58,7 +61,7 @@ function Harness({
 function open(props: Parameters<typeof Harness>[0] = {}) {
   render(<Harness {...props} />, { container: root })
   const opener = screen.getByRole('button', { name: 'Opener' })
-  opener.focus()
+  if (props.focusOpener !== false) opener.focus()
   fireEvent.click(opener)
   return opener
 }
@@ -125,10 +128,34 @@ describe('Modal', () => {
   it('#8 AC11: clicking the backdrop closes, clicking the panel does not', () => {
     const onClose = vi.fn()
     open({ onClose })
+    fireEvent.mouseDown(screen.getByRole('dialog'))
     fireEvent.click(screen.getByRole('dialog'))
     expect(onClose).not.toHaveBeenCalled()
+    fireEvent.mouseDown(screen.getByTestId('modal-backdrop'))
     fireEvent.click(screen.getByTestId('modal-backdrop'))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('#8 AC11: a drag that starts in the panel and ends on the backdrop does not close', () => {
+    const onClose = vi.fn()
+    open({ onClose })
+    fireEvent.mouseDown(screen.getByLabelText('Field'))
+    fireEvent.click(screen.getByTestId('modal-backdrop'))
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('#8 AC11: an autofocused child is not recorded as the opener', () => {
+    const opener = open({ autoFocusField: true })
+    expect(screen.getByRole('dialog')).toContainElement(document.activeElement as HTMLElement)
+    fireEvent.keyDown(screen.getByLabelText('Field'), { key: 'Escape' })
+    expect(opener).toHaveFocus()
+  })
+
+  it('#8 AC11: when the opener is document.body, focus goes to the fallback', () => {
+    open({ focusOpener: false })
+    expect(document.activeElement).not.toBe(document.body)
+    fireEvent.keyDown(screen.getByRole('button', { name: 'First' }), { key: 'Escape' })
+    expect(screen.getByRole('button', { name: 'Fallback' })).toHaveFocus()
   })
 
   it('#8 AC11: focus returns to the opener on close', () => {
