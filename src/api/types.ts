@@ -35,6 +35,8 @@ export interface StoredReview {
 export interface LinkedRepo {
   repo: string // "owner/name"
   syncedAt: string | null
+  baseBranch: string | null // null when never synced or no PRs
+  people: number | null // null when never synced
 }
 
 export interface StoredRepo {

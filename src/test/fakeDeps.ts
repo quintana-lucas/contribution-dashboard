@@ -35,11 +35,20 @@ export function makeDeps() {
   const listRepos = vi.fn(async () => ({
     ok: true as const,
     repos: [
-      { repo: 'acme/api', syncedAt: '2026-06-15T09:00:00.000Z' },
-      { repo: 'acme/web', syncedAt: '2026-06-15T11:30:00.000Z' },
-      { repo: 'acme/new', syncedAt: null },
+      { repo: 'acme/api', syncedAt: '2026-06-15T09:00:00.000Z', baseBranch: 'main', people: 2 },
+      { repo: 'acme/web', syncedAt: '2026-06-15T11:30:00.000Z', baseBranch: 'main', people: 2 },
+      { repo: 'acme/new', syncedAt: null, baseBranch: null, people: null },
     ],
   }))
   const getRepoData = vi.fn(async (repo: string) => ({ ok: true as const, data: data[repo] }))
-  return { listRepos, getRepoData, now: () => NOW }
+  const addRepo = vi.fn(async (input: string) => ({
+    ok: true as const,
+    repo: input,
+    synced: true as const,
+    people: 2,
+  }))
+  const removeRepo = vi.fn(async (_repo: string) => ({ ok: true as const }))
+  const syncRepo = vi.fn(async (_repo: string) => ({ ok: true as const, people: 2 }))
+  const getTokenStatus = vi.fn(async () => ({ ok: true as const, configured: true }))
+  return { listRepos, getRepoData, addRepo, removeRepo, syncRepo, getTokenStatus, now: () => NOW }
 }

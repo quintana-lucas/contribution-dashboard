@@ -10,6 +10,8 @@ export interface DashboardValue {
   setSelection: (selection: RepoSelection) => void
   period: Period
   setPeriod: (period: Period) => void
+  /** Sets status loading and re-runs the load; keeps the selection if its repo still exists. */
+  reload: () => void
   /** In-period activity for the current selection and period. */
   selectActivity: () => Activity
   subline: string

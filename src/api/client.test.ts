@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getRepoData, listRepos, syncRepo } from './client.ts'
+import { addRepo, getRepoData, getTokenStatus, listRepos, removeRepo, syncRepo } from './client.ts'
 import type { StoredRepo } from './types.ts'
 
 const stored: StoredRepo = { schemaVersion: 2, repo: 'acme/widgets', syncedAt: '2026-06-01T00:00:00.000Z', pullRequests: [], reviews: [] }
@@ -9,8 +9,8 @@ const spy = (res: () => Response) => vi.fn(async () => res()) as unknown as type
 describe('listRepos', () => {
   it('#16 AC1: parses the repos from /api/repos', async () => {
     const repos = [
-      { repo: 'acme/widgets', syncedAt: '2026-06-01T00:00:00.000Z' },
-      { repo: 'acme/new', syncedAt: null },
+      { repo: 'acme/widgets', syncedAt: '2026-06-01T00:00:00.000Z', baseBranch: 'main', people: 2 },
+      { repo: 'acme/new', syncedAt: null, baseBranch: null, people: null },
     ]
     const f = spy(() => new Response(JSON.stringify({ repos }), { status: 200 }))
     expect(await listRepos(f)).toEqual({ ok: true, repos })
@@ -81,7 +81,80 @@ describe('api client', () => {
       () => new Response(JSON.stringify({ ok: false, code: 'rate_limited', message: 'slow down' }), { status: 502 }),
     )
     expect(await syncRepo('acme/widgets', f)).toEqual({ ok: false, code: 'rate_limited', message: 'slow down' })
-    const ok = spy(() => new Response('{"ok":true}', { status: 200 }))
-    expect(await syncRepo('acme/widgets', ok)).toEqual({ ok: true })
+    const ok = spy(() => new Response('{"ok":true,"people":4}', { status: 200 }))
+    expect(await syncRepo('acme/widgets', ok)).toEqual({ ok: true, people: 4 }) // #8 AC5
+  })
+})
+
+const reply = (body: unknown, status = 200) => spy(() => new Response(JSON.stringify(body), { status }))
+
+describe('addRepo', () => {
+  it('#8 AC12: maps every response shape', async () => {
+    expect(await addRepo('acme/widgets', reply({ repo: 'acme/widgets', synced: true, people: 3 }, 201))).toEqual({
+      ok: true, repo: 'acme/widgets', synced: true, people: 3,
+    })
+    expect(await addRepo('acme/widgets', reply({ repo: 'acme/widgets', synced: false, code: 'network' }, 201))).toEqual({
+      ok: true, repo: 'acme/widgets', synced: false,
+    })
+    expect(await addRepo('x', reply({ error: 'invalid_format' }, 400))).toEqual({ ok: false, error: 'invalid_format' })
+    expect(await addRepo('a/b', reply({ error: 'duplicate', repo: 'A/B' }, 409))).toEqual({
+      ok: false, error: 'duplicate', repo: 'A/B',
+    })
+    expect(await addRepo('a/b', reply({ error: 'not_found_or_no_access' }, 404))).toEqual({
+      ok: false, error: 'not_found_or_no_access',
+    })
+    expect(await addRepo('a/b', reply({ error: 'missing_token' }, 503))).toEqual({ ok: false, error: 'missing_token' })
+    expect(await addRepo('a/b', reply({ error: 'github_failed' }, 502))).toEqual({ ok: false, error: 'request_failed' })
+    const down = vi.fn(async () => {
+      throw new Error('down')
+    }) as unknown as typeof fetch
+    expect(await addRepo('a/b', down)).toEqual({ ok: false, error: 'request_failed' })
+  })
+
+  it('#8 AC12: posts the input as JSON', async () => {
+    const f = reply({ repo: 'acme/widgets', synced: true, people: 0 }, 201)
+    await addRepo('github.com/acme/widgets', f)
+    const [url, init] = f.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/repos')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(String(init.body))).toEqual({ input: 'github.com/acme/widgets' })
+  })
+})
+
+describe('removeRepo and getTokenStatus', () => {
+  it('#8 AC4: removeRepo maps success and failure', async () => {
+    const f = reply({ ok: true })
+    expect(await removeRepo('acme/widgets', f)).toEqual({ ok: true })
+    const [url, init] = f.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/repos/acme/widgets')
+    expect(init.method).toBe('DELETE')
+    expect(await removeRepo('acme/widgets', reply({ error: 'not_linked' }, 404))).toEqual({ ok: false })
+    expect(await removeRepo('bad', f)).toEqual({ ok: false })
+  })
+
+  it('#8 AC9: getTokenStatus maps configured true or false, and a failure', async () => {
+    expect(await getTokenStatus(reply({ configured: true }))).toEqual({ ok: true, configured: true })
+    expect(await getTokenStatus(reply({ configured: false }))).toEqual({ ok: true, configured: false })
+    expect(await getTokenStatus(reply({}, 500))).toEqual({ ok: false })
+    expect(await getTokenStatus(reply({ nope: 1 }))).toEqual({ ok: false })
+    const down = vi.fn(async () => {
+      throw new Error('down')
+    }) as unknown as typeof fetch
+    expect(await getTokenStatus(down)).toEqual({ ok: false })
+  })
+
+  it('#8 AC13: every client function calls only relative /api/ URLs', async () => {
+    const f = reply({ ok: true, configured: true, repo: 'a/b', synced: true, people: 1, repos: [] })
+    await listRepos(f)
+    await addRepo('a/b', f)
+    await removeRepo('a/b', f)
+    await syncRepo('a/b', f)
+    await getTokenStatus(f)
+    const urls = f.mock.calls.map((c: unknown[]) => String(c[0]))
+    expect(urls).toHaveLength(5)
+    for (const url of urls) {
+      expect(url.startsWith('/api/')).toBe(true)
+      expect(url).not.toContain('api.github.com')
+    }
   })
 })

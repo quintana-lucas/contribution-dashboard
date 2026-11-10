@@ -1,6 +1,6 @@
 // Pure shared read interface for the dashboard (#16). No React, no fetch, no clock reads:
 // `now` is always passed in. Inputs are never mutated.
-import type { StoredPullRequest, StoredRepo, StoredReview } from './types'
+import type { StoredPullRequest, StoredRepo, StoredReview } from './types.ts'
 
 export type Period = 7 | 30 | 90
 export type RepoSelection = 'all' | string
