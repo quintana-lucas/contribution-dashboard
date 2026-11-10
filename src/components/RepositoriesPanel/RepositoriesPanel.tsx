@@ -57,9 +57,13 @@ export default function RepositoriesPanel({
   })
   const live = useRef(true)
 
+  // Only the latest list request may apply its response.
+  const requestId = useRef(0)
+
   const refresh = useCallback(async () => {
+    const id = ++requestId.current
     const res = await latest.current.listRepos()
-    if (!live.current) return
+    if (!live.current || id !== requestId.current) return
     if (res.ok) {
       setRepos(res.repos)
       setLoad('ready')
@@ -100,6 +104,9 @@ export default function RepositoriesPanel({
   const handleRemoved = (repo: string) => {
     const i = repos.findIndex((r) => r.repo === repo)
     pendingFocus.current = { repo: i >= 0 ? (repos[i + 1]?.repo ?? null) : null }
+    // Drop any in-flight list response: it may still contain the removed repo.
+    requestId.current++
+    setLoad('ready')
     setRepos((list) => list.filter((r) => r.repo !== repo))
     setRemoved(`Removed ${repo}.`)
     onChanged()

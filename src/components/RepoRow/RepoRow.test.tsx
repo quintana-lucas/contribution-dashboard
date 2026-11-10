@@ -39,4 +39,28 @@ describe('RepoRow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove a/b' }))
     expect(screen.getByRole('button', { name: 'Remove repository' })).toBeInTheDocument()
   })
+
+  it('#8 AC4: Esc is swallowed while the delete is in flight', () => {
+    const outer = vi.fn()
+    render(
+      <div onKeyDown={outer}>
+        <ul>
+          <RepoRow
+            repo={{ repo: 'a/b', syncedAt: null, baseBranch: null, people: null }}
+            now={NOW}
+            syncRepo={vi.fn()}
+            removeRepo={() => new Promise(() => {})}
+            onSynced={() => {}}
+            onRemoved={() => {}}
+          />
+        </ul>
+      </div>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Remove a/b' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove repository' }))
+    const busy = screen.getByRole('button', { name: 'Removing…' })
+    fireEvent.keyDown(busy, { key: 'Escape' })
+    expect(outer).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Removing…' })).toBeInTheDocument()
+  })
 })

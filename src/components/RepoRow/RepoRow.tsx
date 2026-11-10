@@ -81,11 +81,10 @@ export default function RepoRow({ repo, now, syncRepo, removeRepo, onSynced, onR
   }
 
   const onConfirmKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape' && mode === 'confirm') {
-      // Cancel the confirm first; the modal must stay open.
-      e.stopPropagation()
-      cancel()
-    }
+    if (e.key !== 'Escape') return
+    // The modal must stay open while confirming or while the delete is in flight.
+    e.stopPropagation()
+    if (mode === 'confirm') cancel()
   }
 
   return (
