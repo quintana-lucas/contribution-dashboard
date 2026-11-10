@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { addRepo, getRepoData, getTokenStatus, listRepos, removeRepo, syncRepo } from './client.ts'
+import { addRepo, getRepoData, getTeam, getTokenStatus, listRepos, removeRepo, saveTeam, syncRepo } from './client.ts'
 import type { StoredRepo } from './types.ts'
 
 const stored: StoredRepo = { schemaVersion: 2, repo: 'acme/widgets', syncedAt: '2026-06-01T00:00:00.000Z', pullRequests: [], reviews: [] }
@@ -24,6 +24,42 @@ describe('listRepos', () => {
     expect(await listRepos(down)).toEqual({ ok: false, error: 'request_failed' })
     const http = spy(() => new Response('{"error":"config_invalid"}', { status: 500 }))
     expect(await listRepos(http)).toEqual({ ok: false, error: 'request_failed' })
+  })
+})
+
+describe('team client', () => {
+  it('#15 AC1: getTeam parses candidates, selected and added from /api/team', async () => {
+    const body = {
+      candidates: [{ login: 'ana', pullRequests: 1, reviews: 2, repos: ['acme/api'] }],
+      selected: null,
+      added: ['zoe'],
+    }
+    const f = spy(() => new Response(JSON.stringify(body), { status: 200 }))
+    expect(await getTeam(f)).toEqual({ ok: true, ...body })
+    expect(String(f.mock.calls[0][0])).toBe('/api/team')
+  })
+
+  it('#15 AC1: getTeam fails on network, HTTP or bad shape', async () => {
+    const down = vi.fn(async () => {
+      throw new Error('down')
+    }) as unknown as typeof fetch
+    expect(await getTeam(down)).toEqual({ ok: false })
+    expect(await getTeam(spy(() => new Response('{"error":"team_invalid"}', { status: 500 })))).toEqual({ ok: false })
+    expect(await getTeam(spy(() => new Response('{"candidates":[]}', { status: 200 })))).toEqual({ ok: false })
+  })
+
+  it('#15 AC8: saveTeam PUTs only the two login lists', async () => {
+    const f = spy(() => new Response('{"ok":true}', { status: 200 }))
+    expect(await saveTeam({ selected: ['ana'], added: [], extra: 'x' } as never, f)).toEqual({ ok: true })
+    const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('/api/team')
+    expect(init.method).toBe('PUT')
+    expect(JSON.parse(init.body as string)).toEqual({ selected: ['ana'], added: [] })
+    expect(await saveTeam({ selected: [], added: [] }, spy(() => new Response('{}', { status: 400 })))).toEqual({ ok: false })
+    const down = vi.fn(async () => {
+      throw new Error('down')
+    }) as unknown as typeof fetch
+    expect(await saveTeam({ selected: [], added: [] }, down)).toEqual({ ok: false })
   })
 })
 

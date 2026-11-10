@@ -40,6 +40,13 @@ function setup(s: Setup = {}) {
     ),
     syncRepo: vi.fn(s.syncRepo ?? (async () => ({ ok: true as const, people: 4 }))),
     getTokenStatus: vi.fn(s.getTokenStatus ?? (async () => ({ ok: true as const, configured: true }))),
+    getTeam: vi.fn(async () => ({
+      ok: true as const,
+      candidates: [{ login: 'ana', pullRequests: 1, reviews: 0, repos: ['acme/api'] }],
+      selected: ['ana'],
+      added: [],
+    })),
+    saveTeam: vi.fn(async () => ({ ok: true })),
   }
   render(<SettingsDialog open onClose={onClose} now={() => NOW} {...(deps as object)} />)
   return { onClose, deps, state }
@@ -71,7 +78,17 @@ describe('SettingsDialog', () => {
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Repositories', 'Team members'])
     expect(screen.getByRole('tab', { name: 'Repositories' })).toHaveFocus()
     fireEvent.click(screen.getByRole('tab', { name: 'Team members' }))
-    expect(screen.getByText('Choosing your team arrives in a later update.')).toBeVisible()
+    expect(screen.getByRole('list', { name: 'Team members' })).toBeVisible()
+  })
+
+  it('#15 AC2: a team change marks the dialog changed', async () => {
+    const { onClose } = setup()
+    await ready()
+    fireEvent.click(screen.getByRole('tab', { name: 'Team members' }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'ana' }))
+    await waitFor(() => expect(screen.getByRole('checkbox', { name: 'ana' })).not.toBeChecked())
+    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }))
+    expect(onClose).toHaveBeenCalledWith(true)
   })
 
   it('#8 AC11: onClose(false) with no change, onClose(true) after a success', async () => {

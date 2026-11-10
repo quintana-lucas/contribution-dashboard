@@ -182,7 +182,8 @@ describe('App settings', () => {
     await waitFor(() => expect(openSettingsButton()).toHaveFocus())
     expect(deps.listRepos).toHaveBeenCalledTimes(listCalls)
     expect(deps.getRepoData).toHaveBeenCalledTimes(dataCalls)
-    expect(fetchSpy).not.toHaveBeenCalled()
+    // The Team members panel (mounted, hidden) reads /api/team on open; nothing else hits the network.
+    expect(fetchSpy.mock.calls.filter(([url]) => url !== '/api/team')).toEqual([])
   })
 
   it('#8 AC11: after an add and close, the empty state is gone and focus lands on the Header button', async () => {
