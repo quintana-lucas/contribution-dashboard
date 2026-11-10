@@ -1,0 +1,26 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--color-backdrop);
+}
+
+.panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--modal-max);
+  max-height: 100%;
+  overflow: auto;
+  padding: var(--space-6);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+}
+
+.panel:focus {
+  outline: none;
+}
