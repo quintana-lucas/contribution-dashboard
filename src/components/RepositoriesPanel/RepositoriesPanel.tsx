@@ -104,12 +104,13 @@ export default function RepositoriesPanel({
   const handleRemoved = (repo: string) => {
     const i = repos.findIndex((r) => r.repo === repo)
     pendingFocus.current = { repo: i >= 0 ? (repos[i + 1]?.repo ?? null) : null }
-    // Drop any in-flight list response: it may still contain the removed repo.
-    requestId.current++
     setLoad('ready')
     setRepos((list) => list.filter((r) => r.repo !== repo))
     setRemoved(`Removed ${repo}.`)
     onChanged()
+    // refresh() supersedes any in-flight list response (it may still contain the removed
+    // repo, or lack a just-added one) and leaves the list current.
+    void refresh()
   }
 
   const handleAdded = () => {

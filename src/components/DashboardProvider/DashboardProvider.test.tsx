@@ -77,6 +77,34 @@ describe('DashboardProvider', () => {
     await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('error|all|30'))
   })
 
+  it('#8 AC1: reload sets loading, re-lists, and resets a selection whose repo is gone', async () => {
+    const deps = makeDeps()
+    function ReloadConsumer() {
+      const { reload } = useDashboard()
+      return <button onClick={reload}>reload</button>
+    }
+    render(
+      <DashboardProvider {...deps}>
+        <Consumer />
+        <ReloadConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('ready|all|30'))
+    fireEvent.click(screen.getByText('pick')) // acme/web
+    // Selection kept while its repo still exists.
+    fireEvent.click(screen.getByText('reload'))
+    expect(screen.getByTestId('state')).toHaveTextContent('loading|acme/web|30')
+    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('ready|acme/web|30'))
+    expect(deps.listRepos).toHaveBeenCalledTimes(2)
+    // The repo disappears: selection goes back to all.
+    deps.listRepos.mockImplementation(async () => ({
+      ok: true as const,
+      repos: [{ repo: 'acme/api', syncedAt: null, baseBranch: null, people: null }],
+    }))
+    fireEvent.click(screen.getByText('reload'))
+    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('ready|all|30'))
+  })
+
   it('#16 AC6: useDashboard throws outside the provider', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {

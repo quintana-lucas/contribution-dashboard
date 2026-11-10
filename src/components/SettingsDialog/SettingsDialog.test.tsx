@@ -30,7 +30,14 @@ function setup(s: Setup = {}) {
   const deps = {
     listRepos: vi.fn(s.listRepos ?? (async () => ({ ok: true as const, repos: state.repos }))),
     addRepo: vi.fn(s.addRepo ?? (async () => ({ ok: true as const, repo: 'acme/new', synced: true as const, people: 2 }))),
-    removeRepo: vi.fn(s.removeRepo ?? (async () => ({ ok: true }))),
+    // A successful remove also updates the fake server, because the panel refetches after it.
+    removeRepo: vi.fn(
+      s.removeRepo ??
+        (async (repo: string) => {
+          state.repos = state.repos.filter((r) => r.repo !== repo)
+          return { ok: true }
+        }),
+    ),
     syncRepo: vi.fn(s.syncRepo ?? (async () => ({ ok: true as const, people: 4 }))),
     getTokenStatus: vi.fn(s.getTokenStatus ?? (async () => ({ ok: true as const, configured: true }))),
   }

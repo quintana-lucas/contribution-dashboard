@@ -101,6 +101,8 @@ describe('RepositoriesPanel', () => {
       listRepos: () => {
         calls++
         if (calls === 2) return new Promise((r) => (resolveStale = r))
+        // After the remove, the server no longer lists acme/api.
+        if (calls > 2) return Promise.resolve({ ok: true, repos: [synced('acme/web')] })
         return Promise.resolve({ ok: true, repos: [synced('acme/api'), synced('acme/web')] })
       },
     })
@@ -115,5 +117,31 @@ describe('RepositoriesPanel', () => {
     await new Promise((r) => setTimeout(r, 0))
     expect(screen.queryByText('acme/api')).toBeNull()
     expect(screen.getByText('acme/web')).toBeInTheDocument()
+  })
+
+  it('#8 AC4: a remove issues a fresh refetch so a repo added meanwhile is not lost', async () => {
+    let calls = 0
+    let resolveStale: (r: ListReposResult) => void = () => {}
+    const { deps } = setup({
+      listRepos: () => {
+        calls++
+        if (calls === 2) return new Promise((r) => (resolveStale = r))
+        // The fresh refetch after the remove sees the current server state.
+        if (calls > 2) return Promise.resolve({ ok: true, repos: [synced('acme/web'), synced('acme/new')] })
+        return Promise.resolve({ ok: true, repos: [synced('acme/api'), synced('acme/web')] })
+      },
+    })
+    await screen.findByText('acme/api')
+    fireEvent.click(screen.getByRole('button', { name: 'Sync acme/web' }))
+    await waitFor(() => expect(deps.listRepos).toHaveBeenCalledTimes(2))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove acme/api' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove repository' }))
+    await screen.findByText('Removed acme/api.')
+    await waitFor(() => expect(deps.listRepos).toHaveBeenCalledTimes(3))
+    // The dropped in-flight response resolves late with an outdated list.
+    resolveStale({ ok: true, repos: [synced('acme/api'), synced('acme/web')] })
+    await new Promise((r) => setTimeout(r, 0))
+    await screen.findByText('acme/new')
+    expect(screen.queryByText('acme/api')).toBeNull()
   })
 })
