@@ -155,7 +155,7 @@ describe('SettingsDialog', () => {
     expect(await screen.findByRole('button', { name: 'Sync acme/new' })).toBeInTheDocument()
     expect(deps.addRepo).toHaveBeenCalledWith('acme/new')
     expect(field()).toHaveValue('')
-    expect(field()).toHaveFocus()
+    await waitFor(() => expect(field()).toHaveFocus())
   })
 
   it('#8 AC12: busy state, singular and plural success texts', async () => {
@@ -249,7 +249,7 @@ describe('SettingsDialog', () => {
     expect(screen.queryByText('acme/api')).toBeNull()
     expect(deps.removeRepo).toHaveBeenCalledWith('acme/api')
     // Focus moves to the next row's Remove.
-    expect(screen.getByRole('button', { name: 'Remove acme/web' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Remove acme/web' })).toHaveFocus())
     fireEvent.click(screen.getByRole('button', { name: 'Close settings' }))
     expect(onClose).toHaveBeenCalledWith(true)
   })
@@ -260,7 +260,7 @@ describe('SettingsDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove acme/api' }))
     fireEvent.click(screen.getByRole('button', { name: 'Remove repository' }))
     await screen.findByText('Removed acme/api.')
-    expect(field()).toHaveFocus()
+    await waitFor(() => expect(field()).toHaveFocus())
   })
 
   it('#8 AC4: Cancel restores the row and focuses its Remove', async () => {
@@ -268,7 +268,7 @@ describe('SettingsDialog', () => {
     await ready()
     fireEvent.click(screen.getByRole('button', { name: 'Remove acme/api' }))
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    expect(screen.getByRole('button', { name: 'Remove acme/api' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Remove acme/api' })).toHaveFocus())
     expect(deps.removeRepo).not.toHaveBeenCalled()
   })
 
@@ -278,7 +278,7 @@ describe('SettingsDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove acme/api' }))
     fireEvent.keyDown(screen.getByRole('button', { name: 'Cancel' }), { key: 'Escape' })
     expect(onClose).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'Remove acme/api' })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Remove acme/api' })).toHaveFocus())
     fireEvent.keyDown(screen.getByRole('button', { name: 'Remove acme/api' }), { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
