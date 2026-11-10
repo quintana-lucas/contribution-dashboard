@@ -203,6 +203,7 @@ export function createApiRoutes({
           candidates: candidates(synced, now()),
           selected: team.selected,
           added: team.added,
+          anySynced: synced.length > 0,
         })
       },
       PUT: async (req, res) => {

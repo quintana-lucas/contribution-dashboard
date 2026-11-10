@@ -460,13 +460,37 @@ describe('/api/team', () => {
       ],
       selected: null,
       added: [],
+      anySynced: true,
     })
     expect(f).not.toHaveBeenCalled()
   })
 
   it('#15 AC2: first run has selected null and no candidates without repos', async () => {
     const call = await boot()
-    expect(await (await call('/api/team')).json()).toEqual({ candidates: [], selected: null, added: [] })
+    expect(await (await call('/api/team')).json()).toEqual({
+      candidates: [],
+      selected: null,
+      added: [],
+      anySynced: false,
+    })
+  })
+
+  it('#15 AC6: anySynced is false when linked repos are not synced', async () => {
+    await link('acme/unsynced')
+    const call = await boot()
+    expect(await (await call('/api/team')).json()).toMatchObject({ candidates: [], anySynced: false })
+  })
+
+  it('#15 AC5: a synced repo with no activity has no candidates but anySynced is true', async () => {
+    await link('acme/widgets')
+    await writeRepo({ ...teamRepo, pullRequests: [], reviews: [] }, dir)
+    const call = await boot()
+    expect(await (await call('/api/team')).json()).toEqual({
+      candidates: [],
+      selected: null,
+      added: [],
+      anySynced: true,
+    })
   })
 
   it('#15 AC4: a PUT persists and GET returns it (deduped case-insensitively)', async () => {
@@ -478,6 +502,7 @@ describe('/api/team', () => {
       candidates: [],
       selected: ['ana', 'bob'],
       added: ['zed'],
+      anySynced: false,
     })
   })
 

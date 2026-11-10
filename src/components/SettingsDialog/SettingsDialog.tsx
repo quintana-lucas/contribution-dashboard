@@ -48,7 +48,7 @@ export default function SettingsDialog({
   saveTeam = (team) => defaultSaveTeam(team),
   now = defaultNow,
   initialTab = 'repositories',
-}:SettingsDialogProps) {
+}: SettingsDialogProps) {
   const titleId = useId()
   const changed = useRef(false)
   const bodyRef = useRef<HTMLDivElement>(null)

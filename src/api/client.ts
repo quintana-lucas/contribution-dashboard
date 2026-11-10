@@ -163,7 +163,7 @@ export async function removeRepo(
 }
 
 export type GetTeamResult =
-  | { ok: true; candidates: Candidate[]; selected: string[] | null; added: string[] }
+  | { ok: true; candidates: Candidate[]; selected: string[] | null; added: string[]; anySynced?: boolean }
   | { ok: false }
 
 export interface TeamSaveInput {
@@ -182,6 +182,7 @@ export async function getTeam(fetchImpl: FetchLike = (...a) => fetch(...a)): Pro
         candidates?: unknown
         selected?: unknown
         added?: unknown
+        anySynced?: unknown
       }
       if (
         Array.isArray(body.candidates) &&
@@ -193,6 +194,7 @@ export async function getTeam(fetchImpl: FetchLike = (...a) => fetch(...a)): Pro
           candidates: body.candidates as Candidate[],
           selected: body.selected,
           added: body.added,
+          anySynced: body.anySynced === true,
         }
       }
     }

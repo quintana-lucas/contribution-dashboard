@@ -121,6 +121,33 @@ describe('EmptyState', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Open settings' })).toHaveFocus())
   })
 
+  it('#15 AC5: a synced repo with no activity: adding a login in Settings and closing shows the dashboard', async () => {
+    const deps = makeDeps()
+    let team: { selected: string[] | null; added: string[] } = { selected: null, added: [] }
+    deps.getTeam.mockImplementation(async () => ({
+      ok: true as const,
+      candidates: [],
+      anySynced: true,
+      ...team,
+    }))
+    deps.saveTeam.mockImplementation(async (next) => {
+      team = next
+      return { ok: true }
+    })
+    render(<App {...deps} />)
+    await screen.findByText('Set up your dashboard')
+    fireEvent.click(screen.getByRole('button', { name: 'Choose your team: open team settings' }))
+    const dialog = screen.getByRole('dialog', { name: 'Settings' })
+    await within(dialog).findByText(/No activity in the last 90 days/)
+    expect(deps.saveTeam).not.toHaveBeenCalled()
+    fireEvent.change(within(dialog).getByLabelText('GitHub login'), { target: { value: 'zoe' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(deps.saveTeam).toHaveBeenCalledWith({ selected: ['zoe'], added: ['zoe'] }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close settings' }))
+    await waitFor(() => expect(screen.queryByText('Set up your dashboard')).toBeNull())
+    expect(await screen.findByRole('tab', { name: 'Overview' })).toBeInTheDocument()
+  })
+
   it('#8 AC1: with an empty list there is no toolbar and the empty state shows', async () => {
     const deps = { ...makeDeps(), listRepos: vi.fn(async () => ({ ok: true as const, repos: [] })) }
     render(<App {...deps} />)

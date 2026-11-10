@@ -10,7 +10,7 @@ const bob: Candidate = { login: 'bob', pullRequests: 1, reviews: 2, repos: ['acm
 const cy: Candidate = { login: 'cy', pullRequests: 0, reviews: 1, repos: ['acme/web'] }
 
 function setup(
-  team: { candidates?: Candidate[]; selected?: string[] | null; added?: string[] } = {},
+  team: { candidates?: Candidate[]; selected?: string[] | null; added?: string[]; anySynced?: boolean } = {},
   saveResults: boolean[] = [],
 ) {
   const onChanged = vi.fn()
@@ -20,6 +20,7 @@ function setup(
       candidates: team.candidates ?? [ana, bob],
       selected: team.selected === undefined ? ['ana', 'bob'] : team.selected,
       added: team.added ?? [],
+      anySynced: team.anySynced,
     }),
   )
   const queue = [...saveResults]
@@ -145,6 +146,38 @@ describe('TeamMembersPanel', () => {
     expect(screen.queryByLabelText('GitHub login')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Add' })).toBeNull()
     expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('#15 AC6: nothing synced keeps the empty message and no form even when anySynced is false', async () => {
+    setup({ candidates: [], selected: null, anySynced: false })
+    await screen.findByText('No team members to choose from yet. Sync a repository first, then come back here.')
+    expect(screen.queryByLabelText('GitHub login')).toBeNull()
+  })
+
+  it('#15 AC3 AC6: a synced repo with no activity shows the new copy and the form, and adding saves', async () => {
+    const { saveTeam, onChanged } = setup({ candidates: [], selected: null, anySynced: true })
+    await screen.findByText('No activity in the last 90 days. Add team members by GitHub login below.')
+    expect(screen.queryByRole('list', { name: 'Team members' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Select all team members' })).toBeNull()
+    expect(saveTeam).not.toHaveBeenCalled()
+    fireEvent.change(field(), { target: { value: '@Zoe' } })
+    fireEvent.click(add())
+    await waitFor(() => expect(saveTeam).toHaveBeenCalledTimes(1))
+    expect(saveTeam).toHaveBeenCalledWith({ selected: ['Zoe'], added: ['Zoe'] })
+    await ready()
+    expect(box('Zoe')).toBeChecked()
+    expect(box('Zoe')).toHaveAccessibleDescription('No activity yet')
+    expect(screen.getByText('1 of 1 selected')).toBeInTheDocument()
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
+  })
+
+  it('#15 AC1: hand-added logins are listed even with zero candidates', async () => {
+    setup({ candidates: [], selected: ['zoe'], added: ['zoe', 'kai'], anySynced: true })
+    await ready()
+    expect(box('zoe')).toBeChecked()
+    expect(box('kai')).not.toBeChecked()
+    expect(box('kai')).toHaveAccessibleDescription('No activity yet')
+    expect(screen.queryByText(/No activity in the last 90 days/)).toBeNull()
   })
 
   it('#15 AC2: first setup checks everyone and saves once', async () => {

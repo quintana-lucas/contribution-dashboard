@@ -35,7 +35,9 @@ describe('team client', () => {
       added: ['zoe'],
     }
     const f = spy(() => new Response(JSON.stringify(body), { status: 200 }))
-    expect(await getTeam(f)).toEqual({ ok: true, ...body })
+    expect(await getTeam(f)).toEqual({ ok: true, ...body, anySynced: false })
+    const synced = spy(() => new Response(JSON.stringify({ ...body, anySynced: true }), { status: 200 }))
+    expect(await getTeam(synced)).toEqual({ ok: true, ...body, anySynced: true })
     expect(String(f.mock.calls[0][0])).toBe('/api/team')
   })
 

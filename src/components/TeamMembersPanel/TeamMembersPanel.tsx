@@ -35,6 +35,7 @@ export default function TeamMembersPanel({ getTeam, saveTeam, onChanged }: TeamM
   const id = useId()
   const [load, setLoad] = useState<LoadState>('loading')
   const [cands, setCands] = useState<Candidate[]>([])
+  const [anySynced, setAnySynced] = useState(false)
   const [team, setTeam] = useState<Team>({ selected: [], added: [] })
   const [saveError, setSaveError] = useState(false)
   const [value, setValue] = useState('')
@@ -107,6 +108,7 @@ export default function TeamMembersPanel({ getTeam, saveTeam, onChanged }: TeamM
       return
     }
     setCands(res.candidates)
+    setAnySynced(res.anySynced === true)
     const firstSetup = res.selected === null
     const selected = res.selected ?? res.candidates.map((c) => c.login)
     const loaded = { selected, added: res.added }
@@ -203,7 +205,8 @@ export default function TeamMembersPanel({ getTeam, saveTeam, onChanged }: TeamM
       </div>
     )
   }
-  if (cands.length === 0) {
+  const hasList = logins.length > 0
+  if (!hasList && !anySynced) {
     return <p role="status">No team members to choose from yet. Sync a repository first, then come back here.</p>
   }
 
@@ -213,6 +216,11 @@ export default function TeamMembersPanel({ getTeam, saveTeam, onChanged }: TeamM
 
   return (
     <div>
+      {!hasList && (
+        <p role="status">No activity in the last 90 days. Add team members by GitHub login below.</p>
+      )}
+      {hasList && (
+        <>
       <div className={styles.summary}>
         <p role="status" className={styles.count}>
           {selectedCount} of {logins.length} selected
@@ -247,6 +255,8 @@ export default function TeamMembersPanel({ getTeam, saveTeam, onChanged }: TeamM
           )
         })}
       </ul>
+        </>
+      )}
       {saveError && (
         <p role="alert" className={styles.error}>
           {SAVE_ERROR}
