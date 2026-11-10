@@ -12,8 +12,24 @@ export type RepoDataResult =
   | { ok: false; error: 'invalid_repo' | 'not_synced' | 'request_failed' }
 
 export type SyncResult =
-  | { ok: true }
+  | { ok: true; people: number }
   | { ok: false; code: string; message: string }
+
+export type AddRepoError =
+  | 'invalid_format'
+  | 'duplicate'
+  | 'not_found_or_no_access'
+  | 'missing_token'
+  | 'request_failed'
+
+export type AddRepoResult =
+  | { ok: true; repo: string; synced: true; people: number }
+  | { ok: true; repo: string; synced: false }
+  | { ok: false; error: AddRepoError; repo?: string }
+
+export type RemoveRepoResult = { ok: true } | { ok: false }
+
+export type TokenStatusResult = { ok: true; configured: boolean } | { ok: false }
 
 type FetchLike = typeof fetch
 
@@ -71,8 +87,9 @@ export async function syncRepo(
       code?: string
       message?: string
       error?: string
+      people?: number
     }
-    if (res.ok && body.ok) return { ok: true }
+    if (res.ok && body.ok) return { ok: true, people: typeof body.people === 'number' ? body.people : 0 }
     return {
       ok: false,
       code: body.code ?? body.error ?? 'request_failed',
@@ -81,4 +98,81 @@ export async function syncRepo(
   } catch {
     return fallback
   }
+}
+
+const ADD_ERRORS: readonly string[] = [
+  'invalid_format',
+  'duplicate',
+  'not_found_or_no_access',
+  'missing_token',
+]
+
+/** Links a repo (`owner/name` or a GitHub URL); the server validates it and runs the first sync. */
+export async function addRepo(
+  input: string,
+  fetchImpl: FetchLike = (...a) => fetch(...a),
+): Promise<AddRepoResult> {
+  try {
+    const res = await fetchImpl('/api/repos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input }),
+    })
+    const body = (await res.json()) as {
+      repo?: string
+      synced?: boolean
+      people?: number
+      error?: string
+    }
+    if (res.ok && typeof body.repo === 'string') {
+      if (body.synced === true) {
+        return { ok: true, repo: body.repo, synced: true, people: typeof body.people === 'number' ? body.people : 0 }
+      }
+      return { ok: true, repo: body.repo, synced: false }
+    }
+    if (body.error && ADD_ERRORS.includes(body.error)) {
+      return {
+        ok: false,
+        error: body.error as AddRepoError,
+        ...(typeof body.repo === 'string' ? { repo: body.repo } : {}),
+      }
+    }
+  } catch {
+    // fall through
+  }
+  return { ok: false, error: 'request_failed' }
+}
+
+/** Unlinks a repo and deletes its local data; nothing is touched on GitHub. */
+export async function removeRepo(
+  repo: string,
+  fetchImpl: FetchLike = (...a) => fetch(...a),
+): Promise<RemoveRepoResult> {
+  const [owner, name] = repo.split('/')
+  if (!owner || !name) return { ok: false }
+  try {
+    const res = await fetchImpl(`/api/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    })
+    if (res.ok) return { ok: true }
+  } catch {
+    // fall through
+  }
+  return { ok: false }
+}
+
+/** Whether the server has a token. The value itself never reaches the UI. */
+export async function getTokenStatus(
+  fetchImpl: FetchLike = (...a) => fetch(...a),
+): Promise<TokenStatusResult> {
+  try {
+    const res = await fetchImpl('/api/token-status')
+    if (res.ok) {
+      const body = (await res.json()) as { configured?: unknown }
+      if (typeof body.configured === 'boolean') return { ok: true, configured: body.configured }
+    }
+  } catch {
+    // fall through
+  }
+  return { ok: false }
 }

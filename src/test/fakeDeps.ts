@@ -35,9 +35,9 @@ export function makeDeps() {
   const listRepos = vi.fn(async () => ({
     ok: true as const,
     repos: [
-      { repo: 'acme/api', syncedAt: '2026-06-15T09:00:00.000Z' },
-      { repo: 'acme/web', syncedAt: '2026-06-15T11:30:00.000Z' },
-      { repo: 'acme/new', syncedAt: null },
+      { repo: 'acme/api', syncedAt: '2026-06-15T09:00:00.000Z', baseBranch: 'main', people: 2 },
+      { repo: 'acme/web', syncedAt: '2026-06-15T11:30:00.000Z', baseBranch: 'main', people: 2 },
+      { repo: 'acme/new', syncedAt: null, baseBranch: null, people: null },
     ],
   }))
   const getRepoData = vi.fn(async (repo: string) => ({ ok: true as const, data: data[repo] }))

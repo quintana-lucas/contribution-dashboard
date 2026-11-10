@@ -97,12 +97,37 @@ describe('GET /api/repos', () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({
       repos: [
-        { repo: 'acme/widgets', syncedAt: stored.syncedAt },
-        { repo: 'acme/new', syncedAt: null },
-        { repo: 'acme/old', syncedAt: null },
+        { repo: 'acme/widgets', syncedAt: stored.syncedAt, baseBranch: 'main', people: 1 },
+        { repo: 'acme/new', syncedAt: null, baseBranch: null, people: null },
+        { repo: 'acme/old', syncedAt: null, baseBranch: null, people: null },
       ],
     })
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('#8 AC10: rows carry baseBranch and a people count that excludes bots', async () => {
+    await link('acme/widgets')
+    const pr = stored.pullRequests[0]
+    await writeRepo(
+      {
+        ...stored,
+        pullRequests: [
+          pr,
+          { ...pr, number: 2, author: 'fake-other' },
+          { ...pr, number: 3, author: 'dependabot[bot]', authorIsBot: true },
+        ],
+        reviews: [
+          { id: 'r1', pullRequestNumber: 1, reviewer: 'fake-reviewer', reviewerIsBot: false, outcome: 'approved', submittedAt: '2026-05-21T00:00:00Z' },
+          { id: 'r2', pullRequestNumber: 1, reviewer: 'ci[bot]', reviewerIsBot: true, outcome: 'commented', submittedAt: '2026-05-21T00:00:00Z' },
+        ],
+      },
+      dir,
+    )
+    const call = await boot()
+    const body = (await (await call('/api/repos')).json()) as { repos: unknown[] }
+    expect(body.repos).toEqual([
+      { repo: 'acme/widgets', syncedAt: stored.syncedAt, baseBranch: 'main', people: 3 },
+    ])
   })
 
   it('#16 AC4: returns an empty list when there is no config', async () => {
@@ -292,6 +317,16 @@ describe('DELETE /api/repos/:owner/:name', () => {
     expect(await configRepos()).toEqual([])
   })
 
+  it('#8 AC4: matches the repo case-insensitively and removes the stored spelling and its file', async () => {
+    await link('Acme/Widgets', 'acme/other')
+    await writeRepo({ ...stored, repo: 'Acme/Widgets' }, dir)
+    const call = await boot()
+    const res = await call('/api/repos/acme/widgets', { method: 'DELETE' })
+    expect(res.status).toBe(200)
+    expect(await configRepos()).toEqual(['acme/other'])
+    await expect(readFile(path.join(dir, 'repos', 'Acme__Widgets.json'), 'utf8')).rejects.toThrow()
+  })
+
   it('#8 AC4: a repo that is not linked returns 404 not_linked', async () => {
     await link('acme/other')
     const f = vi.fn() as unknown as typeof fetch
@@ -337,7 +372,7 @@ describe('POST /api/repos/:owner/:name/sync', () => {
     const call = await boot({ token: TOKEN, fetchImpl: f })
     const res = await call('/api/repos/acme/widgets/sync', { method: 'POST' })
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ ok: true })
+    expect(await res.json()).toEqual({ ok: true, people: 0 }) // #8 AC5: sync returns people
     const file = JSON.parse(await readFile(path.join(dir, 'repos', 'acme__widgets.json'), 'utf8'))
     expect(file.repo).toBe('acme/widgets')
   })

@@ -1,6 +1,7 @@
 import type { ServerResponse } from 'node:http'
 import type { ApiRoutes } from './app.ts'
 import { rm } from 'node:fs/promises'
+import { baseBranch } from '../src/api/dashboard.ts'
 import { people } from '../src/api/people.ts'
 import { readInputBody } from './body.ts'
 import { githubGraphql } from './github.ts'
@@ -76,7 +77,12 @@ export function createApiRoutes({
         const repos = await Promise.all(
           config.repos.map(async (repo) => {
             const stored = await readRepo(repo, dataDir).catch(() => null)
-            return { repo, syncedAt: stored?.syncedAt ?? null }
+            return {
+              repo,
+              syncedAt: stored?.syncedAt ?? null,
+              baseBranch: stored ? baseBranch(stored) : null,
+              people: stored ? people(stored) : null,
+            }
           }),
         )
         json(res, 200, { repos })
@@ -161,12 +167,13 @@ export function createApiRoutes({
         const outcome = await mutateConfig(async () => {
           const current = await readConfig(dataDir)
           if (!current.ok) return 'config_invalid' as const
-          if (!current.repos.includes(repo)) return 'not_linked' as const
+          const stored = findLinked(current.repos, repo)
+          if (!stored) return 'not_linked' as const
           await writeConfig(
-            current.repos.filter((r) => r !== repo),
+            current.repos.filter((r) => r !== stored),
             dataDir,
           )
-          return 'removed' as const
+          return { removed: stored }
         })
         if (outcome === 'config_invalid') {
           json(res, 500, { error: 'config_invalid' })
@@ -176,7 +183,7 @@ export function createApiRoutes({
           json(res, 404, { error: 'not_linked' })
           return
         }
-        await rm(repoFilePath(dataDir, repo), { force: true })
+        await rm(repoFilePath(dataDir, outcome.removed), { force: true })
         json(res, 200, { ok: true })
       },
     },
@@ -209,7 +216,8 @@ export function createApiRoutes({
           })
           return
         }
-        json(res, 200, { ok: true })
+        const data = await readRepo(repo, dataDir).catch(() => null)
+        json(res, 200, { ok: true, people: data ? people(data) : 0 })
       },
     },
   }
