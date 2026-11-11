@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react'
+import type { Contributions } from '../../api/contributions'
 import type { Activity, Period, RepoEntry, RepoSelection } from '../../api/dashboard'
 
 export type DashboardStatus = 'loading' | 'error' | 'ready'
@@ -17,6 +18,8 @@ export interface DashboardValue {
   /** In-period activity for the current selection and period. */
   selectActivity: () => Activity
   subline: string
+  /** Merged pull requests per person for the current selection, period and team. */
+  contributions: () => Contributions
 }
 
 export const DashboardContext = createContext<DashboardValue | null>(null)

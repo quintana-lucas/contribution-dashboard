@@ -12,6 +12,7 @@ import type {
   saveTeam as SaveTeam,
   syncRepo as SyncRepo,
 } from '../../api/client'
+import { contributionsPerPerson } from '../../api/contributions'
 import {
   selectActivity as selectActivityPure,
   toolbarSubline,
@@ -122,6 +123,7 @@ export default function DashboardProvider({
       teamChosen: team !== null,
       selectActivity: () => selectActivityPure(entries, selection, period, nowDate, team),
       subline: toolbarSubline(entries, selection, period, nowDate, team),
+      contributions: () => contributionsPerPerson(entries, selection, period, nowDate, team),
     }),
     // nowDate changes every render; recompute on state changes only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
