@@ -12,6 +12,8 @@ export interface DashboardValue {
   setPeriod: (period: Period) => void
   /** Sets status loading and re-runs the load; keeps the selection if its repo still exists. */
   reload: () => void
+  /** False until the user has chosen the team (first setup); then only selected logins count. */
+  teamChosen: boolean
   /** In-period activity for the current selection and period. */
   selectActivity: () => Activity
   subline: string

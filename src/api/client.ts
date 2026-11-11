@@ -1,4 +1,5 @@
 import { excludeBots } from './excludeBots.ts'
+import type { Candidate } from './team.ts'
 import type { LinkedRepo, StoredRepo } from './types.ts'
 
 export type ListReposResult =
@@ -159,6 +160,65 @@ export async function removeRepo(
     // fall through
   }
   return { ok: false }
+}
+
+export type GetTeamResult =
+  | { ok: true; candidates: Candidate[]; selected: string[] | null; added: string[]; anySynced?: boolean }
+  | { ok: false }
+
+export interface TeamSaveInput {
+  selected: string[]
+  added: string[]
+}
+
+const isStrings = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string')
+
+/** Reads the team (candidates, chosen logins, hand-added logins) from the local server. */
+export async function getTeam(fetchImpl: FetchLike = (...a) => fetch(...a)): Promise<GetTeamResult> {
+  try {
+    const res = await fetchImpl('/api/team')
+    if (res.ok) {
+      const body = (await res.json()) as {
+        candidates?: unknown
+        selected?: unknown
+        added?: unknown
+        anySynced?: unknown
+      }
+      if (
+        Array.isArray(body.candidates) &&
+        (body.selected === null || isStrings(body.selected)) &&
+        isStrings(body.added)
+      ) {
+        return {
+          ok: true,
+          candidates: body.candidates as Candidate[],
+          selected: body.selected,
+          added: body.added,
+          anySynced: body.anySynced === true,
+        }
+      }
+    }
+  } catch {
+    // fall through
+  }
+  return { ok: false }
+}
+
+/** Saves the chosen and hand-added logins. Logins only. */
+export async function saveTeam(
+  team: TeamSaveInput,
+  fetchImpl: FetchLike = (...a) => fetch(...a),
+): Promise<{ ok: boolean }> {
+  try {
+    const res = await fetchImpl('/api/team', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selected: team.selected, added: team.added }),
+    })
+    return { ok: res.ok }
+  } catch {
+    return { ok: false }
+  }
 }
 
 /** Whether the server has a token. The value itself never reaches the UI. */

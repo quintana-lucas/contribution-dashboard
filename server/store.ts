@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isValidLogin } from '../src/api/team.ts'
 import type { StoredPullRequest, StoredRepo, StoredReview } from '../src/api/types.ts'
 
 export const DEFAULT_DATA_DIR = path.resolve(
@@ -59,6 +60,47 @@ export async function writeConfig(
   const file = path.join(dataDir, 'config.json')
   const tmp = `${file}.${process.pid}.tmp`
   await writeFile(tmp, JSON.stringify({ repos }, null, 2) + '\n', 'utf8')
+  await rename(tmp, file)
+}
+
+export interface Team {
+  selected: string[] | null
+  added: string[]
+}
+
+export type TeamResult = ({ ok: true } & Team) | { ok: false }
+
+/** Reads `<dataDir>/team.json`. A missing file means first setup (`selected: null`). */
+export async function readTeam(dataDir: string = DEFAULT_DATA_DIR): Promise<TeamResult> {
+  let raw: string
+  try {
+    raw = await readFile(path.join(dataDir, 'team.json'), 'utf8')
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return { ok: true, selected: null, added: [] }
+    return { ok: false }
+  }
+  let parsed: { selected?: unknown; added?: unknown } | null
+  try {
+    parsed = JSON.parse(raw) as { selected?: unknown; added?: unknown } | null
+  } catch {
+    return { ok: false }
+  }
+  if (!parsed || typeof parsed !== 'object') return { ok: false }
+  const { selected, added } = parsed
+  if (!Array.isArray(added) || !added.every(isValidLogin)) return { ok: false }
+  if (selected !== null && (!Array.isArray(selected) || !selected.every(isValidLogin))) {
+    return { ok: false }
+  }
+  return { ok: true, selected: selected as string[] | null, added: added as string[] }
+}
+
+/** Atomic write of `<dataDir>/team.json`; copies only `selected` and `added` (logins). */
+export async function writeTeam(team: Team, dataDir: string = DEFAULT_DATA_DIR): Promise<void> {
+  await mkdir(dataDir, { recursive: true })
+  const file = path.join(dataDir, 'team.json')
+  const tmp = `${file}.${process.pid}.tmp`
+  const body: Team = { selected: team.selected === null ? null : [...team.selected], added: [...team.added] }
+  await writeFile(tmp, JSON.stringify(body, null, 2) + '\n', 'utf8')
   await rename(tmp, file)
 }
 

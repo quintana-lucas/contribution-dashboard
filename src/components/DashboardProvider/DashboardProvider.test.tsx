@@ -105,6 +105,78 @@ describe('DashboardProvider', () => {
     await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent('ready|all|30'))
   })
 
+  function TeamConsumer() {
+    const { status, teamChosen, subline, selectActivity } = useDashboard()
+    return (
+      <p data-testid="team">{`${status}|${teamChosen}|${subline}|${selectActivity().teamMemberCount}`}</p>
+    )
+  }
+
+  it('#15 AC4: only selected logins count in the subline and the activity', async () => {
+    const deps = makeDeps()
+    deps.getTeam.mockImplementation(async () => ({
+      ok: true as const,
+      candidates: [],
+      selected: ['ANA', 'cy'], // compared case-insensitively
+      added: [],
+    }))
+    render(
+      <DashboardProvider {...deps}>
+        <TeamConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('team')).toHaveTextContent('ready|true'))
+    expect(screen.getByTestId('team')).toHaveTextContent('2 members')
+    expect(screen.getByTestId('team').textContent).toMatch(/\|2$/)
+  })
+
+  it('#15 AC4: the selection persists across a remount with the same store', async () => {
+    const store = { selected: ['ana'] as string[] | null }
+    const deps = makeDeps()
+    deps.getTeam.mockImplementation(async () => ({
+      ok: true as const,
+      candidates: [],
+      selected: store.selected,
+      added: [],
+    }))
+    const first = render(
+      <DashboardProvider {...deps}>
+        <TeamConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('team').textContent).toMatch(/^ready\|true.*\|1$/))
+    first.unmount()
+    render(
+      <DashboardProvider {...deps}>
+        <TeamConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('team').textContent).toMatch(/^ready\|true.*\|1$/))
+  })
+
+  it('#15 AC5: a null selection means the team is not chosen, and every login counts', async () => {
+    const deps = makeDeps()
+    deps.getTeam.mockImplementation(async () => ({ ok: true as const, candidates: [], selected: null, added: [] }))
+    render(
+      <DashboardProvider {...deps}>
+        <TeamConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('team')).toHaveTextContent('ready|false'))
+    expect(screen.getByTestId('team').textContent).toMatch(/\|4$/)
+  })
+
+  it('#15 AC4: a failed team load sets the error status', async () => {
+    const deps = makeDeps()
+    deps.getTeam.mockImplementation(async () => ({ ok: false as const }))
+    render(
+      <DashboardProvider {...deps}>
+        <TeamConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('team')).toHaveTextContent('error|false'))
+  })
+
   it('#16 AC6: useDashboard throws outside the provider', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {

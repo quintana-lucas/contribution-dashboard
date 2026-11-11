@@ -3,7 +3,9 @@ import type { ApiRoutes } from './app.ts'
 import { rm } from 'node:fs/promises'
 import { baseBranch } from '../src/api/dashboard.ts'
 import { people } from '../src/api/people.ts'
-import { readInputBody } from './body.ts'
+import type { StoredRepo } from '../src/api/types.ts'
+import { candidates, isValidLogin } from '../src/api/team.ts'
+import { readInputBody, readJsonBody } from './body.ts'
 import { githubGraphql } from './github.ts'
 import { MISSING_TOKEN, SYNC_MESSAGES } from './messages.ts'
 import {
@@ -12,8 +14,10 @@ import {
   parseRepoInput,
   readConfig,
   readRepo,
+  readTeam,
   repoFilePath,
   writeConfig,
+  writeTeam,
 } from './store.ts'
 import { syncRepo } from './sync.ts'
 
@@ -33,6 +37,23 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body))
 }
 
+const MAX_TEAM_LIST = 1000
+
+/** Valid logins only, at most 1000, deduped case-insensitively. Null when invalid. */
+function dedupeLogins(value: unknown): string[] | null {
+  if (!Array.isArray(value) || value.length > MAX_TEAM_LIST) return null
+  if (!value.every(isValidLogin)) return null
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const login of value as string[]) {
+    const key = login.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(login)
+  }
+  return out
+}
+
 export function createApiRoutes({
   getToken,
   dataDir = DEFAULT_DATA_DIR,
@@ -44,6 +65,12 @@ export function createApiRoutes({
   function mutateConfig<T>(fn: () => Promise<T>): Promise<T> {
     const run = queue.then(fn, fn)
     queue = run.catch(() => undefined)
+    return run
+  }
+  let teamQueue: Promise<unknown> = Promise.resolve()
+  function mutateTeam<T>(fn: () => Promise<T>): Promise<T> {
+    const run = teamQueue.then(fn, fn)
+    teamQueue = run.catch(() => undefined)
     return run
   }
   const findLinked = (repos: string[], repo: string) =>
@@ -155,6 +182,50 @@ export function createApiRoutes({
         }
         const data = await readRepo(canonical, dataDir).catch(() => null)
         json(res, 201, { repo: canonical, synced: true, people: data ? people(data) : 0 })
+      },
+    },
+    // Local store only, never the network.
+    '/api/team': {
+      GET: async (_req, res) => {
+        const config = await readConfig(dataDir)
+        if (!config.ok) {
+          json(res, 500, { error: 'config_invalid' })
+          return
+        }
+        const team = await readTeam(dataDir)
+        if (!team.ok) {
+          json(res, 500, { error: 'team_invalid' })
+          return
+        }
+        const stored = await Promise.all(config.repos.map((r) => readRepo(r, dataDir).catch(() => null)))
+        const synced = stored.filter((s): s is StoredRepo => s !== null)
+        json(res, 200, {
+          candidates: candidates(synced, now()),
+          selected: team.selected,
+          added: team.added,
+          anySynced: synced.length > 0,
+        })
+      },
+      PUT: async (req, res) => {
+        const body = await readJsonBody(req)
+        if (!body.ok) {
+          json(res, body.status, { error: body.error })
+          return
+        }
+        const value = body.value as { selected?: unknown; added?: unknown } | null
+        const selected = dedupeLogins(value?.selected)
+        const added = dedupeLogins(value?.added)
+        if (!selected || !added) {
+          json(res, 400, { error: 'invalid_team' })
+          return
+        }
+        try {
+          await mutateTeam(() => writeTeam({ selected, added }, dataDir))
+        } catch {
+          json(res, 500, { error: 'write_failed' })
+          return
+        }
+        json(res, 200, { ok: true })
       },
     },
     '/api/repos/:owner/:name': {

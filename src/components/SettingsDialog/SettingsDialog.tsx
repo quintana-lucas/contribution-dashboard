@@ -1,15 +1,19 @@
 import { useId, useRef } from 'react'
 import {
   addRepo as defaultAddRepo,
+  getTeam as defaultGetTeam,
   getTokenStatus as defaultGetTokenStatus,
   listRepos as defaultListRepos,
   removeRepo as defaultRemoveRepo,
+  saveTeam as defaultSaveTeam,
   syncRepo as defaultSyncRepo,
 } from '../../api/client'
 import type { RepositoriesPanelProps } from '../RepositoriesPanel/RepositoriesPanel'
+import type { TeamMembersPanelProps } from '../TeamMembersPanel/TeamMembersPanel'
 import Modal from '../Modal'
 import RepositoriesPanel from '../RepositoriesPanel'
 import Tabs from '../Tabs'
+import TeamMembersPanel from '../TeamMembersPanel'
 import styles from './SettingsDialog.module.css'
 
 export interface SettingsDialogProps {
@@ -22,7 +26,11 @@ export interface SettingsDialogProps {
   removeRepo?: RepositoriesPanelProps['removeRepo']
   syncRepo?: RepositoriesPanelProps['syncRepo']
   getTokenStatus?: RepositoriesPanelProps['getTokenStatus']
+  getTeam?: TeamMembersPanelProps['getTeam']
+  saveTeam?: TeamMembersPanelProps['saveTeam']
   now?: () => Date
+  /** Tab shown each time the dialog opens. Defaults to Repositories. */
+  initialTab?: 'repositories' | 'team'
 }
 
 const defaultNow = () => new Date()
@@ -36,7 +44,10 @@ export default function SettingsDialog({
   removeRepo = (repo) => defaultRemoveRepo(repo),
   syncRepo = (repo) => defaultSyncRepo(repo),
   getTokenStatus = () => defaultGetTokenStatus(),
+  getTeam = () => defaultGetTeam(),
+  saveTeam = (team) => defaultSaveTeam(team),
   now = defaultNow,
+  initialTab = 'repositories',
 }: SettingsDialogProps) {
   const titleId = useId()
   const changed = useRef(false)
@@ -63,6 +74,8 @@ export default function SettingsDialog({
         <div className={styles.tabs}>
           <Tabs
             label="Settings sections"
+            initialKey={initialTab}
+            lazy
             tabs={[
               {
                 key: 'repositories',
@@ -84,7 +97,15 @@ export default function SettingsDialog({
               {
                 key: 'team',
                 label: 'Team members',
-                content: <p>Choosing your team arrives in a later update.</p>,
+                content: (
+                  <TeamMembersPanel
+                    getTeam={getTeam}
+                    saveTeam={saveTeam}
+                    onChanged={() => {
+                      changed.current = true
+                    }}
+                  />
+                ),
               },
             ]}
           />

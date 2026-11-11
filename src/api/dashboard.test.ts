@@ -222,3 +222,31 @@ describe('never-synced repos', () => {
     expect(toolbarSubline(entries, 'all', 30, NOW)).toBe('2 repositories · not synced yet')
   })
 })
+
+describe('team members filter', () => {
+  const e = entry(
+    'a/x',
+    ago(0),
+    [pr({ number: 1, author: 'ana' }), pr({ number: 2, author: 'Bob' }), pr({ number: 3, author: null })],
+    [review({ id: 'r1', reviewer: 'bob' }), review({ id: 'r2', reviewer: 'cy' })],
+  )
+
+  it('#15 AC4: selectActivity keeps only PRs and reviews of members and the count follows', () => {
+    const a = selectActivity([e], 'all', 30, NOW, new Set(['ana', 'bob']))
+    expect(a.pullRequests.map((p) => p.number)).toEqual([1, 2])
+    expect(a.reviews.map((r) => r.id)).toEqual(['r1'])
+    expect(a.teamMemberCount).toBe(2)
+  })
+
+  it('#15 AC4: an empty set filters everything; null or undefined means no filter', () => {
+    expect(selectActivity([e], 'all', 30, NOW, new Set()).pullRequests).toEqual([])
+    expect(selectActivity([e], 'all', 30, NOW, null).teamMemberCount).toBe(3)
+    expect(selectActivity([e], 'all', 30, NOW).teamMemberCount).toBe(3)
+  })
+
+  it('#15 AC4: toolbarSubline member count follows the filter', () => {
+    expect(toolbarSubline([e], 'all', 30, NOW, new Set(['ana']))).toContain('1 member')
+    expect(toolbarSubline([e], 'a/x', 30, NOW, new Set(['ana']))).toContain('1 member')
+    expect(toolbarSubline([e], 'all', 30, NOW)).toContain('3 members')
+  })
+})

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import type { Ref } from 'react'
 import styles from './App.module.css'
 import DashboardProvider, { useDashboard } from './components/DashboardProvider'
 import type { DashboardDeps } from './components/DashboardProvider'
@@ -11,11 +12,24 @@ import TeamPlaceholder from './components/TeamPlaceholder'
 import Toolbar from './components/Toolbar'
 import WidgetGrid from './components/WidgetGrid'
 
-function Content({ onAddRepositories }: { onAddRepositories: () => void }) {
-  const { status, entries } = useDashboard()
-  // With no linked repos the empty state replaces the Tabs (the Toolbar hides itself).
-  if (status === 'ready' && entries.length === 0) {
-    return <EmptyState onAddRepositories={onAddRepositories} />
+interface ContentProps {
+  onAddRepositories: () => void
+  onChooseTeam: () => void
+  chooseTeamRef: Ref<HTMLButtonElement>
+}
+
+function Content({ onAddRepositories, onChooseTeam, chooseTeamRef }: ContentProps) {
+  const { status, entries, teamChosen } = useDashboard()
+  // With no linked repos, or before the team is chosen, the guided setup replaces the Tabs.
+  if (status === 'ready' && (entries.length === 0 || !teamChosen)) {
+    return (
+      <EmptyState
+        onAddRepositories={onAddRepositories}
+        canChooseTeam={entries.some((e) => e.syncedAt !== null)}
+        onChooseTeam={onChooseTeam}
+        chooseTeamRef={chooseTeamRef}
+      />
+    )
   }
   return (
     <Tabs
@@ -43,15 +57,19 @@ interface SettingsHostProps extends DashboardDeps {
   open: boolean
   onClose: () => void
   fallbackFocus: () => HTMLElement | null
+  initialTab: 'repositories' | 'team'
 }
 
 // Lives inside DashboardProvider so a change can trigger one reload on close.
-function SettingsHost({ open, onClose, fallbackFocus, ...deps }: SettingsHostProps) {
+function SettingsHost({ open, onClose, fallbackFocus, initialTab, ...deps }: SettingsHostProps) {
   const { reload } = useDashboard()
   return (
     <SettingsDialog
       open={open}
+      initialTab={initialTab}
       fallbackFocus={fallbackFocus}
+      getTeam={deps.getTeam}
+      saveTeam={deps.saveTeam}
       listRepos={deps.listRepos}
       addRepo={deps.addRepo}
       removeRepo={deps.removeRepo}
@@ -68,8 +86,17 @@ function SettingsHost({ open, onClose, fallbackFocus, ...deps }: SettingsHostPro
 
 function App(deps: DashboardDeps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [initialTab, setInitialTab] = useState<'repositories' | 'team'>('repositories')
   const settingsButton = useRef<HTMLButtonElement>(null)
-  const openSettings = () => setSettingsOpen(true)
+  const chooseTeamButton = useRef<HTMLButtonElement>(null)
+  const openSettings = () => {
+    setInitialTab('repositories')
+    setSettingsOpen(true)
+  }
+  const openTeamSettings = () => {
+    setInitialTab('team')
+    setSettingsOpen(true)
+  }
 
   return (
     <div className={styles.app}>
@@ -77,10 +104,11 @@ function App(deps: DashboardDeps) {
       <main className={styles.main}>
         <DashboardProvider {...deps}>
           <Toolbar />
-          <Content onAddRepositories={openSettings} />
+          <Content onAddRepositories={openSettings} onChooseTeam={openTeamSettings} chooseTeamRef={chooseTeamButton} />
           <SettingsHost
             {...deps}
             open={settingsOpen}
+            initialTab={initialTab}
             onClose={() => setSettingsOpen(false)}
             fallbackFocus={() => settingsButton.current}
           />

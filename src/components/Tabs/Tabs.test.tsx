@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import Tabs from './Tabs'
 
@@ -89,6 +89,30 @@ describe('Tabs', () => {
     fireEvent.click(beta)
     expect(beta).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByText('Beta body')).toBeVisible()
+  })
+
+  it('#15 AC5: initialKey selects that tab on mount; an unknown key falls back to the first', () => {
+    render(<Tabs label="Sections" tabs={tabs} initialKey="b" />)
+    expect(screen.getByRole('tab', { name: 'Beta' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Beta' })).toHaveAttribute('tabindex', '0')
+    expect(screen.getByText('Beta body')).toBeVisible()
+    cleanup()
+    render(<Tabs label="Sections" tabs={tabs} initialKey="nope" />)
+    expect(screen.getByRole('tab', { name: 'Alpha' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('#15 AC5: lazy mounts only the selected panel and keeps ids and ARIA', () => {
+    render(<Tabs label="Sections" tabs={tabs} lazy />)
+    expect(screen.getByText('Alpha body')).toBeInTheDocument()
+    expect(screen.queryByText('Beta body')).toBeNull()
+    expect(screen.queryByText('Gamma body')).toBeNull()
+    const panels = document.querySelectorAll('[role="tabpanel"]')
+    expect(panels).toHaveLength(3)
+    const beta = screen.getByRole('tab', { name: 'Beta' })
+    expect(beta.getAttribute('aria-controls')).toBe(panels[1].id)
+    fireEvent.click(beta)
+    expect(screen.getByText('Beta body')).toBeVisible()
+    expect(screen.queryByText('Alpha body')).toBeNull()
   })
 
   it('AC2: does not remove the focus ring', () => {

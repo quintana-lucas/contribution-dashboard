@@ -419,6 +419,159 @@ describe('POST /api/repos/:owner/:name/sync', () => {
   })
 })
 
+describe('/api/team', () => {
+  const day = 24 * 60 * 60 * 1000
+  const iso = (days: number) => new Date(NOW.getTime() - days * day).toISOString()
+  const base = stored.pullRequests[0]
+  const teamRepo: StoredRepo = {
+    ...stored,
+    pullRequests: [
+      { ...base, number: 1, author: 'ana', createdAt: iso(2), mergedAt: null, closedAt: null },
+      { ...base, number: 2, author: 'old-timer', createdAt: iso(200), mergedAt: null, closedAt: null },
+      { ...base, number: 3, author: 'dependabot[bot]', authorIsBot: true, createdAt: iso(1), mergedAt: null, closedAt: null },
+    ],
+    reviews: [
+      { id: 'r1', pullRequestNumber: 1, reviewer: 'bob', reviewerIsBot: false, outcome: 'approved', submittedAt: iso(3) },
+      { id: 'r2', pullRequestNumber: 1, reviewer: 'ci[bot]', reviewerIsBot: true, outcome: 'commented', submittedAt: iso(3) },
+    ],
+  }
+  const put = (call: Awaited<ReturnType<typeof boot>>, body: unknown) =>
+    call('/api/team', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: typeof body === 'string' ? body : JSON.stringify(body),
+    })
+  const noNet = () =>
+    vi.fn(async () => {
+      throw new Error('network disabled')
+    }) as unknown as typeof fetch & ReturnType<typeof vi.fn>
+
+  it('#15 AC1: GET lists non-bot candidates from the last 90 days with counts and repos, no network', async () => {
+    await link('acme/widgets', 'acme/unsynced')
+    await writeRepo(teamRepo, dir)
+    const f = noNet()
+    const call = await boot({ fetchImpl: f })
+    const res = await call('/api/team')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      candidates: [
+        { login: 'ana', pullRequests: 1, reviews: 0, repos: ['acme/widgets'] },
+        { login: 'bob', pullRequests: 0, reviews: 1, repos: ['acme/widgets'] },
+      ],
+      selected: null,
+      added: [],
+      anySynced: true,
+    })
+    expect(f).not.toHaveBeenCalled()
+  })
+
+  it('#15 AC2: first run has selected null and no candidates without repos', async () => {
+    const call = await boot()
+    expect(await (await call('/api/team')).json()).toEqual({
+      candidates: [],
+      selected: null,
+      added: [],
+      anySynced: false,
+    })
+  })
+
+  it('#15 AC6: anySynced is false when linked repos are not synced', async () => {
+    await link('acme/unsynced')
+    const call = await boot()
+    expect(await (await call('/api/team')).json()).toMatchObject({ candidates: [], anySynced: false })
+  })
+
+  it('#15 AC5: a synced repo with no activity has no candidates but anySynced is true', async () => {
+    await link('acme/widgets')
+    await writeRepo({ ...teamRepo, pullRequests: [], reviews: [] }, dir)
+    const call = await boot()
+    expect(await (await call('/api/team')).json()).toEqual({
+      candidates: [],
+      selected: null,
+      added: [],
+      anySynced: true,
+    })
+  })
+
+  it('#15 AC4: a PUT persists and GET returns it (deduped case-insensitively)', async () => {
+    const call = await boot()
+    const res = await put(call, { selected: ['ana', 'Ana', 'bob'], added: ['zed'] })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true })
+    expect(await (await call('/api/team')).json()).toEqual({
+      candidates: [],
+      selected: ['ana', 'bob'],
+      added: ['zed'],
+      anySynced: false,
+    })
+  })
+
+  it('#15 AC4: an empty selection is allowed', async () => {
+    const call = await boot()
+    expect((await put(call, { selected: [], added: [] })).status).toBe(200)
+    expect(((await (await call('/api/team')).json()) as { selected: unknown }).selected).toEqual([])
+  })
+
+  it('#15 AC3: invalid or [bot] logins, wrong shapes and null selected return 400 and store nothing', async () => {
+    const call = await boot()
+    for (const body of [
+      { selected: ['dependabot[bot]'], added: [] },
+      { selected: [], added: ['a b'] },
+      { selected: [''], added: [] },
+      { selected: null, added: [] },
+      { selected: ['ana'] },
+      { selected: 'ana', added: [] },
+      { selected: [5], added: [] },
+      { selected: Array.from({ length: 1001 }, (_, i) => `u${i}`), added: [] },
+      '{nope',
+      'null',
+    ]) {
+      const res = await put(call, body)
+      expect(res.status, JSON.stringify(body)).toBe(400)
+      expect(await res.json()).toEqual({ error: 'invalid_team' })
+    }
+    await expect(readFile(path.join(dir, 'team.json'), 'utf8')).rejects.toThrow()
+  })
+
+  it('#15 AC3: a body over 64 KB returns 413', async () => {
+    const call = await boot()
+    const res = await put(call, { selected: [], added: [], pad: 'x'.repeat(70 * 1024) })
+    expect(res.status).toBe(413)
+    expect(await res.json()).toEqual({ error: 'too_large' })
+  })
+
+  it('#15 AC8: the stored file contains only selected and added', async () => {
+    const call = await boot()
+    await put(call, { selected: ['ana'], added: ['bob'], email: 'a@example.com', name: 'Ana' })
+    expect(JSON.parse(await readFile(path.join(dir, 'team.json'), 'utf8'))).toEqual({
+      selected: ['ana'],
+      added: ['bob'],
+    })
+  })
+
+  it('#15 AC8: an invalid team file returns 500 team_invalid; an invalid config returns 500 config_invalid', async () => {
+    const call = await boot()
+    await writeFile(path.join(dir, 'team.json'), '{"selected":["x[bot]"],"added":[]}')
+    const res = await call('/api/team')
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: 'team_invalid' })
+    await writeFile(path.join(dir, 'config.json'), '{nope')
+    const res2 = await call('/api/team')
+    expect(res2.status).toBe(500)
+    expect(await res2.json()).toEqual({ error: 'config_invalid' })
+  })
+
+  it('#15 AC4: concurrent PUTs are serialized and leave a valid file', async () => {
+    const call = await boot()
+    const results = await Promise.all(
+      Array.from({ length: 8 }, (_, i) => put(call, { selected: [`user${i}`], added: [] })),
+    )
+    expect(results.every((r) => r.status === 200)).toBe(true)
+    const team = JSON.parse(await readFile(path.join(dir, 'team.json'), 'utf8')) as { selected: string[] }
+    expect(team.selected).toHaveLength(1)
+  })
+})
+
 describe('createApp route params', () => {
   it('#7 AC8: passes :params to handlers, prefers exact paths and keeps 404 for non-matches', async () => {
     const seen: Record<string, string>[] = []

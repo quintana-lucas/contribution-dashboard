@@ -74,13 +74,17 @@ export function selectActivity(
   selection: RepoSelection,
   period: Period,
   now: Date,
+  teamFilter?: ReadonlySet<string> | null,
 ): Activity {
   const { start, end } = periodWindow(period, now)
+  const allowed = (login: string | null) =>
+    !teamFilter || (login !== null && teamFilter.has(login.toLowerCase()))
   const pullRequests: StoredPullRequest[] = []
   const reviews: StoredReview[] = []
   for (const entry of selectedEntries(entries, selection)) {
     if (!entry.data) continue
     for (const pr of entry.data.pullRequests) {
+      if (!allowed(pr.author)) continue
       if (
         inWindow(pr.createdAt, start, end) ||
         inWindow(pr.mergedAt, start, end) ||
@@ -90,12 +94,13 @@ export function selectActivity(
       }
     }
     for (const review of entry.data.reviews) {
+      if (!allowed(review.reviewer)) continue
       if (inWindow(review.submittedAt, start, end)) reviews.push(review)
     }
   }
   const members = new Set<string>()
-  for (const pr of pullRequests) if (pr.author) members.add(pr.author)
-  for (const review of reviews) if (review.reviewer) members.add(review.reviewer)
+  for (const pr of pullRequests) if (pr.author) members.add(pr.author.toLowerCase())
+  for (const review of reviews) if (review.reviewer) members.add(review.reviewer.toLowerCase())
   return { pullRequests, reviews, buckets: buckets(period, now), teamMemberCount: members.size }
 }
 
@@ -145,18 +150,19 @@ export function toolbarSubline(
   selection: RepoSelection,
   period: Period,
   now: Date,
+  teamFilter?: ReadonlySet<string> | null,
 ): string {
   const sync = syncText(entries, selection, now)
   const selected = selectedEntries(entries, selection)
   if (selection === 'all') {
     const repos = plural(selected.length, 'repository', 'repositories')
     if (!selected.some((e) => e.syncedAt !== null)) return `${repos} · ${sync}`
-    const members = plural(selectActivity(entries, 'all', period, now).teamMemberCount, 'member', 'members')
+    const members = plural(selectActivity(entries, 'all', period, now, teamFilter).teamMemberCount, 'member', 'members')
     return `${repos} · ${members} · ${sync}`
   }
   const entry = selected[0]
   if (!entry || entry.syncedAt === null) return 'not synced yet'
-  const members = plural(selectActivity(entries, selection, period, now).teamMemberCount, 'member', 'members')
+  const members = plural(selectActivity(entries, selection, period, now, teamFilter).teamMemberCount, 'member', 'members')
   const branch = baseBranch(entry.data)
   const prefix = branch === null ? '' : `Base branch ${branch} · `
   return `${prefix}${members} · ${sync}`
