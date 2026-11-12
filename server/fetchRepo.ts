@@ -16,9 +16,9 @@ const REVIEW_FIELDS = `
 `
 
 const PRS_QUERY = `
-query($owner: String!, $name: String!, $cursor: String) {
+query($owner: String!, $name: String!, $cursor: String, $states: [PullRequestState!]) {
   repository(owner: $owner, name: $name) {
-    pullRequests(first: 50, after: $cursor, orderBy: { field: UPDATED_AT, direction: DESC }) {
+    pullRequests(first: 50, after: $cursor, states: $states, orderBy: { field: UPDATED_AT, direction: DESC }) {
       pageInfo { hasNextPage endCursor }
       nodes {
         number state createdAt updatedAt mergedAt closedAt
@@ -165,11 +165,17 @@ export async function fetchRepoActivity(opts: FetchRepoOptions): Promise<FetchRe
   const prs = new Map<number, StoredPullRequest>()
   const reviews = new Map<string, StoredReview>()
 
+  // Open PRs are always kept, however idle, so they are listed in their own pass with no age
+  // cutoff. Closed and merged PRs are listed newest-first and paging stops past the 90-day window.
+  // Each sync rebuilds the repo from scratch, so a PR stored as open that has since closed is
+  // simply re-evaluated by the closed rule.
+  for (const states of [['OPEN'], ['CLOSED', 'MERGED']]) {
+  const isOpenPass = states[0] === 'OPEN'
   let cursor: string | null = null
   for (;;) {
     const res: GraphqlResult<{
       repository: { pullRequests: { pageInfo: PageInfo; nodes: (RawPr | null)[] } } | null
-    }> = await githubGraphql(token, PRS_QUERY, { owner, name, cursor }, fetchImpl)
+    }> = await githubGraphql(token, PRS_QUERY, { owner, name, cursor, states }, fetchImpl)
     if (!res.ok) return res
     const conn: { pageInfo: PageInfo; nodes: (RawPr | null)[] } | undefined =
       res.data.repository?.pullRequests
@@ -181,7 +187,7 @@ export async function fetchRepoActivity(opts: FetchRepoOptions): Promise<FetchRe
       if (!pr) continue
       const state = mapState(pr.state)
       if (state === null || typeof pr.number !== 'number') return bad
-      if (new Date(pr.updatedAt).getTime() < cutoff) {
+      if (!isOpenPass && new Date(pr.updatedAt).getTime() < cutoff) {
         reachedOld = true
         continue
       }
@@ -223,6 +229,7 @@ export async function fetchRepoActivity(opts: FetchRepoOptions): Promise<FetchRe
     if (reachedOld || !conn.pageInfo.hasNextPage) break
     if (!conn.pageInfo.endCursor) return bad
     cursor = conn.pageInfo.endCursor
+  }
   }
 
   return {
