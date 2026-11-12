@@ -87,9 +87,10 @@ describe('App', () => {
   // period radios).
   it('AC6: only the two tabs, the Settings button and the toolbar controls are focusable', async () => {
     const { container } = await renderApp()
-    const focusable = container.querySelectorAll(
-      'a[href], button, input, select, textarea, [tabindex]',
-    )
+    // The Team panel is hidden here, so its table controls are not reachable.
+    const focusable = [
+      ...container.querySelectorAll('a[href], button, input, select, textarea, [tabindex]'),
+    ].filter((el) => el.closest('[hidden]') === null)
     expect(focusable).toHaveLength(7)
     const tabs = [...focusable].filter((el) => el.getAttribute('role') === 'tab')
     expect(tabs).toHaveLength(2)
@@ -113,10 +114,10 @@ describe('App', () => {
     expect(screen.getByRole('region', { name: 'Widget 1' })).toBeVisible()
   })
 
-  it('AC3: selecting Team shows the placeholder and hides the grid', async () => {
+  it('AC3: selecting Team shows the team table and hides the grid', async () => {
     await renderApp()
     fireEvent.click(screen.getByRole('tab', { name: 'Team' }))
-    expect(screen.getByTestId('team-placeholder')).toBeVisible()
+    expect(screen.getByRole('table')).toBeVisible()
     expect(screen.queryByRole('region', { name: 'Widget 1' })).toBeNull()
   })
 
@@ -147,6 +148,103 @@ describe('App', () => {
       ).toBeInTheDocument()
     }
     expect(within(panel).getAllByRole('region')).toHaveLength(4)
+  })
+})
+
+describe('App Team tab (#19)', () => {
+  /** Ana also has an old PR (45 days before NOW) so the period changes her figures. */
+  function teamDeps(selected: string[] = ['ana', 'bob', 'cy', 'dee']) {
+    const deps = makeDeps()
+    const withOld = storedRepo('acme/web', '2026-06-15T11:30:00.000Z', ['ana', 'cy', 'dee'])
+    withOld.pullRequests.push({
+      ...withOld.pullRequests[0],
+      number: 99,
+      createdAt: '2026-05-01T10:00:00.000Z',
+      updatedAt: '2026-05-01T10:00:00.000Z',
+    })
+    const api = storedRepo('acme/api', '2026-06-15T09:00:00.000Z', ['ana', 'bob'], 'develop')
+    deps.getRepoData.mockImplementation(async (repo: string) => ({
+      ok: true as const,
+      data: repo === 'acme/web' ? withOld : api,
+    }))
+    deps.getTeam.mockImplementation(async () => ({
+      ok: true as const,
+      candidates: [],
+      selected,
+      added: [],
+    }))
+    return deps
+  }
+
+  async function openTeam(deps = teamDeps()) {
+    render(<App {...deps} />)
+    await screen.findByLabelText('Repository')
+    fireEvent.click(screen.getByRole('tab', { name: 'Team' }))
+    await screen.findByRole('table')
+    return deps
+  }
+
+  const openedOf = (login: string) => {
+    const row = screen.getByRole('row', { name: new RegExp(`^${login}:`) })
+    return within(row).getAllByRole('cell')[0].textContent
+  }
+
+  it('AC3: the Team tab shows one row per team member', async () => {
+    await openTeam()
+    const body = screen.getAllByRole('row').slice(1)
+    expect(body).toHaveLength(4)
+  })
+
+  it('AC3: changing the repository in the Toolbar updates the figures', async () => {
+    await openTeam()
+    expect(openedOf('ana')).toBe('2')
+    expect(openedOf('cy')).toBe('1')
+    fireEvent.change(screen.getByLabelText('Repository'), { target: { value: 'acme/api' } })
+    expect(openedOf('ana')).toBe('1')
+    expect(openedOf('cy')).toBe('0')
+  })
+
+  it('AC3: changing the period in the Toolbar updates the figures', async () => {
+    await openTeam()
+    expect(openedOf('ana')).toBe('2')
+    fireEvent.click(screen.getByLabelText('90 days'))
+    expect(openedOf('ana')).toBe('3')
+    fireEvent.click(screen.getByLabelText('7 days'))
+    expect(openedOf('ana')).toBe('2')
+  })
+
+  it('AC6: an empty team shows the message and its button opens Settings on the Team tab', async () => {
+    render(<App {...teamDeps([])} />)
+    await screen.findByLabelText('Repository')
+    fireEvent.click(screen.getByRole('tab', { name: 'Team' }))
+    expect(
+      screen.getByText('No team members selected. Choose the people to follow to see them here.'),
+    ).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Choose team members' }))
+    const dialog = screen.getByRole('dialog', { name: 'Settings' })
+    expect(within(dialog).getByRole('tab', { name: 'Team members' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  it('AC7: rendering, sorting and selecting make no fetch and no extra deps calls', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const deps = await openTeam()
+    const counts = () => [
+      deps.listRepos.mock.calls.length,
+      deps.getRepoData.mock.calls.length,
+      deps.getTeam.mock.calls.length,
+      deps.saveTeam.mock.calls.length,
+    ]
+    const before = counts()
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by Opened' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by Opened' }))
+    fireEvent.click(screen.getByRole('row', { name: /^bob:/ }))
+    expect(screen.getByRole('row', { name: /^bob:/ })).toHaveAttribute('aria-current', 'true')
+    expect(counts()).toEqual(before)
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 })
 
