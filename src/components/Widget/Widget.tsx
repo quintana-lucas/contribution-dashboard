@@ -1,12 +1,15 @@
 import { useId } from 'react'
+import type { ReactNode } from 'react'
 import styles from './Widget.module.css'
 
 type WidgetProps = {
   title: string
   hint: string
+  /** Replaces the placeholder body when present. */
+  children?: ReactNode
 }
 
-function Widget({ title, hint }: WidgetProps) {
+function Widget({ title, hint, children }: WidgetProps) {
   const id = useId()
   return (
     <section className={styles.widget} aria-labelledby={id}>
@@ -14,7 +17,11 @@ function Widget({ title, hint }: WidgetProps) {
         {title}
       </h2>
       <p className={styles.hint}>{hint}</p>
-      <div className={styles.body}>Placeholder. No data yet.</div>
+      {children === undefined ? (
+        <div className={styles.body}>Placeholder. No data yet.</div>
+      ) : (
+        <div className={styles.content}>{children}</div>
+      )}
     </section>
   )
 }

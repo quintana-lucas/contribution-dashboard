@@ -39,6 +39,11 @@
   text-align: center;
 }
 
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
 @media (min-width: 768px) {
   .body {
     min-height: 200px;

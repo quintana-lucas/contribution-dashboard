@@ -43,7 +43,7 @@ function Content({ onAddRepositories, onChooseTeam, chooseTeamRef }: ContentProp
               <p className={styles.intro}>
                 Widgets for GitHub team collaboration will appear here.
               </p>
-              <WidgetGrid />
+              <WidgetGrid onOpenSettings={onAddRepositories} />
             </>
           ),
         },
