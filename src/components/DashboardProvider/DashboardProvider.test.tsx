@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { makeDeps } from '../../test/fakeDeps'
+import { makeDeps, storedRepo } from '../../test/fakeDeps'
 import DashboardProvider, { useDashboard } from '.'
 
 function Consumer() {
@@ -175,6 +175,111 @@ describe('DashboardProvider', () => {
       </DashboardProvider>,
     )
     await waitFor(() => expect(screen.getByTestId('team')).toHaveTextContent('error|false'))
+  })
+
+  function TableConsumer() {
+    const { status, teamMembers, teamStats, selectedMember, setSelectedMember, setSelection, setPeriod, reload } =
+      useDashboard()
+    const rows = status === 'ready' ? teamStats() : []
+    return (
+      <div>
+        <p data-testid="members">{`${status}|${teamMembers.join(',')}`}</p>
+        <p data-testid="opened">{rows.map((r) => `${r.login}:${r.opened}`).join(',')}</p>
+        <p data-testid="selected">{String(selectedMember)}</p>
+        <button onClick={() => setSelectedMember('ANA')}>select ana</button>
+        <button onClick={() => setSelectedMember(null)}>clear</button>
+        <button onClick={() => setSelection('acme/web')}>web</button>
+        <button onClick={() => setSelection('all')}>all</button>
+        <button onClick={() => setPeriod(7)}>seven</button>
+        <button onClick={reload}>reload</button>
+      </div>
+    )
+  }
+
+  function teamOf(selected: string[] | null) {
+    const deps = makeDeps()
+    const store = { selected }
+    deps.getTeam.mockImplementation(async () => ({
+      ok: true as const,
+      candidates: [],
+      selected: store.selected,
+      added: [],
+    }))
+    return { deps, store }
+  }
+
+  it('#19 AC1: teamMembers keeps the original casing, deduplicated, and is [] when not chosen', async () => {
+    const { deps, store } = teamOf(['Ana', 'BOB', 'ana'])
+    const view = render(
+      <DashboardProvider {...deps}>
+        <TableConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('members')).toHaveTextContent('ready|Ana,BOB'))
+    expect(screen.getByTestId('opened')).toHaveTextContent('Ana:2,BOB:1')
+    view.unmount()
+    store.selected = null
+    render(
+      <DashboardProvider {...deps}>
+        <TableConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('members').textContent).toBe('ready|'))
+  })
+
+  it('#19 AC3: teamStats() reflects selection and period changes', async () => {
+    const { deps } = teamOf(['ana', 'bob'])
+    // bob's PR in acme/api is older: inside 30 days, outside 7.
+    deps.getRepoData.mockImplementation(async (repo: string) => {
+      const base = storedRepo(repo, '2026-06-15T09:00:00.000Z', repo === 'acme/api' ? ['ana', 'bob'] : ['ana', 'cy'])
+      if (repo === 'acme/api') base.pullRequests[1].createdAt = '2026-06-01T10:00:00.000Z'
+      return { ok: true as const, data: base }
+    })
+    render(
+      <DashboardProvider {...deps}>
+        <TableConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('opened')).toHaveTextContent('ana:2,bob:1'))
+    fireEvent.click(screen.getByText('web'))
+    expect(screen.getByTestId('opened')).toHaveTextContent('ana:1,bob:0')
+    fireEvent.click(screen.getByText('all'))
+    expect(screen.getByTestId('opened')).toHaveTextContent('ana:2,bob:1')
+    fireEvent.click(screen.getByText('seven'))
+    expect(screen.getByTestId('opened')).toHaveTextContent('ana:2,bob:0')
+  })
+
+  it('#19 AC4: selectedMember can be set and cleared', async () => {
+    const { deps } = teamOf(['ana'])
+    render(
+      <DashboardProvider {...deps}>
+        <TableConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('members')).toHaveTextContent('ready'))
+    expect(screen.getByTestId('selected')).toHaveTextContent('null')
+    fireEvent.click(screen.getByText('select ana'))
+    expect(screen.getByTestId('selected')).toHaveTextContent('ANA')
+    fireEvent.click(screen.getByText('clear'))
+    expect(screen.getByTestId('selected')).toHaveTextContent('null')
+  })
+
+  it('#19 AC4: selectedMember is kept on reload while in the team and cleared when removed', async () => {
+    const { deps, store } = teamOf(['ana', 'bob'])
+    render(
+      <DashboardProvider {...deps}>
+        <TableConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('members')).toHaveTextContent('ready|ana,bob'))
+    fireEvent.click(screen.getByText('select ana')) // 'ANA', case-insensitive match
+    fireEvent.click(screen.getByText('reload'))
+    await waitFor(() => expect(screen.getByTestId('members')).toHaveTextContent('ready|ana,bob'))
+    expect(screen.getByTestId('selected')).toHaveTextContent('ANA')
+    store.selected = ['bob']
+    fireEvent.click(screen.getByText('reload'))
+    await waitFor(() => expect(screen.getByTestId('members')).toHaveTextContent('ready|bob'))
+    expect(screen.getByTestId('selected')).toHaveTextContent('null')
   })
 
   it('#16 AC6: useDashboard throws outside the provider', () => {
