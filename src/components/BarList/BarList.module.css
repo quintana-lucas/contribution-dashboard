@@ -33,7 +33,8 @@
 }
 
 .fill,
-.fillMuted {
+.fillMuted,
+.fillHatched {
   display: block;
   height: 100%;
   border-radius: var(--radius-pill);
