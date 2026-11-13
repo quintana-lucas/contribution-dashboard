@@ -6,6 +6,7 @@ import type { DashboardDeps } from './components/DashboardProvider'
 import EmptyState from './components/EmptyState'
 import Footer from './components/Footer'
 import Header from './components/Header'
+import KpiCards from './components/KpiCards'
 import SettingsDialog from './components/SettingsDialog'
 import Tabs from './components/Tabs'
 import TeamTable from './components/TeamTable'
@@ -40,9 +41,7 @@ function Content({ onAddRepositories, onChooseTeam, chooseTeamRef }: ContentProp
           label: 'Overview',
           content: (
             <>
-              <p className={styles.intro}>
-                Widgets for GitHub team collaboration will appear here.
-              </p>
+              <KpiCards />
               <WidgetGrid onOpenSettings={onAddRepositories} />
             </>
           ),

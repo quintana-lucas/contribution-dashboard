@@ -13,14 +13,6 @@
   padding: var(--space-4);
 }
 
-.intro {
-  margin: 0 0 var(--space-4);
-  color: var(--color-text-muted);
-  font-size: var(--text-md);
-  font-weight: var(--text-md-weight);
-  line-height: var(--text-md-line);
-}
-
 @media (min-width: 768px) {
   .main {
     padding: var(--space-6);
