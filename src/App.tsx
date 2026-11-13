@@ -7,6 +7,7 @@ import EmptyState from './components/EmptyState'
 import Footer from './components/Footer'
 import Header from './components/Header'
 import KpiCards from './components/KpiCards'
+import MemberDetail from './components/MemberDetail'
 import SettingsDialog from './components/SettingsDialog'
 import Tabs from './components/Tabs'
 import TeamTable from './components/TeamTable'
@@ -17,9 +18,10 @@ interface ContentProps {
   onAddRepositories: () => void
   onChooseTeam: () => void
   chooseTeamRef: Ref<HTMLButtonElement>
+  now: () => Date
 }
 
-function Content({ onAddRepositories, onChooseTeam, chooseTeamRef }: ContentProps) {
+function Content({ onAddRepositories, onChooseTeam, chooseTeamRef, now }: ContentProps) {
   const { status, entries, teamChosen } = useDashboard()
   // With no linked repos, or before the team is chosen, the guided setup replaces the Tabs.
   if (status === 'ready' && (entries.length === 0 || !teamChosen)) {
@@ -46,7 +48,16 @@ function Content({ onAddRepositories, onChooseTeam, chooseTeamRef }: ContentProp
             </>
           ),
         },
-        { key: 'team', label: 'Team', content: <TeamTable onChooseTeam={onChooseTeam} /> },
+        {
+          key: 'team',
+          label: 'Team',
+          content: (
+            <div className={styles.teamTab}>
+              <TeamTable onChooseTeam={onChooseTeam} />
+              <MemberDetail now={now} />
+            </div>
+          ),
+        },
       ]}
     />
   )
@@ -103,7 +114,12 @@ function App(deps: DashboardDeps) {
       <main className={styles.main}>
         <DashboardProvider {...deps}>
           <Toolbar />
-          <Content onAddRepositories={openSettings} onChooseTeam={openTeamSettings} chooseTeamRef={chooseTeamButton} />
+          <Content
+            onAddRepositories={openSettings}
+            onChooseTeam={openTeamSettings}
+            chooseTeamRef={chooseTeamButton}
+            now={deps.now ?? (() => new Date())}
+          />
           <SettingsHost
             {...deps}
             open={settingsOpen}
