@@ -54,19 +54,19 @@ describe('App', () => {
     expect(screen.getAllByRole('contentinfo')).toHaveLength(1)
   })
 
-  it('AC8: renders the intro line inside main', async () => {
+  it('AC1: shows the KPI cards above the widgets and no intro line', async () => {
     await renderApp()
-    expect(screen.getByRole('main')).toHaveTextContent(
-      'Widgets for GitHub team collaboration will appear here.',
-    )
+    const main = screen.getByRole('main')
+    expect(main).not.toHaveTextContent('Widgets for GitHub team collaboration will appear here.')
+    const kpis = within(main).getByRole('region', { name: /^Key figures/ })
+    const widget = within(main).getByRole('region', { name: 'Widget 1' })
+    expect(kpis.compareDocumentPosition(widget) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('AC3: renders the four widget regions inside main', async () => {
+  it('AC3: renders the four widget regions and the KPI section inside main', async () => {
     await renderApp()
-    // The toolbar group is not a region, so only the widgets count.
-    expect(within(screen.getByRole('main')).getAllByRole('region')).toHaveLength(
-      4,
-    )
+    // The toolbar group is not a region, so only the widgets and the KPI section count.
+    expect(within(screen.getByRole('main')).getAllByRole('region')).toHaveLength(5)
   })
 
   it('AC6: landmarks are in DOM order banner, main, contentinfo', async () => {
@@ -147,7 +147,8 @@ describe('App', () => {
         within(panel).getByRole('region', { name: `Widget ${n}` }),
       ).toBeInTheDocument()
     }
-    expect(within(panel).getAllByRole('region')).toHaveLength(4)
+    // The four widgets plus the KPI cards section.
+    expect(within(panel).getAllByRole('region')).toHaveLength(5)
   })
 })
 
