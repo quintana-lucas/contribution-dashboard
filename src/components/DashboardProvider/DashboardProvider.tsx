@@ -18,6 +18,7 @@ import {
   toolbarSubline,
 } from '../../api/dashboard'
 import type { Period, RepoEntry, RepoSelection } from '../../api/dashboard'
+import { teamStats as teamStatsPure } from '../../api/teamStats'
 import { DashboardContext } from './context'
 import type { DashboardStatus, DashboardValue } from './context'
 
@@ -39,6 +40,8 @@ interface Loaded {
   entries: RepoEntry[]
   /** Lowercase selected logins, or null while the team has never been chosen. */
   team: ReadonlySet<string> | null
+  /** Selected logins in original casing, deduplicated case-insensitively. */
+  teamMembers: string[]
 }
 
 // No DashboardProvider.module.css: this component renders no DOM of its own.
@@ -49,7 +52,8 @@ export default function DashboardProvider({
   getTeam = defaultGetTeam,
   now = () => new Date(),
 }: DashboardDeps & { children: ReactNode }) {
-  const [loaded, setLoaded] = useState<Loaded>({ status: 'loading', entries: [], team: null })
+  const [loaded, setLoaded] = useState<Loaded>({ status: 'loading', entries: [], team: null, teamMembers: [] })
+  const [selectedMember, setSelectedMember] = useState<string | null>(null)
   const [selection, setSelection] = useState<RepoSelection>('all')
   const [period, setPeriod] = useState<Period>(30)
 
@@ -64,11 +68,18 @@ export default function DashboardProvider({
   const runLoad = useCallback(async () => {
     const id = ++loadId.current
     const { listRepos: list, getRepoData: get, getTeam: team } = latest.current
-    const failed: Loaded = { status: 'error', entries: [], team: null }
+    const failed: Loaded = { status: 'error', entries: [], team: null, teamMembers: [] }
     async function load(): Promise<Loaded> {
       const [res, teamRes] = await Promise.all([list(), team()])
       if (!res.ok || !teamRes.ok) return failed
       const teamSet = teamRes.selected === null ? null : new Set(teamRes.selected.map((l) => l.toLowerCase()))
+      const seen = new Set<string>()
+      const teamMembers = (teamRes.selected ?? []).filter((l) => {
+        const key = l.toLowerCase()
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
       const entries: RepoEntry[] = []
       for (const linked of res.repos) {
         if (linked.syncedAt === null) {
@@ -84,11 +95,13 @@ export default function DashboardProvider({
           return failed
         }
       }
-      return { status: 'ready', entries, team: teamSet }
+      return { status: 'ready', entries, team: teamSet, teamMembers }
     }
     const result = await load()
     if (!live.current || id !== loadId.current) return
     setLoaded(result)
+    // Clear the selected member when they are no longer in the team.
+    setSelectedMember((sel) => (sel !== null && result.team?.has(sel.toLowerCase()) ? sel : null))
     // Keep the selection while its repo still exists; otherwise go back to all.
     setSelection((sel) =>
       sel === 'all' || result.entries.some((e) => e.repo === sel) ? sel : 'all',
@@ -109,7 +122,7 @@ export default function DashboardProvider({
     void runLoad()
   }, [runLoad])
 
-  const { status, entries, team } = loaded
+  const { status, entries, team, teamMembers } = loaded
   const nowDate = now()
   const value = useMemo<DashboardValue>(
     () => ({
@@ -124,10 +137,14 @@ export default function DashboardProvider({
       selectActivity: () => selectActivityPure(entries, selection, period, nowDate, team),
       subline: toolbarSubline(entries, selection, period, nowDate, team),
       contributions: () => contributionsPerPerson(entries, selection, period, nowDate, team),
+      teamMembers,
+      teamStats: () => teamStatsPure(entries, selection, period, nowDate, teamMembers),
+      selectedMember,
+      setSelectedMember,
     }),
     // nowDate changes every render; recompute on state changes only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [status, entries, team, selection, period, reload],
+    [status, entries, team, teamMembers, selection, period, reload, selectedMember],
   )
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>

@@ -8,7 +8,7 @@ import Footer from './components/Footer'
 import Header from './components/Header'
 import SettingsDialog from './components/SettingsDialog'
 import Tabs from './components/Tabs'
-import TeamPlaceholder from './components/TeamPlaceholder'
+import TeamTable from './components/TeamTable'
 import Toolbar from './components/Toolbar'
 import WidgetGrid from './components/WidgetGrid'
 
@@ -47,7 +47,7 @@ function Content({ onAddRepositories, onChooseTeam, chooseTeamRef }: ContentProp
             </>
           ),
         },
-        { key: 'team', label: 'Team', content: <TeamPlaceholder /> },
+        { key: 'team', label: 'Team', content: <TeamTable onChooseTeam={onChooseTeam} /> },
       ]}
     />
   )

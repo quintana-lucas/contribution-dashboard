@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 import type { Contributions } from '../../api/contributions'
 import type { Activity, Period, RepoEntry, RepoSelection } from '../../api/dashboard'
+import type { TeamStatsRow } from '../../api/teamStats'
 
 export type DashboardStatus = 'loading' | 'error' | 'ready'
 
@@ -20,6 +21,13 @@ export interface DashboardValue {
   subline: string
   /** Merged pull requests per person for the current selection, period and team. */
   contributions: () => Contributions
+  /** Selected team logins in their original casing; [] while the team is not chosen. */
+  teamMembers: string[]
+  /** One row per team member for the current selection and period (unsorted). */
+  teamStats: () => TeamStatsRow[]
+  /** The member picked in the Team table (in memory only), or null. */
+  selectedMember: string | null
+  setSelectedMember: (login: string | null) => void
 }
 
 export const DashboardContext = createContext<DashboardValue | null>(null)
