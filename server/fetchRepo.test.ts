@@ -44,8 +44,11 @@ function fakeFetch(responses: unknown[]) {
   return { impl, bodies }
 }
 
-const run = (responses: unknown[]) => {
-  const f = fakeFetch(responses)
+// Responses are for the OPEN pass; an empty page is appended for the CLOSED/MERGED pass.
+// Use runPasses to script the closed pass explicitly.
+const run = (responses: unknown[]) => runPasses(responses, [prPage([])])
+const runPasses = (open: unknown[], closed: unknown[]) => {
+  const f = fakeFetch([...open, ...closed])
   return fetchRepoActivity({ token: TOKEN, owner: 'acme', name: 'widgets', now: NOW, fetchImpl: f.impl }).then(
     (result) => ({ result, ...f }),
   )
@@ -66,13 +69,45 @@ describe('fetchRepoActivity', () => {
     expect(bodies[1].variables).toMatchObject({ number: 1, cursor: 'r1' })
   })
 
-  it('AC9: stops paging past 90 days and keeps PRs at day 89', async () => {
-    const { result, bodies } = await run([
-      prPage([pr(3, { updatedAt: daysAgo(89) }), pr(2, { updatedAt: daysAgo(91) })], 'c1'),
-      prPage([pr(1)]),
-    ])
-    expect(bodies).toHaveLength(1)
+  it('#33 AC2/AC3: closed and merged PRs are kept at day 89, dropped at day 91, and paging stops', async () => {
+    const closed = (n: number, d: number, state = 'CLOSED') =>
+      pr(n, { state, updatedAt: daysAgo(d), closedAt: daysAgo(d) })
+    const { result, bodies } = await runPasses(
+      [prPage([])],
+      [prPage([closed(3, 89), closed(4, 90.5, 'MERGED'), closed(2, 91)], 'c1'), prPage([closed(1, 100)])],
+    )
+    expect(bodies).toHaveLength(2)
+    expect(bodies[1].variables.states).toEqual(['CLOSED', 'MERGED'])
     expect(result.ok && result.repo.pullRequests.map((p) => p.number)).toEqual([3])
+  })
+
+  it('#33 AC1: an open PR idle for more than 90 days is kept, and open PRs are queried by state', async () => {
+    const { result, bodies } = await run([
+      prPage([pr(2, { updatedAt: daysAgo(5) }), pr(1, { updatedAt: daysAgo(400) })], 'c1'),
+      prPage([pr(0, { updatedAt: daysAgo(900) })]),
+    ])
+    expect(bodies[0].variables.states).toEqual(['OPEN'])
+    expect(bodies[1].variables.cursor).toBe('c1')
+    expect(result.ok && result.repo.pullRequests.map((p) => p.number)).toEqual([0, 1, 2])
+  })
+
+  it('#33 AC4: a PR returned on several pages and in both passes appears once', async () => {
+    const { result } = await runPasses(
+      [prPage([pr(1), pr(2)], 'c1'), prPage([pr(2), pr(3)])],
+      [prPage([pr(3, { state: 'MERGED', mergedAt: daysAgo(2) })])],
+    )
+    if (!result.ok) throw new Error('expected ok')
+    expect(result.repo.pullRequests.map((p) => p.number)).toEqual([1, 2, 3])
+  })
+
+  it('#33 AC5: a PR stored as open that has since closed follows the 90-day rule', async () => {
+    // The sync rebuilds from GitHub, so the old open copy never carries over: it now only
+    // appears in the closed pass, where it is kept when recent and dropped when old.
+    const recent = pr(1, { state: 'CLOSED', updatedAt: daysAgo(10), closedAt: daysAgo(10) })
+    const old = pr(2, { state: 'CLOSED', updatedAt: daysAgo(200), closedAt: daysAgo(200) })
+    const { result } = await runPasses([prPage([])], [prPage([recent, old])])
+    if (!result.ok) throw new Error('expected ok')
+    expect(result.repo.pullRequests.map((p) => [p.number, p.state])).toEqual([[1, 'closed']])
   })
 
   it('AC1: maps state, author, reviewer, state and dates; drops pending, null-date and extra fields', async () => {
