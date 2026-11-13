@@ -9,6 +9,7 @@ export type StoredRequestedReviewer =
 
 export interface StoredPullRequest {
   number: number
+  title: string
   author: string | null // login; null for deleted users ("ghost")
   authorIsBot: boolean
   state: 'open' | 'merged' | 'closed' // closed = closed without merge
@@ -40,7 +41,7 @@ export interface LinkedRepo {
 }
 
 export interface StoredRepo {
-  schemaVersion: 2
+  schemaVersion: 3
   repo: string // "owner/name"
   syncedAt: string // ISO time of the last successful sync of this repo
   pullRequests: StoredPullRequest[]

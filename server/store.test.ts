@@ -16,12 +16,13 @@ afterEach(async () => {
 })
 
 const sample: StoredRepo = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   repo: 'acme/widgets',
   syncedAt: '2026-06-01T00:00:00.000Z',
   pullRequests: [
     {
       number: 1,
+      title: 'Fake title',
       author: 'fake-author',
       authorIsBot: false,
       state: 'merged',
@@ -112,6 +113,20 @@ describe('store', () => {
       JSON.stringify({ schemaVersion: 1, repo: 'acme/widgets', pullRequests: [], reviews: [] }),
     )
     expect(await readRepo('acme/widgets', dir)).toBeNull()
+  })
+
+  it('#20 AC4: a schemaVersion 2 file (no title) reads as not synced', async () => {
+    await mkdir(path.join(dir, 'repos'), { recursive: true })
+    await writeFile(
+      path.join(dir, 'repos', 'acme__widgets.json'),
+      JSON.stringify({ ...sample, schemaVersion: 2 }),
+    )
+    expect(await readRepo('acme/widgets', dir)).toBeNull()
+  })
+
+  it('#20 AC4: the PR title round-trips through the store', async () => {
+    await writeRepo(sample, dir)
+    expect((await readRepo('acme/widgets', dir))?.pullRequests[0].title).toBe('Fake title')
   })
 
   it('AC6: rejects a repo name that could escape the data dir', async () => {

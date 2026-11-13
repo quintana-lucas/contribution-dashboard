@@ -21,7 +21,7 @@ query($owner: String!, $name: String!, $cursor: String, $states: [PullRequestSta
     pullRequests(first: 50, after: $cursor, states: $states, orderBy: { field: UPDATED_AT, direction: DESC }) {
       pageInfo { hasNextPage endCursor }
       nodes {
-        number state createdAt updatedAt mergedAt closedAt
+        number title state createdAt updatedAt mergedAt closedAt
         additions deletions baseRefName
         author { login __typename }
         reviewRequests(first: 20) {
@@ -75,6 +75,7 @@ interface RawReviews {
 }
 interface RawPr {
   number: number
+  title: string
   state: string
   createdAt: string
   updatedAt: string
@@ -193,10 +194,12 @@ export async function fetchRepoActivity(opts: FetchRepoOptions): Promise<FetchRe
       }
       if (!Number.isFinite(pr.additions) || !Number.isFinite(pr.deletions)) return bad
       if (typeof pr.baseRefName !== 'string' || pr.baseRefName === '') return bad
+      if (typeof pr.title !== 'string') return bad
       const requestedReviewers = mapRequested(pr.reviewRequests?.nodes)
       if (requestedReviewers === null) return bad
       prs.set(pr.number, {
         number: pr.number,
+        title: pr.title,
         author: pr.author?.login ?? null,
         authorIsBot: isBotAccount(pr.author?.login, pr.author?.__typename),
         state,
@@ -235,7 +238,7 @@ export async function fetchRepoActivity(opts: FetchRepoOptions): Promise<FetchRe
   return {
     ok: true,
     repo: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       repo: `${owner}/${name}`,
       syncedAt: now.toISOString(),
       pullRequests: [...prs.values()].sort((a, b) => a.number - b.number),

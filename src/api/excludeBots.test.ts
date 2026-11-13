@@ -4,6 +4,7 @@ import type { StoredPullRequest, StoredRepo } from './types.ts'
 
 const pr = (number: number, authorIsBot: boolean, requestedReviewers: StoredPullRequest['requestedReviewers'] = []): StoredPullRequest => ({
   number,
+  title: 'Fake title',
   author: authorIsBot ? 'dependabot[bot]' : 'alice',
   authorIsBot,
   state: 'open',
@@ -18,7 +19,7 @@ const pr = (number: number, authorIsBot: boolean, requestedReviewers: StoredPull
 })
 
 const repo: StoredRepo = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   repo: 'acme/widgets',
   syncedAt: '2026-06-01T00:00:00.000Z',
   pullRequests: [

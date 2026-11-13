@@ -17,6 +17,7 @@ const ago = (ms: number) => new Date(NOW.getTime() - ms).toISOString()
 function pr(over: Partial<StoredPullRequest> = {}): StoredPullRequest {
   return {
     number: 1,
+    title: 'Fake title',
     author: 'ana',
     authorIsBot: false,
     state: 'open',
@@ -46,7 +47,7 @@ function review(over: Partial<StoredReview> = {}): StoredReview {
 
 function entry(repo: string, syncedAt: string | null, pullRequests: StoredPullRequest[] = [], reviews: StoredReview[] = []): RepoEntry {
   const data: StoredRepo | null = syncedAt
-    ? { schemaVersion: 2, repo, syncedAt, pullRequests, reviews }
+    ? { schemaVersion: 3, repo, syncedAt, pullRequests, reviews }
     : null
   return { repo, syncedAt, data }
 }
@@ -161,7 +162,7 @@ describe('member count, base branch and subline', () => {
 
   it('#16 AC1: base branch is the most common, ties alphabetical, null with no PRs', () => {
     const mk = (branches: string[]): StoredRepo => ({
-      schemaVersion: 2,
+      schemaVersion: 3,
       repo: 'a/x',
       syncedAt: ago(0),
       pullRequests: branches.map((baseBranch, i) => pr({ number: i, baseBranch })),

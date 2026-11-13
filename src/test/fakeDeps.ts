@@ -6,11 +6,12 @@ export const NOW = new Date('2026-06-15T12:00:00.000Z')
 
 export function storedRepo(repo: string, syncedAt: string, authors: string[], base = 'main'): StoredRepo {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     repo,
     syncedAt,
     pullRequests: authors.map((author, i) => ({
       number: i + 1,
+      title: `Fake PR ${i + 1}`,
       author,
       authorIsBot: false,
       state: 'open' as const,
