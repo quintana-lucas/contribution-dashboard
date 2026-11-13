@@ -47,6 +47,17 @@
   background: var(--color-bar-muted);
 }
 
+.fillHatched {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-bar-muted) 0,
+    var(--color-bar-muted) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  box-shadow: inset 0 0 0 1px var(--color-bar-muted);
+}
+
 .count {
   font-variant-numeric: tabular-nums;
   text-align: right;
