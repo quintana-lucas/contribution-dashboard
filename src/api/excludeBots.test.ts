@@ -52,4 +52,42 @@ describe('excludeBots', () => {
     excludeBots(repo)
     expect(JSON.stringify(repo)).toBe(before)
   })
+
+  const review = (id: string, pullRequestNumber: number, reviewerIsBot = false): StoredRepo['reviews'][number] => ({
+    id,
+    pullRequestNumber,
+    reviewer: reviewerIsBot ? 'ci[bot]' : 'bob',
+    reviewerIsBot,
+    outcome: 'approved',
+    submittedAt: '2026-05-03T00:00:00Z',
+  })
+
+  it('#32 AC1: removes human reviews on a bot-authored PR along with the PR', () => {
+    const input = { ...repo, pullRequests: [pr(1, true)], reviews: [review('h1', 1), review('h2', 1)] }
+    const out = excludeBots(input)
+    expect(out.pullRequests).toEqual([])
+    expect(out.reviews).toEqual([])
+  })
+
+  it('#32 AC2 and AC4: every remaining review matches a listed PR and counts agree', () => {
+    const input = { ...repo, pullRequests: [pr(1, true), pr(2, false)], reviews: [review('a', 1), review('b', 2), review('c', 2), review('d', 1)] }
+    const out = excludeBots(input)
+    const numbers = new Set(out.pullRequests.map((p) => p.number))
+    expect(out.reviews.every((r) => numbers.has(r.pullRequestNumber))).toBe(true)
+    expect(out.reviews).toHaveLength(input.reviews.filter((r) => r.pullRequestNumber === 2).length)
+  })
+
+  it('#32 AC3: keeps a human-authored PR and all its human reviews', () => {
+    const input = { ...repo, pullRequests: [pr(2, false)], reviews: [review('a', 2), review('b', 2)] }
+    const out = excludeBots(input)
+    expect(out.pullRequests.map((p) => p.number)).toEqual([2])
+    expect(out.reviews.map((r) => r.id)).toEqual(['a', 'b'])
+  })
+
+  it('#32 AC5: all PRs bot-authored leaves no PRs or reviews and does not fail', () => {
+    const input = { ...repo, pullRequests: [pr(1, true), pr(3, true)], reviews: [review('a', 1), review('b', 3, true)] }
+    const out = excludeBots(input)
+    expect(out.pullRequests).toEqual([])
+    expect(out.reviews).toEqual([])
+  })
 })
