@@ -97,6 +97,17 @@ describe('teamStats', () => {
     expect(rows[1].reviewsReceived).toBe(2)
   })
 
+  it('#20 AC3: dismissed reviews count neither as given nor as received', () => {
+    const e = entry(
+      'o/a',
+      [pr({ number: 1 })],
+      [review({ id: 'a', outcome: 'dismissed' }), review({ id: 'b', outcome: 'approved' })],
+    )
+    const rows = teamStats([e], 'all', 30, NOW, ['bob', 'alice'])
+    expect(rows[0].reviewsGiven).toBe(1)
+    expect(rows[1].reviewsReceived).toBe(1)
+  })
+
   it('AC1: bot authors and bot reviewers are excluded', () => {
     const e = entry(
       'o/a',

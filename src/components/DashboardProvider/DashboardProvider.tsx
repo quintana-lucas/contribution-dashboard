@@ -19,6 +19,7 @@ import {
 } from '../../api/dashboard'
 import type { Period, RepoEntry, RepoSelection } from '../../api/dashboard'
 import { kpis as kpisPure } from '../../api/kpis'
+import { memberDetail as memberDetailPure } from '../../api/memberDetail'
 import { teamStats as teamStatsPure } from '../../api/teamStats'
 import { DashboardContext } from './context'
 import type { DashboardStatus, DashboardValue } from './context'
@@ -141,6 +142,8 @@ export default function DashboardProvider({
       kpis: () => kpisPure(entries, selection, period, nowDate, team),
       teamMembers,
       teamStats: () => teamStatsPure(entries, selection, period, nowDate, teamMembers),
+      memberDetail: () =>
+        selectedMember === null ? null : memberDetailPure(entries, selection, period, nowDate, selectedMember),
       selectedMember,
       setSelectedMember,
     }),
