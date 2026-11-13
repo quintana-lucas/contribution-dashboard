@@ -19,6 +19,7 @@ import {
 } from '../../api/dashboard'
 import type { Period, RepoEntry, RepoSelection } from '../../api/dashboard'
 import { kpis as kpisPure } from '../../api/kpis'
+import { reviewsPerPerson } from '../../api/reviews'
 import { teamStats as teamStatsPure } from '../../api/teamStats'
 import { DashboardContext } from './context'
 import type { DashboardStatus, DashboardValue } from './context'
@@ -138,6 +139,7 @@ export default function DashboardProvider({
       selectActivity: () => selectActivityPure(entries, selection, period, nowDate, team),
       subline: toolbarSubline(entries, selection, period, nowDate, team),
       contributions: () => contributionsPerPerson(entries, selection, period, nowDate, team),
+      reviewsGiven: () => reviewsPerPerson(entries, selection, period, nowDate, team),
       kpis: () => kpisPure(entries, selection, period, nowDate, team),
       teamMembers,
       teamStats: () => teamStatsPure(entries, selection, period, nowDate, teamMembers),

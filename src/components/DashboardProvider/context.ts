@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react'
 import type { Contributions } from '../../api/contributions'
 import type { Activity, Period, RepoEntry, RepoSelection } from '../../api/dashboard'
 import type { Kpis } from '../../api/kpis'
+import type { ReviewsGiven } from '../../api/reviews'
 import type { TeamStatsRow } from '../../api/teamStats'
 
 export type DashboardStatus = 'loading' | 'error' | 'ready'
@@ -22,6 +23,8 @@ export interface DashboardValue {
   subline: string
   /** Merged pull requests per person for the current selection, period and team. */
   contributions: () => Contributions
+  /** Reviews given per person for the current selection, period and team. */
+  reviewsGiven: () => ReviewsGiven[]
   /** Overview KPI figures for the current selection, period and team. */
   kpis: () => Kpis
   /** Selected team logins in their original casing; [] while the team is not chosen. */
