@@ -9,6 +9,7 @@ const ago = (days: number) => new Date(NOW.getTime() - days * DAY).toISOString()
 function pr(over: Partial<StoredPullRequest> = {}): StoredPullRequest {
   return {
     number: 1,
+    title: 'Fake title',
     author: 'ana',
     authorIsBot: false,
     state: 'open',
@@ -35,7 +36,7 @@ function review(over: Partial<StoredReview> = {}): StoredReview {
   }
 }
 const repo = (name: string, pullRequests: StoredPullRequest[], reviews: StoredReview[] = []): StoredRepo => ({
-  schemaVersion: 2,
+  schemaVersion: 3,
   repo: name,
   syncedAt: ago(0),
   pullRequests,

@@ -32,6 +32,7 @@ const linkRepos = (...repos: string[]) =>
 
 const prNode = (number: number, extra: Record<string, unknown> = {}) => ({
   number,
+  title: `Fake PR ${number}`,
   state: 'MERGED',
   createdAt: '2026-05-20T00:00:00Z',
   updatedAt: '2026-05-25T00:00:00Z',

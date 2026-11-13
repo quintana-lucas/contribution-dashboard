@@ -15,12 +15,13 @@ const NOW = new Date('2026-06-01T00:00:00Z')
 const realFetch = globalThis.fetch
 
 const stored: StoredRepo = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   repo: 'acme/widgets',
   syncedAt: '2026-06-01T00:00:00.000Z',
   pullRequests: [
     {
       number: 1,
+      title: 'Fake title',
       author: 'fake-author',
       authorIsBot: false,
       state: 'merged',

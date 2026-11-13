@@ -10,6 +10,7 @@ const at = (msAgo: number): string => new Date(NOW.getTime() - msAgo).toISOStrin
 function pr(over: Partial<StoredPullRequest>): StoredPullRequest {
   return {
     number: 1,
+    title: 'PR 1',
     author: 'alice',
     authorIsBot: false,
     state: 'open',
@@ -43,7 +44,7 @@ function entry(repo: string, reviews: StoredReview[], prs: StoredPullRequest[] =
   return {
     repo,
     syncedAt: at(0),
-    data: { schemaVersion: 2, repo, syncedAt: at(0), pullRequests: prs, reviews },
+    data: { schemaVersion: 3, repo, syncedAt: at(0), pullRequests: prs, reviews },
   }
 }
 

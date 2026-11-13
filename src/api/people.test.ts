@@ -4,6 +4,7 @@ import type { StoredRepo } from './types'
 
 const pr = (author: string | null, authorIsBot = false) => ({
   number: 1,
+  title: 'Fake title',
   author,
   authorIsBot,
   state: 'merged' as const,
@@ -28,7 +29,7 @@ const review = (reviewer: string | null, reviewerIsBot = false) => ({
 describe('people', () => {
   it('#8 AC12: counts distinct non-null authors and reviewers, excluding bots', () => {
     const data = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       repo: 'acme/widgets',
       syncedAt: '2026-06-01T00:00:00Z',
       pullRequests: [pr('ana'), pr('ana'), pr(null), pr('dependabot', true)],

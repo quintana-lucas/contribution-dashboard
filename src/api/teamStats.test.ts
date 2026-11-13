@@ -10,6 +10,7 @@ const NOW_ISO = '2026-06-30T12:00:00.000Z'
 function pr(over: Partial<StoredPullRequest>): StoredPullRequest {
   return {
     number: 1,
+    title: 'Fake title',
     author: 'alice',
     authorIsBot: false,
     state: 'merged',
@@ -41,7 +42,7 @@ function entry(repo: string, prs: StoredPullRequest[], reviews: StoredReview[] =
   return {
     repo,
     syncedAt: '2026-06-30T11:00:00Z',
-    data: { schemaVersion: 2, repo, syncedAt: '2026-06-30T11:00:00Z', pullRequests: prs, reviews },
+    data: { schemaVersion: 3, repo, syncedAt: '2026-06-30T11:00:00Z', pullRequests: prs, reviews },
   }
 }
 
@@ -94,6 +95,17 @@ describe('teamStats', () => {
     const rows = teamStats([e], 'all', 30, NOW, ['bob', 'alice'])
     expect(rows[0].reviewsGiven).toBe(2)
     expect(rows[1].reviewsReceived).toBe(2)
+  })
+
+  it('#20 AC3: dismissed reviews count neither as given nor as received', () => {
+    const e = entry(
+      'o/a',
+      [pr({ number: 1 })],
+      [review({ id: 'a', outcome: 'dismissed' }), review({ id: 'b', outcome: 'approved' })],
+    )
+    const rows = teamStats([e], 'all', 30, NOW, ['bob', 'alice'])
+    expect(rows[0].reviewsGiven).toBe(1)
+    expect(rows[1].reviewsReceived).toBe(1)
   })
 
   it('AC1: bot authors and bot reviewers are excluded', () => {
