@@ -175,6 +175,65 @@ const post = (call: ReturnType<typeof boot> extends Promise<infer C> ? C : never
   call('/api/repos', { method: 'POST', body: JSON.stringify({ input }) })
 const configRepos = async () => JSON.parse(await readFile(path.join(dir, 'config.json'), 'utf8')).repos
 
+describe('#35 corrupt or unreadable repo files', () => {
+  const badFile = async (name: string, content: string) => {
+    await mkdir(path.join(dir, 'repos'), { recursive: true })
+    await writeFile(path.join(dir, 'repos', `${name}.json`), content)
+  }
+  // A directory in place of the file makes readFile fail with EISDIR on every platform.
+  const unreadable = (name: string) => mkdir(path.join(dir, 'repos', `${name}.json`), { recursive: true })
+
+  it('#35 AC1: invalid JSON is reported as invalid_json, not as not synced', async () => {
+    await link('acme/bad')
+    await badFile('acme__bad', '{ not json')
+    const call = await boot()
+    const body = (await (await call('/api/repos')).json()) as { repos: Array<Record<string, unknown>> }
+    expect(body.repos[0]).toMatchObject({ repo: 'acme/bad', syncedAt: null, fileError: 'invalid_json' })
+    const data = await call('/api/data?repo=acme/bad')
+    expect(data.status).toBe(500)
+    expect(await data.json()).toEqual({ error: 'invalid_json' })
+  })
+
+  it('#35 AC2: an unreadable file is reported as unreadable, distinct from invalid_json', async () => {
+    await link('acme/locked')
+    await unreadable('acme__locked')
+    const call = await boot()
+    const body = (await (await call('/api/repos')).json()) as { repos: Array<Record<string, unknown>> }
+    expect(body.repos[0]).toMatchObject({ repo: 'acme/locked', fileError: 'unreadable' })
+    const data = await call('/api/data?repo=acme/locked')
+    expect(await data.json()).toEqual({ error: 'unreadable' })
+  })
+
+  it('#35 AC3: healthy repos are returned unchanged next to a bad one', async () => {
+    await link('acme/widgets', 'acme/bad', 'acme/new')
+    await writeRepo(stored, dir)
+    await badFile('acme__bad', '{')
+    const call = await boot()
+    const res = await call('/api/repos')
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { repos: Array<Record<string, unknown>> }
+    expect(body.repos[0]).toEqual({ repo: 'acme/widgets', syncedAt: stored.syncedAt, baseBranch: 'main', people: 1 })
+    expect(body.repos[1]).toMatchObject({ repo: 'acme/bad', fileError: 'invalid_json' })
+    expect(body.repos[2]).toEqual({ repo: 'acme/new', syncedAt: null, baseBranch: null, people: null })
+  })
+
+  it('#35 AC5: responses contain no file path and no file contents', async () => {
+    await link('acme/bad', 'acme/locked')
+    await badFile('acme__bad', 'SECRET-CONTENT-123 {')
+    await unreadable('acme__locked')
+    const call = await boot()
+    const texts = [
+      await (await call('/api/repos')).text(),
+      await (await call('/api/data?repo=acme/bad')).text(),
+      await (await call('/api/data?repo=acme/locked')).text(),
+    ].join('\n')
+    expect(texts).not.toContain('SECRET-CONTENT')
+    expect(texts).not.toContain(dir)
+    expect(texts).not.toContain('acme__')
+    expect(texts).not.toContain('.json')
+  })
+})
+
 describe('POST /api/repos', () => {
   it('#8 AC2: every accepted input form is stored canonically, read-only, and persists in config', async () => {
     const forms = [

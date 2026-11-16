@@ -38,6 +38,8 @@ export interface LinkedRepo {
   syncedAt: string | null
   baseBranch: string | null // null when never synced or no PRs
   people: number | null // null when never synced
+  /** Set when the repo file exists but is damaged; then syncedAt is null. Not "not synced". */
+  fileError?: 'invalid_json' | 'unreadable'
 }
 
 export interface StoredRepo {

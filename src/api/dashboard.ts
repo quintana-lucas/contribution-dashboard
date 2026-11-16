@@ -6,7 +6,7 @@ export type Period = 7 | 30 | 90
 export type RepoSelection = 'all' | string
 
 /** Why one repo's data could not be loaded. Distinct from "not synced". Extend with new kinds. */
-export type RepoLoadError = 'request_failed'
+export type RepoLoadError = 'request_failed' | 'corrupt' | 'unreadable'
 
 export interface RepoEntry {
   repo: string
@@ -19,6 +19,8 @@ export interface RepoEntry {
 /** Toolbar wording for a single repo, per error kind. */
 const ERROR_TEXT: Record<RepoLoadError, string> = {
   request_failed: 'could not load this repository',
+  corrupt: 'repository data file is damaged (invalid JSON)',
+  unreadable: 'repository data file could not be read',
 }
 /** Wording when counting failed repos among several, whatever the kind. */
 const FAILED_COUNT_TEXT = 'could not be loaded'

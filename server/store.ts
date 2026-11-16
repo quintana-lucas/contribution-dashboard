@@ -161,21 +161,44 @@ export function toStored(input: StoredRepo): StoredRepo {
   }
 }
 
-/** Local read only, never touches the network. Returns null if not synced. */
+/** Why a repo file exists but cannot be used. */
+export type RepoFileProblem = 'invalid_json' | 'unreadable'
+
+/**
+ * Thrown by `readRepo` for a damaged file. Carries only the kind: the message
+ * never includes the file path or contents.
+ */
+export class RepoFileError extends Error {
+  readonly kind: RepoFileProblem
+  constructor(kind: RepoFileProblem) {
+    super(kind === 'invalid_json' ? 'Repo file is not valid JSON.' : 'Repo file could not be read.')
+    this.name = 'RepoFileError'
+    this.kind = kind
+  }
+}
+
+/** Local read only, never touches the network. Returns null if not synced; throws RepoFileError if damaged. */
 export async function readRepo(
   repo: string,
   dataDir: string = DEFAULT_DATA_DIR,
 ): Promise<StoredRepo | null> {
+  let raw: string
   try {
-    const parsed = JSON.parse(await readFile(repoFilePath(dataDir, repo), 'utf8')) as StoredRepo
-    // Files from an older schema lack the newer fields; treat them as not synced
-    // so the user re-runs `npm run sync` instead of the UI reading partial data.
-    if (parsed?.schemaVersion !== 3) return null
-    return parsed
+    raw = await readFile(repoFilePath(dataDir, repo), 'utf8')
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
-    throw err
+    throw new RepoFileError('unreadable')
   }
+  let parsed: StoredRepo
+  try {
+    parsed = JSON.parse(raw) as StoredRepo
+  } catch {
+    throw new RepoFileError('invalid_json')
+  }
+  // Files from an older schema lack the newer fields; treat them as not synced
+  // so the user re-runs `npm run sync` instead of the UI reading partial data.
+  if (parsed?.schemaVersion !== 3) return null
+  return parsed
 }
 
 /** Atomic write: temp file in the same directory, then rename. */
