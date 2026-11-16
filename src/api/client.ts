@@ -1,6 +1,6 @@
 import { excludeBots } from './excludeBots.ts'
 import type { Candidate } from './team.ts'
-import type { LinkedRepo, StoredRepo } from './types.ts'
+import type { DamagedRepo, LinkedRepo, StoredRepo } from './types.ts'
 
 export type ListReposResult =
   | { ok: true; repos: LinkedRepo[] }
@@ -167,7 +167,7 @@ export async function removeRepo(
 }
 
 export type GetTeamResult =
-  | { ok: true; candidates: Candidate[]; selected: string[] | null; added: string[]; anySynced?: boolean }
+  | { ok: true; candidates: Candidate[]; selected: string[] | null; added: string[]; anySynced?: boolean; damagedRepos?: DamagedRepo[] }
   | { ok: false }
 
 export interface TeamSaveInput {
@@ -176,6 +176,22 @@ export interface TeamSaveInput {
 }
 
 const isStrings = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string')
+
+/** Keeps only well-formed entries (repo and a known kind); anything else is dropped, never thrown. */
+function parseDamagedRepos(value: unknown): DamagedRepo[] {
+  if (!Array.isArray(value)) return []
+  const out: DamagedRepo[] = []
+  for (const item of value as { repo?: unknown; fileError?: unknown }[]) {
+    if (
+      item &&
+      typeof item.repo === 'string' &&
+      (item.fileError === 'invalid_json' || item.fileError === 'unreadable')
+    ) {
+      out.push({ repo: item.repo, fileError: item.fileError })
+    }
+  }
+  return out
+}
 
 /** Reads the team (candidates, chosen logins, hand-added logins) from the local server. */
 export async function getTeam(fetchImpl: FetchLike = (...a) => fetch(...a)): Promise<GetTeamResult> {
@@ -187,6 +203,7 @@ export async function getTeam(fetchImpl: FetchLike = (...a) => fetch(...a)): Pro
         selected?: unknown
         added?: unknown
         anySynced?: unknown
+        damagedRepos?: unknown
       }
       if (
         Array.isArray(body.candidates) &&
@@ -199,6 +216,7 @@ export async function getTeam(fetchImpl: FetchLike = (...a) => fetch(...a)): Pro
           selected: body.selected,
           added: body.added,
           anySynced: body.anySynced === true,
+          damagedRepos: parseDamagedRepos(body.damagedRepos),
         }
       }
     }

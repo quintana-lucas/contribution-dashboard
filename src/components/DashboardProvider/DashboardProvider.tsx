@@ -19,7 +19,7 @@ import {
   toolbarSubline,
 } from '../../api/dashboard'
 import type { Period, RepoEntry, RepoLoadError, RepoSelection } from '../../api/dashboard'
-import type { LinkedRepo } from '../../api/types'
+import type { DamagedRepo, LinkedRepo } from '../../api/types'
 import { kpis as kpisPure } from '../../api/kpis'
 import { memberDetail as memberDetailPure } from '../../api/memberDetail'
 import { prActivity as prActivityPure } from '../../api/prActivity'
@@ -49,6 +49,8 @@ interface Loaded {
   team: ReadonlySet<string> | null
   /** Selected logins in original casing, deduplicated case-insensitively. */
   teamMembers: string[]
+  /** Repos the team endpoint reports as damaged (#58). */
+  damagedRepos: DamagedRepo[]
 }
 
 const FILE_ERROR_KIND: Record<'invalid_json' | 'unreadable', RepoLoadError> = {
@@ -87,7 +89,7 @@ export default function DashboardProvider({
   getTeam = defaultGetTeam,
   now = () => new Date(),
 }: DashboardDeps & { children: ReactNode }) {
-  const [loaded, setLoaded] = useState<Loaded>({ status: 'loading', entries: [], team: null, teamMembers: [] })
+  const [loaded, setLoaded] = useState<Loaded>({ status: 'loading', entries: [], team: null, teamMembers: [], damagedRepos: [] })
   const [selectedMember, setSelectedMember] = useState<string | null>(null)
   const [selection, setSelection] = useState<RepoSelection>('all')
   const [period, setPeriod] = useState<Period>(30)
@@ -103,7 +105,7 @@ export default function DashboardProvider({
   const runLoad = useCallback(async () => {
     const id = ++loadId.current
     const { listRepos: list, getRepoData: get, getTeam: team } = latest.current
-    const failed: Loaded = { status: 'error', entries: [], team: null, teamMembers: [] }
+    const failed: Loaded = { status: 'error', entries: [], team: null, teamMembers: [], damagedRepos: [] }
     async function load(): Promise<Loaded> {
       const [res, teamRes] = await Promise.all([list(), team()])
       if (!res.ok || !teamRes.ok) return failed
@@ -117,7 +119,7 @@ export default function DashboardProvider({
       })
       // All repos load at once; map keeps the original order whatever the arrival order.
       const entries = await Promise.all(res.repos.map((linked) => loadEntry(linked, get)))
-      return { status: 'ready', entries, team: teamSet, teamMembers }
+      return { status: 'ready', entries, team: teamSet, teamMembers, damagedRepos: teamRes.damagedRepos ?? [] }
     }
     const result = await load()
     if (!live.current || id !== loadId.current) return
@@ -144,7 +146,7 @@ export default function DashboardProvider({
     void runLoad()
   }, [runLoad])
 
-  const { status, entries, team, teamMembers } = loaded
+  const { status, entries, team, teamMembers, damagedRepos } = loaded
   const nowDate = now()
   const value = useMemo<DashboardValue>(
     () => ({
@@ -157,7 +159,7 @@ export default function DashboardProvider({
       reload,
       teamChosen: team !== null,
       selectActivity: () => selectActivityPure(entries, selection, period, nowDate, team),
-      subline: toolbarSubline(entries, selection, period, nowDate, team),
+      subline: toolbarSubline(entries, selection, period, nowDate, team, damagedRepos),
       contributions: () => contributionsPerPerson(entries, selection, period, nowDate, team),
       reviewsGiven: () => reviewsPerPerson(entries, selection, period, nowDate, team),
       waiting: () => waitingForReview(entries, selection, nowDate, team),
@@ -172,7 +174,7 @@ export default function DashboardProvider({
     }),
     // nowDate changes every render; recompute on state changes only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [status, entries, team, teamMembers, selection, period, reload, selectedMember],
+    [status, entries, team, teamMembers, damagedRepos, selection, period, reload, selectedMember],
   )
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>

@@ -52,10 +52,26 @@ describe('team client', () => {
       added: ['zoe'],
     }
     const f = spy(() => new Response(JSON.stringify(body), { status: 200 }))
-    expect(await getTeam(f)).toEqual({ ok: true, ...body, anySynced: false })
+    expect(await getTeam(f)).toEqual({ ok: true, ...body, anySynced: false, damagedRepos: [] })
     const synced = spy(() => new Response(JSON.stringify({ ...body, anySynced: true }), { status: 200 }))
-    expect(await getTeam(synced)).toEqual({ ok: true, ...body, anySynced: true })
+    expect(await getTeam(synced)).toEqual({ ok: true, ...body, anySynced: true, damagedRepos: [] })
     expect(String(f.mock.calls[0][0])).toBe('/api/team')
+  })
+
+  const teamBody = { candidates: [], selected: null, added: [] }
+
+  it('#58 AC1: getTeam exposes each damaged repo with its file error kind', async () => {
+    const damagedRepos = [
+      { repo: 'acme/a', fileError: 'invalid_json' },
+      { repo: 'acme/b', fileError: 'unreadable' },
+    ]
+    const res = await getTeam(spy(() => new Response(JSON.stringify({ ...teamBody, damagedRepos }), { status: 200 })))
+    expect(res).toMatchObject({ ok: true, damagedRepos })
+  })
+
+  it('#58 AC2: getTeam without damagedRepos gives no damaged repos and does not fail', async () => {
+    const res = await getTeam(spy(() => new Response(JSON.stringify(teamBody), { status: 200 })))
+    expect(res).toMatchObject({ ok: true, damagedRepos: [] })
   })
 
   it('#15 AC1: getTeam fails on network, HTTP or bad shape', async () => {

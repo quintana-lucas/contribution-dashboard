@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { makeDeps, storedRepo } from '../../test/fakeDeps'
 import DashboardProvider, { useDashboard } from '.'
@@ -164,6 +164,66 @@ describe('DashboardProvider', () => {
     )
     await waitFor(() => expect(screen.getByTestId('team')).toHaveTextContent('ready|false'))
     expect(screen.getByTestId('team').textContent).toMatch(/\|4$/)
+  })
+
+  function withDamaged(damagedRepos?: { repo: string; fileError: 'invalid_json' | 'unreadable' }[]) {
+    const deps = makeDeps()
+    deps.getTeam.mockImplementation(async () => ({
+      ok: true as const,
+      candidates: [],
+      selected: ['ana', 'bob', 'cy', 'dee'],
+      added: [],
+      ...(damagedRepos ? { damagedRepos } : {}),
+    }))
+    return deps
+  }
+  async function subline(deps: ReturnType<typeof makeDeps>) {
+    render(
+      <DashboardProvider {...deps}>
+        <TeamConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('team')).toHaveTextContent('ready|true'))
+    return screen.getByTestId('team').textContent ?? ''
+  }
+
+  it('#58 AC3: an invalid_json damaged repo shows its name and the damaged text', async () => {
+    const text = await subline(withDamaged([{ repo: 'acme/broken', fileError: 'invalid_json' }]))
+    expect(text).toContain('acme/broken: repository data file is damaged (invalid JSON)')
+  })
+
+  it('#58 AC4: an unreadable damaged repo shows its name and the could not be read text', async () => {
+    const text = await subline(withDamaged([{ repo: 'acme/locked', fileError: 'unreadable' }]))
+    expect(text).toContain('acme/locked: repository data file could not be read')
+  })
+
+  it('#58 AC5: the damaged text contains no path, file name or content', async () => {
+    const text = await subline(withDamaged([{ repo: 'acme/broken', fileError: 'invalid_json' }]))
+    expect(text).not.toMatch(/\.json|[\\/]data|\/home|[A-Z]:\\/)
+  })
+
+  it('#58 AC6: several damaged repos each show their own reason', async () => {
+    const text = await subline(
+      withDamaged([
+        { repo: 'acme/one', fileError: 'invalid_json' },
+        { repo: 'acme/two', fileError: 'unreadable' },
+      ]),
+    )
+    expect(text).toContain('acme/one: repository data file is damaged (invalid JSON)')
+    expect(text).toContain('acme/two: repository data file could not be read')
+  })
+
+  it('#58 AC7: without damaged repos the subline is unchanged', async () => {
+    const plain = await subline(withDamaged())
+    expect(plain).toBe('ready|true|3 repositories · 4 members · synced 3 h ago (1 not synced yet)|4')
+    cleanup()
+    expect(await subline(withDamaged([]))).toBe(plain)
+  })
+
+  it('#58 AC8: healthy repos keep showing alongside damaged ones', async () => {
+    const text = await subline(withDamaged([{ repo: 'acme/broken', fileError: 'invalid_json' }]))
+    expect(text).toContain('4 members')
+    expect(text).toMatch(/\|4$/)
   })
 
   it('#15 AC4: a failed team load sets the error status', async () => {
