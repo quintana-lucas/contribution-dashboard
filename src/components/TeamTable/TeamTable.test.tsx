@@ -65,7 +65,7 @@ function bodyLogins() {
 }
 
 describe('TeamTable', () => {
-  it('AC1: renders one row per member with all 10 columns', () => {
+  it('AC1 (#19), AC2 (#21): renders one row per member with all 10 columns', () => {
     renderTable()
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼]/g, ''))
     expect(headers).toEqual([
@@ -89,7 +89,7 @@ describe('TeamTable', () => {
     expect(screen.getByText('Per member · All repositories · last 30 days')).toBeTruthy()
   })
 
-  it('AC1: shows a loading line and nothing on error', () => {
+  it('AC1 (#19): shows a loading line and nothing on error', () => {
     const { unmount } = renderTable({ status: 'loading' })
     expect(screen.getByText('Loading team data…')).toBeTruthy()
     unmount()
@@ -97,13 +97,13 @@ describe('TeamTable', () => {
     expect(container.textContent).toBe('')
   })
 
-  it('AC2: default sort is Merged descending', () => {
+  it('AC2 (#19): default sort is Merged descending', () => {
     renderTable()
     expect(bodyLogins()).toEqual(['bob', 'Ana', 'cy'])
     expect(screen.getByRole('columnheader', { name: /Merged/ }).getAttribute('aria-sort')).toBe('descending')
   })
 
-  it('AC2: sort cycle, aria-sort and announcements', () => {
+  it('AC2 (#19): sort cycle, aria-sort and announcements', () => {
     renderTable()
     const status = screen.getByRole('status')
     fireEvent.click(screen.getByRole('button', { name: 'Sort by Opened' }))
@@ -118,7 +118,7 @@ describe('TeamTable', () => {
     expect(status.textContent).toBe('Sorted by Opened, ascending.')
   })
 
-  it('AC2: Lines sorts by additions plus deletions and ties fall back to login', () => {
+  it('AC2 (#19): Lines sorts by additions plus deletions and ties fall back to login', () => {
     renderTable()
     fireEvent.click(screen.getByRole('button', { name: 'Sort by Closed' }))
     // closed: Ana 1, bob 0, cy 0 -> ascending: bob, cy (tie by login), Ana
@@ -127,7 +127,7 @@ describe('TeamTable', () => {
     expect(bodyLogins()).toEqual(['cy', 'bob', 'Ana'])
   })
 
-  it('AC2: PR size and 1st review columns sort, with n/a rows last in both directions', () => {
+  it('AC2 (#21): PR size and 1st review columns sort, with n/a rows last in both directions', () => {
     renderTable()
     // Ana 300 lines / 5.5 h, bob 20 lines / 30 min, cy n/a.
     fireEvent.click(screen.getByRole('button', { name: 'Sort by PR size' }))
@@ -141,21 +141,21 @@ describe('TeamTable', () => {
     expect(bodyLogins()).toEqual(['Ana', 'bob', 'cy'])
   })
 
-  it('AC4: members without qualifying PRs show n/a, never 0 or NaN', () => {
+  it('AC4 (#21): members without qualifying PRs show n/a, never 0 or NaN', () => {
     renderTable()
     const cells = within(screen.getByRole('row', { name: 'cy: select member' })).getAllByRole('cell')
     expect(cells.slice(-2).map((c) => c.textContent)).toEqual(['n/a', 'n/a'])
     expect(document.body).not.toHaveTextContent('NaN')
   })
 
-  it('AC3: keeps the sort when the figures change', () => {
+  it('AC3 (#19): keeps the sort when the figures change', () => {
     const { rerenderWith } = renderTable()
     fireEvent.click(screen.getByRole('button', { name: 'Sort by Opened' }))
     rerenderWith({ teamStats: () => [row('Ana', { opened: 9 }), row('bob', { opened: 1 }), row('cy', { opened: 4 })] })
     expect(bodyLogins()).toEqual(['bob', 'cy', 'Ana'])
   })
 
-  it('AC4: click and Enter select a row, with aria-current and announcement', () => {
+  it('AC4 (#19): click and Enter select a row, with aria-current and announcement', () => {
     const { setSelectedMember, rerenderWith } = renderTable()
     fireEvent.click(screen.getByRole('row', { name: 'bob: select member' }))
     expect(setSelectedMember).toHaveBeenCalledWith('bob')
@@ -168,14 +168,14 @@ describe('TeamTable', () => {
     expect(screen.getByRole('row', { name: 'bob: select member' }).getAttribute('aria-current')).toBeNull()
   })
 
-  it('AC5: scroll container is labelled and focusable; table has a min-width class', () => {
+  it('AC5 (#19): scroll container is labelled and focusable; table has a min-width class', () => {
     renderTable()
     const region = screen.getByRole('region', { name: 'Team table, scrollable' })
     expect(region.tabIndex).toBe(0)
     expect(region.querySelector('table')?.className).toContain('table')
   })
 
-  it('AC6: empty state with a button that calls onChooseTeam', () => {
+  it('AC6 (#19): empty state with a button that calls onChooseTeam', () => {
     const { onChooseTeam } = renderTable({ teamMembers: [], teamStats: () => [] })
     expect(
       screen.getByText('No team members selected. Choose the people to follow to see them here.'),
