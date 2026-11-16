@@ -234,6 +234,74 @@ describe('#35 corrupt or unreadable repo files', () => {
   })
 })
 
+describe('#56 /api/team damaged repo files', () => {
+  const badFile = async (name: string, content: string) => {
+    await mkdir(path.join(dir, 'repos'), { recursive: true })
+    await writeFile(path.join(dir, 'repos', `${name}.json`), content)
+  }
+  const unreadable = (name: string) => mkdir(path.join(dir, 'repos', `${name}.json`), { recursive: true })
+  type TeamBody = { anySynced: boolean; candidates: unknown[]; damagedRepos?: unknown }
+
+  it('#56 AC1: invalid JSON is identified as damaged with kind invalid_json', async () => {
+    await link('acme/bad')
+    await badFile('acme__bad', '{ not json')
+    const call = await boot()
+    const res = await call('/api/team')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({
+      anySynced: false,
+      damagedRepos: [{ repo: 'acme/bad', fileError: 'invalid_json' }],
+    })
+  })
+
+  it('#56 AC2: an unreadable file is identified as unreadable', async () => {
+    await link('acme/locked')
+    await unreadable('acme__locked')
+    const call = await boot()
+    const body = (await (await call('/api/team')).json()) as TeamBody
+    expect(body.damagedRepos).toEqual([{ repo: 'acme/locked', fileError: 'unreadable' }])
+  })
+
+  it('#56 AC3: only the #35 kinds are used', async () => {
+    await link('acme/bad', 'acme/locked')
+    await badFile('acme__bad', '{')
+    await unreadable('acme__locked')
+    const call = await boot()
+    const body = (await (await call('/api/team')).json()) as { damagedRepos: Array<{ fileError: string }> }
+    expect(body.damagedRepos.map((d) => d.fileError)).toEqual(['invalid_json', 'unreadable'])
+  })
+
+  it('#56 AC4: the response contains no file path, file name or content', async () => {
+    await link('acme/bad', 'acme/locked')
+    await badFile('acme__bad', 'SECRET-CONTENT-123 {')
+    await unreadable('acme__locked')
+    const call = await boot()
+    const text = await (await call('/api/team')).text()
+    expect(text).not.toContain('SECRET-CONTENT')
+    expect(text).not.toContain(dir)
+    expect(text).not.toContain('acme__')
+    expect(text).not.toContain('.json')
+  })
+
+  it('#56 AC5: healthy repos still contribute next to a damaged one', async () => {
+    await link('acme/bad', 'acme/widgets')
+    await writeRepo(stored, dir)
+    await badFile('acme__bad', '{')
+    const call = await boot()
+    const body = (await (await call('/api/team')).json()) as TeamBody
+    expect(body.anySynced).toBe(true)
+    expect(body.damagedRepos).toEqual([{ repo: 'acme/bad', fileError: 'invalid_json' }])
+  })
+
+  it('#56 AC6: a never-synced repo is not reported as an error', async () => {
+    await link('acme/new')
+    const call = await boot()
+    const body = (await (await call('/api/team')).json()) as TeamBody
+    expect(body.anySynced).toBe(false)
+    expect(body).not.toHaveProperty('damagedRepos')
+  })
+})
+
 describe('POST /api/repos', () => {
   it('#8 AC2: every accepted input form is stored canonically, read-only, and persists in config', async () => {
     const forms = [
