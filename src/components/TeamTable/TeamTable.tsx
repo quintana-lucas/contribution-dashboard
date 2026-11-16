@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
+import { formatDuration, formatSize } from '../../api/reviewMetrics'
 import type { TeamStatsRow } from '../../api/teamStats'
 import { useDashboard } from '../DashboardProvider'
 import styles from './TeamTable.module.css'
@@ -8,7 +9,17 @@ interface TeamTableProps {
   onChooseTeam: () => void
 }
 
-type SortKey = 'login' | 'opened' | 'merged' | 'closed' | 'open' | 'reviewsGiven' | 'reviewsReceived' | 'lines'
+type SortKey =
+  | 'login'
+  | 'opened'
+  | 'merged'
+  | 'closed'
+  | 'open'
+  | 'reviewsGiven'
+  | 'reviewsReceived'
+  | 'lines'
+  | 'avgPrSize'
+  | 'medianFirstReviewMs'
 type SortDir = 'asc' | 'desc'
 
 const COLUMNS: { key: SortKey; label: string; numeric: boolean }[] = [
@@ -20,9 +31,11 @@ const COLUMNS: { key: SortKey; label: string; numeric: boolean }[] = [
   { key: 'reviewsGiven', label: 'Reviews given', numeric: true },
   { key: 'reviewsReceived', label: 'Reviews received', numeric: true },
   { key: 'lines', label: 'Lines (+/−)', numeric: true },
+  { key: 'avgPrSize', label: 'PR size', numeric: true },
+  { key: 'medianFirstReviewMs', label: '1st review', numeric: true },
 ]
 
-function sortValue(row: TeamStatsRow, key: SortKey): number {
+function sortValue(row: TeamStatsRow, key: SortKey): number | null {
   if (key === 'lines') return row.additions + row.deletions
   if (key === 'login') return 0
   return row[key]
@@ -36,7 +49,14 @@ function sortRows(rows: TeamStatsRow[], key: SortKey, dir: SortDir): TeamStatsRo
   const sign = dir === 'asc' ? 1 : -1
   return [...rows].sort((a, b) => {
     if (key === 'login') return sign * compareLogin(a, b)
-    const diff = sortValue(a, key) - sortValue(b, key)
+    const va = sortValue(a, key)
+    const vb = sortValue(b, key)
+    // "n/a" rows go last in either direction.
+    if (va === null || vb === null) {
+      if (va === vb) return compareLogin(a, b)
+      return va === null ? 1 : -1
+    }
+    const diff = va - vb
     return diff !== 0 ? sign * diff : compareLogin(a, b)
   })
 }
@@ -159,6 +179,8 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
                     +{r.additions} {'−'}
                     {r.deletions}
                   </td>
+                  <td className={styles.num}>{formatSize(r.avgPrSize)}</td>
+                  <td className={styles.num}>{formatDuration(r.medianFirstReviewMs)}</td>
                 </tr>
               )
             })}

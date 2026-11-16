@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
 import type { RecentPr } from '../../api/memberDetail'
+import { formatDuration, formatSize } from '../../api/reviewMetrics'
 import BarList from '../BarList'
 import ColumnChart from '../ColumnChart'
 import { useDashboard } from '../DashboardProvider'
@@ -104,6 +105,18 @@ function MemberDetail({ now }: MemberDetailProps) {
         <div className={styles.tile}>
           <span className={styles.number}>{detail.reviewsReceived}</span>
           <span className={styles.label}>Reviews received</span>
+        </div>
+        <div className={styles.tile}>
+          <span className={styles.number}>{formatDuration(detail.medianFirstReviewMs)}</span>
+          <span className={styles.label}>Median time to first review</span>
+        </div>
+        <div className={styles.tile}>
+          <span className={styles.number}>{formatSize(detail.avgPrSize)}</span>
+          <span className={styles.label}>Average PR size</span>
+        </div>
+        <div className={styles.tile}>
+          <span className={styles.number}>{formatDuration(detail.medianCycleMs)}</span>
+          <span className={styles.label}>Median cycle time</span>
         </div>
       </div>
 

@@ -153,6 +153,9 @@ describe('teamStats', () => {
       reviewsReceived: 0,
       additions: 0,
       deletions: 0,
+      avgPrSize: null,
+      medianFirstReviewMs: null,
+      medianCycleMs: null,
     })
     expect(rows[1].merged).toBe(1)
   })

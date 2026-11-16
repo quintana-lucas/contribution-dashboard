@@ -77,10 +77,54 @@ async function renderCards(deps = makeKpiDeps()) {
 const card = (label: string) => screen.getByText(label).parentElement as HTMLElement
 
 describe('KpiCards', () => {
-  it('AC1: four labelled cards with values and sub-lines for the selection', async () => {
+  it('AC1 (#21): time to first review and cycle time cards show medians with units', async () => {
+    await renderCards()
+    // PR 2 in acme/api: opened 06-12 10:00, first review 06-13 08:00 (22 h), merged 06-13 10:00 (24 h).
+    expect(card('Time to first review')).toHaveTextContent(/^Time to first review22 h/)
+    expect(card('Time to first review')).toHaveTextContent('median, opened to first review')
+    expect(card('Cycle time')).toHaveTextContent(/^Cycle time24 h/)
+    expect(card('Cycle time')).toHaveTextContent('median, opened to merged')
+  })
+
+  it('AC1 (#21): the new cards follow the selected repository', async () => {
+    await renderCards()
+    fireEvent.change(screen.getByLabelText('Repository'), { target: { value: 'acme/web' } })
+    expect(card('Time to first review')).toHaveTextContent('n/a')
+    expect(card('Cycle time')).toHaveTextContent('n/a')
+  })
+
+  it('AC4 (#21): a period with no qualifying PRs shows n/a, never 0 or NaN', async () => {
+    await renderCards(makeKpiDeps({ 'acme/api': repo('acme/api', []), 'acme/web': repo('acme/web', []) }))
+    expect(card('Time to first review')).toHaveTextContent(/^Time to first reviewn\/a/)
+    expect(card('Cycle time')).toHaveTextContent(/^Cycle timen\/a/)
+    expect(document.body).not.toHaveTextContent(/NaN|undefined/)
+  })
+
+  it('AC5 (#21): bot PRs and PRs by non-selected members are excluded', async () => {
+    const deps = makeKpiDeps({
+      'acme/api': repo(
+        'acme/api',
+        [
+          { ...pr(7, 'dependabot', 'merged', '2026-06-12T10:00:00.000Z', { mergedAt: '2026-06-12T10:05:00.000Z' }), authorIsBot: true },
+          pr(8, 'bob', 'merged', '2026-06-12T10:00:00.000Z', { mergedAt: '2026-06-12T12:00:00.000Z' }),
+        ],
+        [
+          { id: 'r9', pullRequestNumber: 7, reviewer: 'ana', reviewerIsBot: false, outcome: 'approved', submittedAt: '2026-06-12T10:01:00.000Z' },
+          { id: 'r10', pullRequestNumber: 8, reviewer: 'ana', reviewerIsBot: false, outcome: 'approved', submittedAt: '2026-06-12T10:30:00.000Z' },
+        ],
+      ),
+      'acme/web': repo('acme/web', []),
+    })
+    deps.getTeam = vi.fn(async () => ({ ok: true as const, selected: ['ana'] })) as never
+    await renderCards(deps)
+    expect(card('Time to first review')).toHaveTextContent('n/a')
+    expect(card('Cycle time')).toHaveTextContent('n/a')
+  })
+
+  it('AC1: six labelled cards with values and sub-lines for the selection', async () => {
     await renderCards()
     const section = screen.getByRole('region', { name: 'Key figures, All repositories, last 30 days' })
-    expect(within(section).getAllByRole('listitem')).toHaveLength(4)
+    expect(within(section).getAllByRole('listitem')).toHaveLength(6)
     expect(card('Open PRs')).toHaveTextContent(/^Open PRs2/)
     expect(card('Open PRs')).toHaveTextContent('1 waiting for review over 24 h')
     expect(card('Merged PRs')).toHaveTextContent(/^Merged PRs1/)
@@ -116,7 +160,7 @@ describe('KpiCards', () => {
     const deps = makeKpiDeps()
     deps.getRepoData = vi.fn(async () => ({ ok: true as const, data: null })) as never
     await renderCards(deps)
-    expect(screen.getAllByText('No data yet')).toHaveLength(4)
+    expect(screen.getAllByText('No data yet')).toHaveLength(6)
     expect(document.body).not.toHaveTextContent('waiting for review')
     expect(document.body).not.toHaveTextContent('closed without merge')
   })
@@ -129,7 +173,7 @@ describe('KpiCards', () => {
         <KpiCards />
       </DashboardProvider>,
     )
-    expect(screen.getAllByText('…')).toHaveLength(4)
+    expect(screen.getAllByText('…')).toHaveLength(6)
     expect(screen.getByRole('region')).toHaveAttribute('aria-busy', 'true')
     expect(document.body).not.toHaveTextContent('waiting for review')
   })

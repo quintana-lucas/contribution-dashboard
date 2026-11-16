@@ -35,6 +35,12 @@ export interface MemberDetail {
   merged: number
   reviewsGiven: number
   reviewsReceived: number
+  /** Median ms from opening to first review (PRs opened in the window); null when none qualify. */
+  medianFirstReviewMs: number | null
+  /** Average lines changed per PR opened in the window; null when none. */
+  avgPrSize: number | null
+  /** Median ms from opening to merge (PRs merged in the window); null when none. */
+  medianCycleMs: number | null
   /** One entry per `buckets(period, now)` bucket, zeros kept; counted by merge date. */
   mergedBuckets: MergedBucket[]
   reviewOutcomes: ReviewOutcomes
@@ -109,6 +115,9 @@ export function memberDetail(
     merged: stats.merged,
     reviewsGiven: stats.reviewsGiven,
     reviewsReceived: stats.reviewsReceived,
+    medianFirstReviewMs: stats.medianFirstReviewMs,
+    avgPrSize: stats.avgPrSize,
+    medianCycleMs: stats.medianCycleMs,
     mergedBuckets,
     reviewOutcomes,
     recentPrs: recent.slice(0, RECENT_PR_LIMIT),

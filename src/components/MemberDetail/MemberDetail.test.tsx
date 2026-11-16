@@ -29,6 +29,9 @@ function detail(over: Partial<Detail> = {}, period: Period = 30): Detail {
     merged: 3,
     reviewsGiven: 6,
     reviewsReceived: 2,
+    medianFirstReviewMs: 5.5 * 60 * 60 * 1000,
+    avgPrSize: 320,
+    medianCycleMs: 3 * 24 * 60 * 60 * 1000,
     mergedBuckets,
     reviewOutcomes: { approved: 3, changesRequested: 2, commented: 1 },
     recentPrs: [pr(), pr({ number: 2, state: 'open', title: 'Add widget', date: '2026-05-01T09:00:00.000Z' })],
@@ -89,6 +92,27 @@ describe('MemberDetail', () => {
     expect(tile('PRs merged')).toHaveTextContent('3')
     expect(tile('Reviews given')).toHaveTextContent('6')
     expect(tile('Reviews received')).toHaveTextContent('2')
+  })
+
+  it('AC3 (#21): shows time to first review, average PR size and cycle time with units', () => {
+    renderDetail()
+    const panel = screen.getByRole('region', { name: 'Ana' })
+    const tile = (label: string) =>
+      within(panel).getByText(label, { selector: 'span' }).previousElementSibling
+    expect(tile('Median time to first review')).toHaveTextContent('5.5 h')
+    expect(tile('Average PR size')).toHaveTextContent('320 lines')
+    expect(tile('Median cycle time')).toHaveTextContent('3 days')
+  })
+
+  it('AC4 (#21): shows n/a when there are no qualifying pull requests', () => {
+    renderDetail({}, detail({ ...EMPTY, medianFirstReviewMs: null, avgPrSize: null, medianCycleMs: null }))
+    const panel = screen.getByRole('region', { name: 'Ana' })
+    const tile = (label: string) =>
+      within(panel).getByText(label, { selector: 'span' }).previousElementSibling
+    expect(tile('Median time to first review')).toHaveTextContent('n/a')
+    expect(tile('Average PR size')).toHaveTextContent('n/a')
+    expect(tile('Median cycle time')).toHaveTextContent('n/a')
+    expect(document.body).not.toHaveTextContent('NaN')
   })
 
   it('AC2: weeks for 30 and 90 days, days for 7, with the right headings', () => {

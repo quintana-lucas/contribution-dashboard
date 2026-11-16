@@ -177,6 +177,8 @@ describe('kpis', () => {
       additions: 0,
       deletions: 0,
       prsOpened: 0,
+      medianFirstReviewMs: null,
+      medianCycleMs: null,
     })
     expect(kpis([], 'all', 30, NOW).hasData).toBe(false)
   })
