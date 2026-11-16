@@ -313,7 +313,7 @@ describe('App settings', () => {
     fireEvent.change(within(dialog).getByLabelText('Repository'), { target: { value: 'acme/new' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
     await within(dialog).findByText('Added acme/new. 1 person found.')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Close settings' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Done, close settings' }))
     await waitFor(() => expect(screen.queryByText('Set up your dashboard')).toBeNull())
     await waitFor(() => expect(openSettingsButton()).toHaveFocus())
   })
@@ -329,7 +329,7 @@ describe('App settings', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
     await within(dialog).findByText('Added acme/new. 1 person found.')
     const before = deps.getRepoData.mock.calls.length
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Close settings' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Done, close settings' }))
     await waitFor(() => {
       const options = within(screen.getByLabelText('Repository')).getAllByRole('option')
       expect(options.map((o) => o.textContent)).toEqual(['All repositories', 'acme/api', 'acme/new'])
@@ -387,7 +387,7 @@ describe('App settings', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove acme/new' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Remove repository' }))
     await within(dialog).findByText('Removed acme/new.')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Close settings' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Done, close settings' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     await waitFor(() => expect(screen.getByLabelText('Repository')).toBeInTheDocument())
 

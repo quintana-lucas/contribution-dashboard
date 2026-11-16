@@ -87,7 +87,7 @@ describe('SettingsDialog', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Team members' }))
     fireEvent.click(await screen.findByRole('checkbox', { name: 'ana' }))
     await waitFor(() => expect(screen.getByRole('checkbox', { name: 'ana' })).not.toBeChecked())
-    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Done, close settings' }))
     expect(onClose).toHaveBeenCalledWith(true)
   })
 
@@ -142,7 +142,7 @@ describe('SettingsDialog', () => {
     await ready()
     fireEvent.click(screen.getByRole('button', { name: 'Sync acme/api' }))
     await screen.findByText('Synced just now. 4 people found.')
-    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Done, close settings' }))
     expect(b.onClose).toHaveBeenCalledWith(true)
   })
 
@@ -248,7 +248,7 @@ describe('SettingsDialog', () => {
     fireEvent.click(addButton())
     await screen.findByText('Added acme/new. The first sync failed; use Sync to try again.')
     expect(await screen.findByText('Not synced yet')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Done, close settings' }))
     expect(onClose).toHaveBeenCalledWith(true)
   })
 
@@ -307,7 +307,7 @@ describe('SettingsDialog', () => {
     expect(deps.removeRepo).toHaveBeenCalledWith('acme/api')
     // Focus moves to the next row's Remove.
     await waitFor(() => expect(screen.getByRole('button', { name: 'Remove acme/web' })).toHaveFocus())
-    fireEvent.click(screen.getByRole('button', { name: 'Close settings' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Done, close settings' }))
     expect(onClose).toHaveBeenCalledWith(true)
   })
 
@@ -390,6 +390,152 @@ describe('SettingsDialog', () => {
     expect(inputs).toHaveLength(1)
     expect(dialog.querySelector('input[type="password"]')).toBeNull()
     expect(Storage.prototype.setItem).not.toHaveBeenCalled()
+  })
+
+  describe('#40 saved confirmation', () => {
+    const closeButton = () => screen.getByRole('button', { name: /close settings$/i })
+    const savedRegion = () => screen.getAllByRole('status').at(-1) as HTMLElement // last in the dialog, after the tab panels
+
+    async function syncOnce() {
+      fireEvent.click(screen.getByRole('button', { name: 'Sync acme/api' }))
+      await screen.findByText('Synced just now. 4 people found.')
+    }
+
+    it('#40 AC1: untouched, the button reads Close and nothing is saved yet', async () => {
+      setup()
+      await ready()
+      expect(closeButton()).toHaveTextContent('Close')
+      expect(closeButton()).toHaveAccessibleName('Close settings')
+      expect(screen.queryByText('Changes saved')).toBeNull()
+      // The polite region exists up front, empty, so assistive tech observes the later text.
+      expect(savedRegion()).toBeEmptyDOMElement()
+    })
+
+    it('#40 AC2: after a successful repo sync the button reads Done', async () => {
+      setup()
+      await ready()
+      await syncOnce()
+      expect(closeButton()).toHaveTextContent('Done')
+      expect(closeButton()).toHaveAccessibleName('Done, close settings')
+    })
+
+    it('#40 AC2: after a successful team toggle the button reads Done', async () => {
+      setup()
+      await ready()
+      fireEvent.click(screen.getByRole('tab', { name: 'Team members' }))
+      fireEvent.click(await screen.findByRole('checkbox', { name: 'ana' }))
+      expect(await screen.findByRole('button', { name: 'Done, close settings' })).toHaveTextContent('Done')
+    })
+
+    it('#40 AC2: after a successful add and remove the button reads Done', async () => {
+      setup()
+      await ready()
+      fireEvent.change(field(), { target: { value: 'acme/new' } })
+      fireEvent.click(addButton())
+      await screen.findByText('Added acme/new. 2 people found.')
+      expect(closeButton()).toHaveTextContent('Done')
+      cleanup()
+
+      setup()
+      await ready()
+      fireEvent.click(screen.getByRole('button', { name: 'Remove acme/api' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Remove repository' }))
+      await screen.findByText('Removed acme/api.')
+      expect(closeButton()).toHaveTextContent('Done')
+    })
+
+    it('#40 AC3: "Changes saved" shows in a polite status region, and stays on later saves', async () => {
+      setup()
+      await ready()
+      await syncOnce()
+      const region = savedRegion()
+      expect(region).toHaveTextContent('Changes saved')
+      expect(region).toHaveAttribute('role', 'status')
+      fireEvent.click(screen.getByRole('button', { name: 'Sync acme/web' }))
+      await waitFor(() => expect(screen.getAllByText(/Synced just now/)).toHaveLength(2))
+      expect(screen.getAllByText('Changes saved')).toHaveLength(1)
+      expect(savedRegion()).toBe(region)
+      expect(closeButton()).toHaveTextContent('Done')
+    })
+
+    it('#40 AC4: a failed save shows no "Changes saved", keeps Close, and keeps the error', async () => {
+      setup({ addRepo: async () => ({ ok: false, error: 'request_failed' }) })
+      await ready()
+      fireEvent.change(field(), { target: { value: 'acme/new' } })
+      fireEvent.click(addButton())
+      expect(await screen.findByRole('alert')).toHaveTextContent('Could not add the repository.')
+      expect(screen.queryByText('Changes saved')).toBeNull()
+      expect(closeButton()).toHaveTextContent('Close')
+      expect(closeButton()).toHaveAccessibleName('Close settings')
+      cleanup()
+
+      setup({ syncRepo: async () => ({ ok: false, code: 'github_failed', message: 'x' }) })
+      await ready()
+      fireEvent.click(screen.getByRole('button', { name: 'Sync acme/api' }))
+      await screen.findByText('Sync failed. Try again.')
+      expect(screen.queryByText('Changes saved')).toBeNull()
+      expect(closeButton()).toHaveTextContent('Close')
+    })
+
+    it('#40 AC5: after closing with changes and reopening, it reads Close with no message', async () => {
+      const props = {
+        onClose: () => {},
+        listRepos: async () => ({ ok: true as const, repos: [synced('acme/api')] }),
+        syncRepo: async () => ({ ok: true as const, people: 4 }),
+        getTokenStatus: async () => ({ ok: true as const, configured: true }),
+        getTeam: async () => ({ ok: true as const, candidates: [], selected: null, added: [] }),
+        saveTeam: async () => ({ ok: true }),
+        now: () => NOW,
+      }
+      const { rerender } = render(<SettingsDialog open {...props} />)
+      await ready()
+      await syncOnce()
+      expect(screen.getByText('Changes saved')).toBeInTheDocument()
+      fireEvent.click(closeButton())
+      rerender(<SettingsDialog open={false} {...props} />)
+      rerender(<SettingsDialog open {...props} />)
+      await ready()
+      expect(closeButton()).toHaveTextContent('Close')
+      expect(screen.queryByText('Changes saved')).toBeNull()
+    })
+
+    it('#40 AC6: Escape and the backdrop close exactly like the button, with the changed flag', async () => {
+      const a = setup()
+      await ready()
+      await syncOnce()
+      fireEvent.keyDown(screen.getByRole('tab', { name: 'Repositories' }), { key: 'Escape' })
+      expect(a.onClose).toHaveBeenCalledTimes(1)
+      expect(a.onClose).toHaveBeenCalledWith(true)
+      cleanup()
+
+      const b = setup()
+      await ready()
+      await syncOnce()
+      fireEvent.mouseDown(screen.getByTestId('modal-backdrop'))
+      fireEvent.click(screen.getByTestId('modal-backdrop'))
+      expect(b.onClose).toHaveBeenCalledTimes(1)
+      expect(b.onClose).toHaveBeenCalledWith(true)
+      cleanup()
+
+      const c = setup()
+      await ready()
+      fireEvent.mouseDown(screen.getByTestId('modal-backdrop'))
+      fireEvent.click(screen.getByTestId('modal-backdrop'))
+      expect(c.onClose).toHaveBeenCalledWith(false)
+    })
+
+    // AC8 is the candidate criterion from the design decisions comment on #40 (OQ5).
+    it('#40 AC8: a failed save after an earlier success keeps Done and "Changes saved" with the error', async () => {
+      setup({ removeRepo: async () => ({ ok: false }) })
+      await ready()
+      await syncOnce()
+      fireEvent.click(screen.getByRole('button', { name: 'Remove acme/web' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Remove repository' }))
+      await screen.findByText('Could not remove acme/web. Try again.')
+      expect(screen.getByText('Changes saved')).toBeInTheDocument()
+      expect(closeButton()).toHaveTextContent('Done')
+      expect(closeButton()).toHaveAccessibleName('Done, close settings')
+    })
   })
 
   it('#8 AC6: row actions have unique accessible names', async () => {
