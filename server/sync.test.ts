@@ -158,6 +158,31 @@ describe('runSync', () => {
     ['403', () => new Response('{}', { status: 403 })],
     ['rate limit', () => new Response('{}', { status: 403, headers: { 'x-ratelimit-remaining': '0' } })],
     ['network', () => { throw new Error(`boom ${TOKEN}`) }],
+    [
+      // #61 AC2: a review state GitHub does not define is a bad response, nothing is stored
+      'bad_response: unknown review state',
+      () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              repository: {
+                pullRequests: {
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                  nodes: [
+                    prNode(1, {
+                      reviews: {
+                        pageInfo: { hasNextPage: false, endCursor: null },
+                        nodes: [{ id: 'R1', state: 'WEIRD', submittedAt: '2026-05-24T00:00:00Z', author: { login: 'rev' } }],
+                      },
+                    }),
+                  ],
+                },
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+    ],
   ]
   for (const [label, bad] of failures) {
     it(`#7 AC5: a failing second sync (${label}) keeps the old file byte-identical, exits 1 and does not leak the token`, async () => {
