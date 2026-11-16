@@ -213,13 +213,27 @@ export function createApiRoutes({
           json(res, 500, { error: 'team_invalid' })
           return
         }
-        const stored = await Promise.all(config.repos.map((r) => readRepo(r, dataDir).catch(() => null)))
+        const damagedRepos: Array<{ repo: string; fileError: 'invalid_json' | 'unreadable' }> = []
+        const stored = await Promise.all(
+          config.repos.map(async (r) => {
+            try {
+              return await readRepo(r, dataDir)
+            } catch (err) {
+              // A bad file only drops its own repo; only the repo name and kind are reported.
+              damagedRepos.push({ repo: r, fileError: err instanceof RepoFileError ? err.kind : 'unreadable' })
+              return null
+            }
+          }),
+        )
         const synced = stored.filter((s): s is StoredRepo => s !== null)
         json(res, 200, {
           candidates: candidates(synced, now()),
           selected: team.selected,
           added: team.added,
           anySynced: synced.length > 0,
+          ...(damagedRepos.length > 0
+            ? { damagedRepos: config.repos.flatMap((r) => damagedRepos.filter((d) => d.repo === r)) }
+            : {}),
         })
       },
       PUT: async (req, res) => {
