@@ -6,6 +6,7 @@ import type { MemberDetail } from '../../api/memberDetail'
 import type { PrActivity } from '../../api/prActivity'
 import type { ReviewsGiven } from '../../api/reviews'
 import type { TeamStatsRow } from '../../api/teamStats'
+import type { WaitingPr } from '../../api/waiting'
 
 export type DashboardStatus = 'loading' | 'error' | 'ready'
 
@@ -27,6 +28,8 @@ export interface DashboardValue {
   contributions: () => Contributions
   /** Reviews given per person for the current selection, period and team. */
   reviewsGiven: () => ReviewsGiven[]
+  /** Open pull requests with no review yet for the current selection and team (any age). */
+  waiting: () => WaitingPr[]
   /** Pull request activity (opened, merged, closed) per bucket for the current selection, period and team. */
   prActivity: () => PrActivity
   /** Overview KPI figures for the current selection, period and team. */

@@ -23,6 +23,7 @@ import { memberDetail as memberDetailPure } from '../../api/memberDetail'
 import { prActivity as prActivityPure } from '../../api/prActivity'
 import { reviewsPerPerson } from '../../api/reviews'
 import { teamStats as teamStatsPure } from '../../api/teamStats'
+import { waitingForReview } from '../../api/waiting'
 import { DashboardContext } from './context'
 import type { DashboardStatus, DashboardValue } from './context'
 
@@ -142,6 +143,7 @@ export default function DashboardProvider({
       subline: toolbarSubline(entries, selection, period, nowDate, team),
       contributions: () => contributionsPerPerson(entries, selection, period, nowDate, team),
       reviewsGiven: () => reviewsPerPerson(entries, selection, period, nowDate, team),
+      waiting: () => waitingForReview(entries, selection, nowDate, team),
       prActivity: () => prActivityPure(entries, selection, period, nowDate, team),
       kpis: () => kpisPure(entries, selection, period, nowDate, team),
       teamMembers,
