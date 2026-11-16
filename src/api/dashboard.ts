@@ -1,6 +1,6 @@
 // Pure shared read interface for the dashboard (#16). No React, no fetch, no clock reads:
 // `now` is always passed in. Inputs are never mutated.
-import type { StoredPullRequest, StoredRepo, StoredReview } from './types.ts'
+import type { DamagedRepo, StoredPullRequest, StoredRepo, StoredReview } from './types.ts'
 
 export type Period = 7 | 30 | 90
 export type RepoSelection = 'all' | string
@@ -163,7 +163,32 @@ function plural(n: number, singular: string, pluralForm: string): string {
   return `${n} ${n === 1 ? singular : pluralForm}`
 }
 
+const DAMAGED_KIND: Record<DamagedRepo['fileError'], RepoLoadError> = {
+  invalid_json: 'corrupt',
+  unreadable: 'unreadable',
+}
+
+/** Subline for the selection; with all repos selected, each damaged repo is named with its own reason. */
 export function toolbarSubline(
+  entries: RepoEntry[],
+  selection: RepoSelection,
+  period: Period,
+  now: Date,
+  teamFilter?: ReadonlySet<string> | null,
+  damagedRepos: readonly DamagedRepo[] = [],
+): string {
+  const base = baseSubline(entries, selection, period, now, teamFilter)
+  if (selection === 'all') {
+    const notes = damagedRepos.map((d) => `${d.repo}: ${ERROR_TEXT[DAMAGED_KIND[d.fileError]]}`)
+    return notes.length > 0 ? `${base} · ${notes.join(' · ')}` : base
+  }
+  const damaged = damagedRepos.find((d) => d.repo === selection)
+  const entry = entries.find((e) => e.repo === selection)
+  if (damaged && !entry?.error) return ERROR_TEXT[DAMAGED_KIND[damaged.fileError]]
+  return base
+}
+
+function baseSubline(
   entries: RepoEntry[],
   selection: RepoSelection,
   period: Period,

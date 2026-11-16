@@ -42,6 +42,12 @@ export interface LinkedRepo {
   fileError?: 'invalid_json' | 'unreadable'
 }
 
+/** A repo whose local data file is damaged, as reported by `GET /api/team`. */
+export interface DamagedRepo {
+  repo: string // "owner/name"
+  fileError: 'invalid_json' | 'unreadable'
+}
+
 export interface StoredRepo {
   schemaVersion: 3
   repo: string // "owner/name"
