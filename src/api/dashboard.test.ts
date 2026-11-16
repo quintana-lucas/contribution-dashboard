@@ -245,6 +245,31 @@ describe('repos that failed to load', () => {
   })
 })
 
+describe('corrupt and unreadable repos', () => {
+  const bad = (repo: string, error: 'corrupt' | 'unreadable') => ({ ...entry(repo, null), error })
+
+  it('#35 AC4: corrupt, unreadable and not synced each have their own message', () => {
+    const corrupt = toolbarSubline([bad('d/w', 'corrupt')], 'd/w', 30, NOW)
+    const unreadable = toolbarSubline([bad('d/w', 'unreadable')], 'd/w', 30, NOW)
+    const missing = toolbarSubline([entry('d/w', null)], 'd/w', 30, NOW)
+    expect(new Set([corrupt, unreadable, missing]).size).toBe(3)
+    expect(corrupt).toBe('repository data file is damaged (invalid JSON)')
+    expect(unreadable).toBe('repository data file could not be read')
+  })
+
+  it('#35 AC4: in the all view they are counted as failed, not as not synced', () => {
+    expect(syncText([entry('a/x', ago(60000)), bad('d/w', 'corrupt')], 'all', NOW)).toBe(
+      'synced 1 min ago (1 could not be loaded)',
+    )
+  })
+
+  it('#35 AC5: the messages contain no path or file name', () => {
+    for (const kind of ['corrupt', 'unreadable'] as const) {
+      expect(toolbarSubline([bad('d/w', kind)], 'd/w', 30, NOW)).not.toMatch(/\.json|[\\/]/)
+    }
+  })
+})
+
 describe('team members filter', () => {
   const e = entry(
     'a/x',

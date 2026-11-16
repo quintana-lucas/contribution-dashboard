@@ -417,6 +417,46 @@ describe('DashboardProvider', () => {
     expect(screen.getByTestId('subline')).toHaveTextContent(/^not synced yet$/)
   })
 
+  it('#35 AC1: invalid_json and unreadable results become corrupt and unreadable entries', async () => {
+    const deps = makeDeps()
+    deps.getRepoData.mockImplementation(async (repo: string) =>
+      repo === 'acme/api'
+        ? { ok: false as const, error: 'invalid_json' as const }
+        : repo === 'acme/web'
+          ? { ok: false as const, error: 'unreadable' as const }
+          : { ok: true as const, data: storedRepo(repo, '2026-06-15T09:00:00.000Z', ['ana']) },
+    )
+    render(
+      <DashboardProvider {...deps}>
+        <EntriesConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('entries')).toHaveTextContent('ready|acme/api:corrupt,acme/web:unreadable,acme/new:none'),
+    )
+    fireEvent.click(screen.getByText('web'))
+    expect(screen.getByTestId('subline')).toHaveTextContent(/^repository data file could not be read$/)
+    expect(screen.getByTestId('subline')).not.toHaveTextContent('not synced')
+  })
+
+  it('#35 AC3: a repo flagged by the list is corrupt without a data request, others stay healthy', async () => {
+    const deps = makeDeps()
+    deps.listRepos.mockImplementation(async () => ({
+      ok: true as const,
+      repos: [
+        { repo: 'acme/api', syncedAt: null, baseBranch: null, people: null, fileError: 'invalid_json' as const },
+        { repo: 'acme/web', syncedAt: '2026-06-15T09:00:00.000Z', baseBranch: 'main', people: 1 },
+      ],
+    }))
+    render(
+      <DashboardProvider {...deps}>
+        <EntriesConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('entries')).toHaveTextContent('ready|acme/api:corrupt,acme/web:data'))
+    expect(deps.getRepoData).not.toHaveBeenCalledWith('acme/api')
+  })
+
   it('#34 AC4: a failed repo list still gives the global error state', async () => {
     const deps = makeDeps()
     deps.listRepos.mockImplementation(async () => ({ ok: false as const, error: 'request_failed' as const }))

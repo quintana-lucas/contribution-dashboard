@@ -15,6 +15,7 @@ import {
   readConfig,
   readRepo,
   readTeam,
+  RepoFileError,
   repoFilePath,
   writeConfig,
   writeTeam,
@@ -85,7 +86,14 @@ export function createApiRoutes({
           json(res, 400, { error: 'invalid_repo' })
           return
         }
-        const stored = await readRepo(repo, dataDir)
+        let stored: StoredRepo | null
+        try {
+          stored = await readRepo(repo, dataDir)
+        } catch (err) {
+          // Only the kind is reported: no path, no file contents.
+          json(res, 500, { error: err instanceof RepoFileError ? err.kind : 'unreadable' })
+          return
+        }
         if (!stored) {
           json(res, 404, { error: 'not_synced' })
           return
@@ -103,12 +111,20 @@ export function createApiRoutes({
         }
         const repos = await Promise.all(
           config.repos.map(async (repo) => {
-            const stored = await readRepo(repo, dataDir).catch(() => null)
+            let stored: StoredRepo | null = null
+            let fileError: 'invalid_json' | 'unreadable' | undefined
+            try {
+              stored = await readRepo(repo, dataDir)
+            } catch (err) {
+              // A bad file only affects its own entry; only the kind is reported.
+              fileError = err instanceof RepoFileError ? err.kind : 'unreadable'
+            }
             return {
               repo,
               syncedAt: stored?.syncedAt ?? null,
               baseBranch: stored ? baseBranch(stored) : null,
               people: stored ? people(stored) : null,
+              ...(fileError ? { fileError } : {}),
             }
           }),
         )

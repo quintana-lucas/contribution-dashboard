@@ -51,8 +51,14 @@ interface Loaded {
   teamMembers: string[]
 }
 
+const FILE_ERROR_KIND: Record<'invalid_json' | 'unreadable', RepoLoadError> = {
+  invalid_json: 'corrupt',
+  unreadable: 'unreadable',
+}
+
 /** One repo's entry. A failure here never rejects: it becomes that entry's own `error`. */
 async function loadEntry(linked: LinkedRepo, get: typeof defaultGetRepoData): Promise<RepoEntry> {
+  if (linked.fileError) return failedEntry(linked.repo, FILE_ERROR_KIND[linked.fileError])
   if (linked.syncedAt === null) return { repo: linked.repo, syncedAt: null, data: null }
   let result: RepoDataResult
   try {
@@ -62,7 +68,10 @@ async function loadEntry(linked: LinkedRepo, get: typeof defaultGetRepoData): Pr
   }
   if (result.ok) return { repo: linked.repo, syncedAt: linked.syncedAt, data: result.data }
   if (result.error === 'not_synced') return { repo: linked.repo, syncedAt: null, data: null }
-  // Add new per-repo error kinds (e.g. corrupt data) by mapping them here.
+  if (result.error === 'invalid_json' || result.error === 'unreadable') {
+    return failedEntry(linked.repo, FILE_ERROR_KIND[result.error])
+  }
+  // Add new per-repo error kinds by mapping them here.
   return failedEntry(linked.repo, 'request_failed')
 }
 

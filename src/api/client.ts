@@ -10,7 +10,7 @@ export type ListReposResult =
 
 export type RepoDataResult =
   | { ok: true; data: StoredRepo }
-  | { ok: false; error: 'invalid_repo' | 'not_synced' | 'request_failed' }
+  | { ok: false; error: 'invalid_repo' | 'not_synced' | 'request_failed' | 'invalid_json' | 'unreadable' }
 
 export type SyncResult =
   | { ok: true; people: number }
@@ -48,6 +48,10 @@ export async function getRepoData(
     }
     if (res.status === 400) return { ok: false, error: 'invalid_repo' }
     if (res.status === 404) return { ok: false, error: 'not_synced' }
+    if (res.status === 500) {
+      const body = (await res.json()) as { error?: string }
+      if (body.error === 'invalid_json' || body.error === 'unreadable') return { ok: false, error: body.error }
+    }
   } catch {
     // fall through
   }

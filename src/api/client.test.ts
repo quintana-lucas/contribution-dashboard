@@ -27,6 +27,23 @@ describe('listRepos', () => {
   })
 })
 
+describe('getRepoData file errors', () => {
+  it('#35 AC1: a 500 invalid_json body maps to invalid_json', async () => {
+    const f = spy(() => new Response('{"error":"invalid_json"}', { status: 500 }))
+    expect(await getRepoData('acme/widgets', {}, f)).toEqual({ ok: false, error: 'invalid_json' })
+  })
+
+  it('#35 AC2: a 500 unreadable body maps to unreadable', async () => {
+    const f = spy(() => new Response('{"error":"unreadable"}', { status: 500 }))
+    expect(await getRepoData('acme/widgets', {}, f)).toEqual({ ok: false, error: 'unreadable' })
+  })
+
+  it('#35 AC1: any other 500 stays request_failed', async () => {
+    const f = spy(() => new Response('{"error":"boom"}', { status: 500 }))
+    expect(await getRepoData('acme/widgets', {}, f)).toEqual({ ok: false, error: 'request_failed' })
+  })
+})
+
 describe('team client', () => {
   it('#15 AC1: getTeam parses candidates, selected and added from /api/team', async () => {
     const body = {
