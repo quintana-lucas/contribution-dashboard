@@ -308,6 +308,150 @@ describe('DashboardProvider', () => {
     expect(screen.getByTestId('detail')).toHaveTextContent('ANA|1')
   })
 
+  function EntriesConsumer() {
+    const { status, entries, setSelection, subline } = useDashboard()
+    return (
+      <div>
+        <p data-testid="entries">
+          {`${status}|${entries.map((e) => `${e.repo}:${e.error ?? (e.data ? 'data' : 'none')}`).join(',')}`}
+        </p>
+        <p data-testid="subline">{subline}</p>
+        <button onClick={() => setSelection('acme/web')}>web</button>
+      </div>
+    )
+  }
+
+  it('#34 AC1: all synced repos are requested before any of them resolves', async () => {
+    const deps = makeDeps()
+    const resolvers: Array<() => void> = []
+    deps.getRepoData.mockImplementation(
+      (repo: string) =>
+        new Promise((resolve) => {
+          resolvers.push(() => resolve({ ok: true as const, data: storedRepo(repo, '2026-06-15T09:00:00.000Z', ['ana']) }))
+        }),
+    )
+    render(
+      <DashboardProvider {...deps}>
+        <EntriesConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(deps.getRepoData).toHaveBeenCalledTimes(2))
+    expect(screen.getByTestId('entries')).toHaveTextContent(/^loading/)
+    resolvers.forEach((resolve) => resolve())
+    await waitFor(() => expect(screen.getByTestId('entries')).toHaveTextContent(/^ready/))
+  })
+
+  it('#34 AC2: a failing repo gets its own error and the others keep their data', async () => {
+    const deps = makeDeps()
+    deps.getRepoData.mockImplementation(async (repo: string) =>
+      repo === 'acme/api'
+        ? { ok: false as const, error: 'request_failed' as const }
+        : { ok: true as const, data: storedRepo(repo, '2026-06-15T11:30:00.000Z', ['ana']) },
+    )
+    render(
+      <DashboardProvider {...deps}>
+        <EntriesConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('entries')).toHaveTextContent(
+        'ready|acme/api:request_failed,acme/web:data,acme/new:none',
+      ),
+    )
+    expect(screen.getByTestId('subline')).toHaveTextContent('1 could not be loaded')
+    fireEvent.click(screen.getByText('web'))
+    expect(screen.getByTestId('subline')).not.toHaveTextContent('could not')
+  })
+
+  it('#34 AC2: a getRepoData that throws is also isolated to its repo', async () => {
+    const deps = makeDeps()
+    deps.getRepoData.mockImplementation(async (repo: string) => {
+      if (repo === 'acme/web') throw new Error('boom')
+      return { ok: true as const, data: storedRepo(repo, '2026-06-15T09:00:00.000Z', ['ana']) }
+    })
+    render(
+      <DashboardProvider {...deps}>
+        <EntriesConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('entries')).toHaveTextContent('ready|acme/api:data,acme/web:request_failed'),
+    )
+  })
+
+  it('#34 AC2: the failed repo shows its own message when selected', async () => {
+    const deps = makeDeps()
+    deps.getRepoData.mockImplementation(async (repo: string) =>
+      repo === 'acme/web'
+        ? { ok: false as const, error: 'request_failed' as const }
+        : { ok: true as const, data: storedRepo(repo, '2026-06-15T09:00:00.000Z', ['ana']) },
+    )
+    render(
+      <DashboardProvider {...deps}>
+        <EntriesConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('entries')).toHaveTextContent(/^ready/))
+    fireEvent.click(screen.getByText('web'))
+    expect(screen.getByTestId('subline')).toHaveTextContent(/^could not load this repository$/)
+  })
+
+  it('#34 AC3: a not_synced repo stays "not synced", distinct from an error', async () => {
+    const deps = makeDeps()
+    deps.getRepoData.mockImplementation(async (repo: string) =>
+      repo === 'acme/web'
+        ? { ok: false as const, error: 'not_synced' as const }
+        : { ok: true as const, data: storedRepo(repo, '2026-06-15T09:00:00.000Z', ['ana']) },
+    )
+    render(
+      <DashboardProvider {...deps}>
+        <EntriesConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('entries')).toHaveTextContent('ready|acme/api:data,acme/web:none,acme/new:none'),
+    )
+    expect(screen.getByTestId('subline')).toHaveTextContent('2 not synced yet')
+    expect(screen.getByTestId('subline')).not.toHaveTextContent('could not')
+    fireEvent.click(screen.getByText('web'))
+    expect(screen.getByTestId('subline')).toHaveTextContent(/^not synced yet$/)
+  })
+
+  it('#34 AC4: a failed repo list still gives the global error state', async () => {
+    const deps = makeDeps()
+    deps.listRepos.mockImplementation(async () => ({ ok: false as const, error: 'request_failed' as const }))
+    render(
+      <DashboardProvider {...deps}>
+        <EntriesConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('entries')).toHaveTextContent(/^error\|$/))
+    expect(deps.getRepoData).not.toHaveBeenCalled()
+  })
+
+  it('#34 AC5: repos keep their original order when results arrive reversed', async () => {
+    const deps = makeDeps()
+    const resolvers: Record<string, () => void> = {}
+    deps.getRepoData.mockImplementation(
+      (repo: string) =>
+        new Promise((resolve) => {
+          resolvers[repo] = () =>
+            resolve({ ok: true as const, data: storedRepo(repo, '2026-06-15T09:00:00.000Z', ['ana']) })
+        }),
+    )
+    render(
+      <DashboardProvider {...deps}>
+        <EntriesConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(deps.getRepoData).toHaveBeenCalledTimes(2))
+    resolvers['acme/web']()
+    resolvers['acme/api']()
+    await waitFor(() =>
+      expect(screen.getByTestId('entries')).toHaveTextContent('ready|acme/api:data,acme/web:data,acme/new:none'),
+    )
+  })
+
   it('#16 AC6: useDashboard throws outside the provider', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
