@@ -5,6 +5,7 @@ import type { Kpis } from '../../api/kpis'
 import type { MemberDetail } from '../../api/memberDetail'
 import type { ReviewsGiven } from '../../api/reviews'
 import type { TeamStatsRow } from '../../api/teamStats'
+import type { WaitingPr } from '../../api/waiting'
 
 export type DashboardStatus = 'loading' | 'error' | 'ready'
 
@@ -26,6 +27,8 @@ export interface DashboardValue {
   contributions: () => Contributions
   /** Reviews given per person for the current selection, period and team. */
   reviewsGiven: () => ReviewsGiven[]
+  /** Open pull requests with no review yet for the current selection and team (any age). */
+  waiting: () => WaitingPr[]
   /** Overview KPI figures for the current selection, period and team. */
   kpis: () => Kpis
   /** Selected team logins in their original casing; [] while the team is not chosen. */
