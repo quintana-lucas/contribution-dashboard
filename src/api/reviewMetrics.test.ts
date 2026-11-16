@@ -73,12 +73,33 @@ describe('formatDuration and formatSize', () => {
   })
 
   it('AC5: durations carry a unit', () => {
-    expect(formatDuration(0)).toBe('0 min')
     expect(formatDuration(45 * 60 * 1000)).toBe('45 min')
     expect(formatDuration(5.5 * HOUR)).toBe('5.5 h')
     expect(formatDuration(24 * HOUR)).toBe('24 h')
     expect(formatDuration(72 * HOUR)).toBe('3 days')
     expect(formatDuration(60 * HOUR)).toBe('2.5 days')
+  })
+
+  it('AC1 (#52): durations just under an hour never show 60 min', () => {
+    const MIN = 60 * 1000
+    expect(formatDuration(59.5 * MIN)).toBe('59 min')
+    expect(formatDuration(59.99 * MIN)).toBe('59 min')
+    expect(formatDuration(60 * MIN - 1)).toBe('59 min')
+    expect(formatDuration(60 * MIN)).toBe('1 h')
+  })
+
+  it('AC2 (#52): durations under a minute show <1 min instead of 0 min', () => {
+    expect(formatDuration(0)).toBe('<1 min')
+    expect(formatDuration(20 * 1000)).toBe('<1 min')
+    expect(formatDuration(59 * 1000)).toBe('<1 min')
+    expect(formatDuration(60 * 1000)).toBe('1 min')
+  })
+
+  it('AC3 (#52): durations from 1 min to under 59.5 min are unchanged', () => {
+    const MIN = 60 * 1000
+    expect(formatDuration(1.4 * MIN)).toBe('1 min')
+    expect(formatDuration(10.6 * MIN)).toBe('11 min')
+    expect(formatDuration(59.4 * MIN)).toBe('59 min')
   })
 
   it('AC5: sizes carry a unit', () => {
@@ -165,6 +186,24 @@ describe('kpis review metrics', () => {
     const k = kpis([e], 'all', 30, NOW)
     expect(k.medianFirstReviewMs).toBeNull()
     expect(k.medianCycleMs).toBeNull()
+  })
+})
+
+describe('kpis period edge cases (#52)', () => {
+  it('AC5 (#52): a PR opened before the period but merged inside it counts for cycle time, not first review', () => {
+    const e = entry(
+      [pr({ createdAt: '2026-05-20T10:00:00Z', mergedAt: '2026-06-20T10:00:00Z' })],
+      [review({ submittedAt: '2026-05-20T11:00:00Z' })],
+    )
+    const k = kpis([e], 'all', 30, NOW)
+    expect(k.medianCycleMs).toBe(31 * 24 * HOUR)
+    expect(k.medianFirstReviewMs).toBeNull()
+  })
+
+  it('AC6 (#52): a first review by someone outside the selected team still counts', () => {
+    const e = entry([pr({})], [review({ reviewer: 'outsider', submittedAt: '2026-06-20T13:00:00Z' })])
+    const k = kpis([e], 'all', 30, NOW, new Set(['alice']))
+    expect(k.medianFirstReviewMs).toBe(3 * HOUR)
   })
 })
 

@@ -61,10 +61,12 @@ function trim(n: number): string {
   return n.toFixed(1).replace(/\.0$/, '')
 }
 
-/** Readable duration with a stated unit ("45 min", "5.5 h", "2.5 days"); "n/a" for null. */
+/** Readable duration with a stated unit ("45 min", "<1 min", "5.5 h", "2.5 days"); "n/a" for null. */
 export function formatDuration(ms: number | null): string {
   if (ms === null || !Number.isFinite(ms)) return NOT_AVAILABLE
-  if (ms < HOUR_MS) return `${Math.round(ms / MINUTE_MS)} min`
+  if (ms < MINUTE_MS) return '<1 min'
+  // Capped at 59 so a value just under an hour never reads "60 min".
+  if (ms < HOUR_MS) return `${Math.min(59, Math.round(ms / MINUTE_MS))} min`
   if (ms < 2 * DAY_MS) return `${trim(ms / HOUR_MS)} h`
   const days = ms / DAY_MS
   return `${trim(days)} ${trim(days) === '1' ? 'day' : 'days'}`
