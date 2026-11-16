@@ -214,6 +214,24 @@ describe('App Team tab (#19)', () => {
     expect(openedOf('ana')).toBe('2')
   })
 
+  it('#20 AC1: shows a hint, then the member detail under the table once a row is selected', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    await openTeam()
+    expect(screen.getByText('Select a member to see their detail.')).toBeVisible()
+    expect(screen.queryByRole('region', { name: 'ana' })).toBeNull()
+    fireEvent.click(screen.getByRole('row', { name: /^ana:/ }))
+    const panel = screen.getByRole('region', { name: 'ana' })
+    expect(screen.queryByText('Select a member to see their detail.')).toBeNull()
+    expect(within(panel).getByText('All repositories · last 30 days')).toBeVisible()
+    expect(within(panel).getByRole('heading', { level: 3, name: 'Recent pull requests' })).toBeVisible()
+    expect(within(panel).getAllByRole('listitem').length).toBeGreaterThan(0)
+    expect(screen.getByText('Selected ana. Detail shown below the table.')).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('7 days'))
+    expect(screen.getByRole('heading', { level: 3, name: 'PRs merged per day' })).toBeVisible()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
   it('AC6: an empty team shows the message and its button opens Settings on the Team tab', async () => {
     render(<App {...teamDeps([])} />)
     await screen.findByLabelText('Repository')

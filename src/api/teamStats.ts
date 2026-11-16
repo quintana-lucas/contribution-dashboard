@@ -69,6 +69,8 @@ export function teamStats(
       if (pr.state === 'closed' && inWindow(pr.closedAt)) row.closed += 1
     }
     for (const review of entry.data.reviews) {
+      // Dismissed reviews are not counted anywhere (#20).
+      if (review.outcome === 'dismissed') continue
       if (review.reviewerIsBot || review.reviewer === null || !inWindow(review.submittedAt)) continue
       const reviewer = review.reviewer.toLowerCase()
       const given = byKey.get(reviewer)

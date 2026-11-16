@@ -43,6 +43,31 @@ describe('BarList', () => {
     expect(fills[2]).toHaveAttribute('data-muted', 'true')
   })
 
+  it('AC3: each outcome shows label and count as text and carries its variant', () => {
+    render(
+      <BarList
+        label="Reviews given by outcome"
+        items={[
+          { key: 'a', label: 'Approved', value: 4, variant: 'solid', srText: 'Approved: 4 of 7 reviews.' },
+          { key: 'c', label: 'Changes requested', value: 2, variant: 'muted', srText: 'Changes requested: 2 of 7 reviews.' },
+          { key: 'm', label: 'Commented', value: 1, variant: 'hatched', srText: 'Commented: 1 of 7 reviews.' },
+        ]}
+      />,
+    )
+    const rows = within(screen.getByRole('list', { name: 'Reviews given by outcome' })).getAllByRole('listitem')
+    expect(rows[0]).toHaveTextContent('Approved')
+    expect(rows[0]).toHaveTextContent('Approved: 4 of 7 reviews.')
+    expect(rows[1]).toHaveTextContent('Changes requested: 2 of 7 reviews.')
+    expect(rows[2]).toHaveTextContent('Commented: 1 of 7 reviews.')
+    expect(within(rows[2]).getByText('1')).toBeVisible()
+    const fills = screen.getAllByTestId('bar-fill')
+    expect(fills.map((f) => f.getAttribute('data-variant'))).toEqual(['solid', 'muted', 'hatched'])
+    // variant bars all scale against the largest value
+    expect(fills[0]).toHaveStyle({ width: '100%' })
+    expect(fills[1]).toHaveStyle({ width: '50%' })
+    expect(fills[2]).toHaveStyle({ width: '25%' })
+  })
+
   it('AC5: long labels carry a title with the full text', () => {
     const long = 'a-very-long-login-name-that-will-be-truncated'
     render(

@@ -8,6 +8,7 @@ const NOW = new Date('2026-06-30T12:00:00Z')
 function pr(over: Partial<StoredPullRequest>): StoredPullRequest {
   return {
     number: 1,
+    title: 'Fake title',
     author: 'alice',
     authorIsBot: false,
     state: 'merged',
@@ -27,7 +28,7 @@ function entry(repo: string, prs: StoredPullRequest[]): RepoEntry {
   return {
     repo,
     syncedAt: '2026-06-30T11:00:00Z',
-    data: { schemaVersion: 2, repo, syncedAt: '2026-06-30T11:00:00Z', pullRequests: prs, reviews: [] },
+    data: { schemaVersion: 3, repo, syncedAt: '2026-06-30T11:00:00Z', pullRequests: prs, reviews: [] },
   }
 }
 

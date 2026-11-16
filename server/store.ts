@@ -124,12 +124,13 @@ export function repoFilePath(dataDir: string, repo: string): string {
 /** Copies only the schema fields, so nothing else can reach disk. */
 export function toStored(input: StoredRepo): StoredRepo {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     repo: input.repo,
     syncedAt: input.syncedAt,
     pullRequests: input.pullRequests.map(
       (p): StoredPullRequest => ({
         number: p.number,
+        title: p.title,
         author: p.author,
         authorIsBot: p.authorIsBot,
         state: p.state,
@@ -169,7 +170,7 @@ export async function readRepo(
     const parsed = JSON.parse(await readFile(repoFilePath(dataDir, repo), 'utf8')) as StoredRepo
     // Files from an older schema lack the newer fields; treat them as not synced
     // so the user re-runs `npm run sync` instead of the UI reading partial data.
-    if (parsed?.schemaVersion !== 2) return null
+    if (parsed?.schemaVersion !== 3) return null
     return parsed
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null

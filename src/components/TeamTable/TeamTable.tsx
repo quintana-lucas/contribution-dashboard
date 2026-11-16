@@ -85,7 +85,7 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
 
   function select(login: string) {
     setSelectedMember(login)
-    setAnnouncement(`Selected ${login}.`)
+    setAnnouncement(`Selected ${login}. Detail shown below the table.`)
   }
 
   function onRowKeyDown(e: KeyboardEvent<HTMLTableRowElement>, login: string) {

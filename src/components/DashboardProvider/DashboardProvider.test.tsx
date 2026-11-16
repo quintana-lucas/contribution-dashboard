@@ -282,6 +282,32 @@ describe('DashboardProvider', () => {
     expect(screen.getByTestId('selected')).toHaveTextContent('null')
   })
 
+  it('#20 AC1: memberDetail() is null without a selection and follows the selected member', async () => {
+    const { deps } = teamOf(['ana', 'bob'])
+    function DetailConsumer() {
+      const { status, memberDetail, setSelectedMember, setSelection } = useDashboard()
+      const detail = status === 'ready' ? memberDetail() : null
+      return (
+        <div>
+          <p data-testid="detail">{detail === null ? 'none' : `${detail.login}|${detail.recentTotal}`}</p>
+          <button onClick={() => setSelectedMember('ANA')}>select ana</button>
+          <button onClick={() => setSelection('acme/web')}>web</button>
+        </div>
+      )
+    }
+    render(
+      <DashboardProvider {...deps}>
+        <DetailConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(deps.getRepoData).toHaveBeenCalled())
+    expect(screen.getByTestId('detail')).toHaveTextContent('none')
+    fireEvent.click(screen.getByText('select ana'))
+    expect(screen.getByTestId('detail')).toHaveTextContent('ANA|2')
+    fireEvent.click(screen.getByText('web'))
+    expect(screen.getByTestId('detail')).toHaveTextContent('ANA|1')
+  })
+
   it('#16 AC6: useDashboard throws outside the provider', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {

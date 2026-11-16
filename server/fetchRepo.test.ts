@@ -15,6 +15,7 @@ const review = (id: string, state = 'APPROVED', login: string | null = 'rev-user
 })
 const pr = (number: number, over: Record<string, unknown> = {}) => ({
   number,
+  title: `Fake PR ${number}`,
   state: 'OPEN',
   createdAt: daysAgo(10),
   updatedAt: daysAgo(2),
@@ -131,6 +132,7 @@ describe('fetchRepoActivity', () => {
     const [p1, p2, p3] = result.repo.pullRequests
     expect(p1).toEqual({
       number: 1,
+      title: 'Fake PR 1',
       author: 'fake-author',
       state: 'merged',
       createdAt: daysAgo(10),
@@ -149,7 +151,7 @@ describe('fetchRepoActivity', () => {
       { id: 'A', pullRequestNumber: 3, reviewer: 'rev-one', reviewerIsBot: false, outcome: 'changes_requested', submittedAt: '2026-05-30T10:00:00Z' },
       { id: 'D', pullRequestNumber: 3, reviewer: null, reviewerIsBot: false, outcome: 'approved', submittedAt: daysAgo(1) },
     ])
-    expect(result.repo).toMatchObject({ schemaVersion: 2, repo: 'acme/widgets' })
+    expect(result.repo).toMatchObject({ schemaVersion: 3, repo: 'acme/widgets' })
     expect(JSON.stringify(result.repo)).not.toMatch(/secret|a@b\.c/)
   })
 

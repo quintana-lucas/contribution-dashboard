@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { addRepo, getRepoData, getTeam, getTokenStatus, listRepos, removeRepo, saveTeam, syncRepo } from './client.ts'
 import type { StoredRepo } from './types.ts'
 
-const stored: StoredRepo = { schemaVersion: 2, repo: 'acme/widgets', syncedAt: '2026-06-01T00:00:00.000Z', pullRequests: [], reviews: [] }
+const stored: StoredRepo = { schemaVersion: 3, repo: 'acme/widgets', syncedAt: '2026-06-01T00:00:00.000Z', pullRequests: [], reviews: [] }
 
 const spy = (res: () => Response) => vi.fn(async () => res()) as unknown as typeof fetch & ReturnType<typeof vi.fn>
 
@@ -92,8 +92,8 @@ describe('api client', () => {
   const withBot: StoredRepo = {
     ...stored,
     pullRequests: [
-      { number: 1, author: 'dependabot[bot]', authorIsBot: true, state: 'open', createdAt: 'a', updatedAt: 'a', mergedAt: null, closedAt: null, additions: 1, deletions: 1, baseBranch: 'main', requestedReviewers: [] },
-      { number: 2, author: 'alice', authorIsBot: false, state: 'open', createdAt: 'a', updatedAt: 'a', mergedAt: null, closedAt: null, additions: 1, deletions: 1, baseBranch: 'main', requestedReviewers: [] },
+      { number: 1, title: 't', author: 'dependabot[bot]', authorIsBot: true, state: 'open', createdAt: 'a', updatedAt: 'a', mergedAt: null, closedAt: null, additions: 1, deletions: 1, baseBranch: 'main', requestedReviewers: [] },
+      { number: 2, title: 't', author: 'alice', authorIsBot: false, state: 'open', createdAt: 'a', updatedAt: 'a', mergedAt: null, closedAt: null, additions: 1, deletions: 1, baseBranch: 'main', requestedReviewers: [] },
     ],
     reviews: [
       { id: 'r1', pullRequestNumber: 2, reviewer: 'ci[bot]', reviewerIsBot: true, outcome: 'commented', submittedAt: 'a' },

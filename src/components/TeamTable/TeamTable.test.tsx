@@ -130,7 +130,7 @@ describe('TeamTable', () => {
     expect(setSelectedMember).toHaveBeenCalledWith('bob')
     fireEvent.keyDown(screen.getByRole('row', { name: 'Ana: select member' }), { key: 'Enter' })
     expect(setSelectedMember).toHaveBeenLastCalledWith('Ana')
-    expect(screen.getByRole('status').textContent).toBe('Selected Ana.')
+    expect(screen.getByRole('status').textContent).toBe('Selected Ana. Detail shown below the table.')
     expect(screen.getByRole('row', { name: 'Ana: select member' }).tabIndex).toBe(0)
     rerenderWith({ selectedMember: 'ana' })
     expect(screen.getByRole('row', { name: 'Ana: select member' }).getAttribute('aria-current')).toBe('true')

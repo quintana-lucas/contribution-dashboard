@@ -14,6 +14,7 @@ const pr = (
   extra: { mergedAt?: string; closedAt?: string; additions?: number; deletions?: number } = {},
 ) => ({
   number,
+  title: 'Fake title',
   author,
   authorIsBot: false,
   state,
@@ -28,7 +29,7 @@ const pr = (
 })
 
 function repo(name: string, pullRequests: StoredRepo['pullRequests'], reviews: StoredRepo['reviews'] = []): StoredRepo {
-  return { schemaVersion: 2, repo: name, syncedAt: '2026-06-15T09:00:00.000Z', pullRequests, reviews }
+  return { schemaVersion: 3, repo: name, syncedAt: '2026-06-15T09:00:00.000Z', pullRequests, reviews }
 }
 
 // NOW = 2026-06-15T12:00Z. acme/api: one stale open PR (waiting), one merged with 1,200/300 lines.

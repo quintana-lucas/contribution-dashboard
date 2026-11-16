@@ -9,6 +9,7 @@ import ContributionsWidget from './ContributionsWidget'
 function merged(number: number, author: string, mergedAt: string) {
   return {
     number,
+    title: 'Fake title',
     author,
     authorIsBot: false,
     state: 'merged' as const,
@@ -25,7 +26,7 @@ function merged(number: number, author: string, mergedAt: string) {
 
 function repoData(repo: string, prs: ReturnType<typeof merged>[]): StoredRepo {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     repo,
     syncedAt: '2026-06-15T09:00:00.000Z',
     pullRequests: prs,
