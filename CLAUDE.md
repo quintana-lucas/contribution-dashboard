@@ -9,7 +9,7 @@ Node >= 24 (`engines` in `package.json`, `.nvmrc` = `24`).
 ## Commands
 - Dev: `npm run dev` (Vite plus the local server)
 - Start: `npm start` (serves built `dist/` and `/api` on 127.0.0.1:8787)
-- Sync: `npm run sync` (validates the token; real sync arrives with #7)
+- Sync: `npm run sync` (fetches the repos linked in `.data/config.json` and stores them under `.data/repos/`: up to 90 days of closed/merged pull requests, open ones always kept)
 - Test: `npm test`
 - Gate: `npm run check` (runs `npm run lint && npm run build && npm test`). It must pass before any commit or PR.
 
