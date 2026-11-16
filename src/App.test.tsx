@@ -47,7 +47,7 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
-  it('AC1: renders banner, main and contentinfo once each', async () => {
+  it('AC1, AC8: renders banner, main and contentinfo once each', async () => {
     await renderApp()
     expect(screen.getAllByRole('banner')).toHaveLength(1)
     expect(screen.getAllByRole('main')).toHaveLength(1)

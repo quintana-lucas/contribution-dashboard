@@ -17,6 +17,7 @@ function renderGrid() {
 describe('WidgetGrid', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('AC7: renders four regions Widget 1 to 4 in order with unchanged names', () => {
@@ -63,6 +64,5 @@ describe('WidgetGrid', () => {
     renderGrid()
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(xhrSpy).not.toHaveBeenCalled()
-    vi.unstubAllGlobals()
   })
 })
