@@ -229,7 +229,8 @@ describe('fetchRepoActivity', () => {
     expect((await run([prPage([pr(1, { baseRefName: undefined })])])).result).toEqual({ ok: false, code: 'bad_response' })
   })
 
-  it('#13 AC2: maps each outcome, keeps dismissed, drops PENDING', async () => {
+  // #61 AC1
+  it('#13 AC2 / #61 AC1: maps each outcome, keeps dismissed, drops PENDING', async () => {
     const reviews = {
       pageInfo: pi(),
       nodes: [
@@ -250,10 +251,41 @@ describe('fetchRepoActivity', () => {
     ])
   })
 
-  it('#13 AC2: an unknown review state returns bad_response', async () => {
+  // #61 AC2: the failure result carries no repo, so nothing is stored; sync.test.ts covers the file side
+  it('#13 AC2 / #61 AC2: an unknown review state returns bad_response', async () => {
     const reviews = { pageInfo: pi(), nodes: [review('A', 'WEIRD')] }
     const { result } = await run([prPage([pr(1, { reviews })])])
     expect(result).toEqual({ ok: false, code: 'bad_response' })
+  })
+
+  it('#61 AC3: reviews on page 2 keep their non-default outcomes and PENDING is dropped', async () => {
+    const first = pr(1, { reviews: { pageInfo: pi(true, 'r1'), nodes: [review('R1', 'APPROVED')] } })
+    const page2 = {
+      data: {
+        repository: {
+          pullRequest: {
+            reviews: {
+              pageInfo: pi(),
+              nodes: [
+                review('R2', 'CHANGES_REQUESTED'),
+                review('R3', 'COMMENTED'),
+                review('R4', 'PENDING'),
+                review('R5', 'DISMISSED'),
+              ],
+            },
+          },
+        },
+      },
+    }
+    const { result, bodies } = await run([prPage([first]), page2])
+    if (!result.ok) throw new Error('expected ok')
+    expect(result.repo.reviews.map((r) => [r.id, r.outcome])).toEqual([
+      ['R1', 'approved'],
+      ['R2', 'changes_requested'],
+      ['R3', 'commented'],
+      ['R5', 'dismissed'],
+    ])
+    expect(bodies[1].variables).toMatchObject({ number: 1, cursor: 'r1' })
   })
 
   it('#13 AC4: flags Bot-typename and [bot] accounts as bots, and a User is not', async () => {

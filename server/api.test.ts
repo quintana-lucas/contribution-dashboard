@@ -480,6 +480,32 @@ describe('GET /api/data', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  it('#61 AC4: /api/data returns every review outcome unchanged', async () => {
+    const outcomes = ['approved', 'changes_requested', 'commented', 'dismissed'] as const
+    await writeRepo(
+      {
+        ...stored,
+        reviews: outcomes.map((outcome, i) => ({
+          id: `r${i + 1}`,
+          pullRequestNumber: 1,
+          reviewer: 'fake-reviewer',
+          reviewerIsBot: false,
+          outcome,
+          submittedAt: '2026-05-21T00:00:00Z',
+        })),
+      },
+      dir,
+    )
+    const call = await boot()
+    const body = (await (await call('/api/data?repo=acme/widgets')).json()) as StoredRepo
+    expect(body.reviews.map((r) => [r.id, r.outcome])).toEqual([
+      ['r1', 'approved'],
+      ['r2', 'changes_requested'],
+      ['r3', 'commented'],
+      ['r4', 'dismissed'],
+    ])
+  })
+
   it('#7 AC2: 400 invalid_repo on a bad format and 404 not_synced when no file', async () => {
     const call = await boot()
     const bad = await call('/api/data?repo=../etc')
