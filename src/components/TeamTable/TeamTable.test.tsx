@@ -16,13 +16,21 @@ function row(login: string, over: Partial<TeamStatsRow> = {}): TeamStatsRow {
     reviewsReceived: 0,
     additions: 0,
     deletions: 0,
+    avgPrSize: null,
+    medianFirstReviewMs: null,
+    medianCycleMs: null,
     ...over,
   }
 }
 
+const HOUR = 60 * 60 * 1000
+
 const ROWS = [
-  row('Ana', { opened: 5, merged: 3, closed: 1, open: 1, reviewsGiven: 4, reviewsReceived: 2, additions: 120, deletions: 45 }),
-  row('bob', { opened: 2, merged: 5, additions: 10, deletions: 10 }),
+  row('Ana', {
+    opened: 5, merged: 3, closed: 1, open: 1, reviewsGiven: 4, reviewsReceived: 2, additions: 120, deletions: 45,
+    avgPrSize: 300, medianFirstReviewMs: 5.5 * HOUR,
+  }),
+  row('bob', { opened: 2, merged: 5, additions: 10, deletions: 10, avgPrSize: 20, medianFirstReviewMs: 30 * 60 * 1000 }),
   row('cy'),
 ]
 
@@ -57,7 +65,7 @@ function bodyLogins() {
 }
 
 describe('TeamTable', () => {
-  it('AC1: renders one row per member with all 8 columns', () => {
+  it('AC1: renders one row per member with all 10 columns', () => {
     renderTable()
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼]/g, ''))
     expect(headers).toEqual([
@@ -69,11 +77,13 @@ describe('TeamTable', () => {
       'Reviews given',
       'Reviews received',
       'Lines (+/−)',
+      'PR size',
+      '1st review',
     ])
     expect(screen.getAllByRole('row')).toHaveLength(4)
     const ana = screen.getByRole('row', { name: 'Ana: select member' })
     expect(within(ana).getAllByRole('cell').map((c) => c.textContent)).toEqual([
-      '5', '3', '1', '1', '4', '2', '+120 −45',
+      '5', '3', '1', '1', '4', '2', '+120 −45', '300 lines', '5.5 h',
     ])
     expect(within(screen.getByRole('row', { name: 'cy: select member' })).getAllByRole('cell')[0].textContent).toBe('0')
     expect(screen.getByText('Per member · All repositories · last 30 days')).toBeTruthy()
@@ -115,6 +125,27 @@ describe('TeamTable', () => {
     expect(bodyLogins()).toEqual(['bob', 'cy', 'Ana'])
     fireEvent.click(screen.getByRole('button', { name: 'Sort by Lines (+/−)' }))
     expect(bodyLogins()).toEqual(['cy', 'bob', 'Ana'])
+  })
+
+  it('AC2: PR size and 1st review columns sort, with n/a rows last in both directions', () => {
+    renderTable()
+    // Ana 300 lines / 5.5 h, bob 20 lines / 30 min, cy n/a.
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by PR size' }))
+    expect(bodyLogins()).toEqual(['bob', 'Ana', 'cy'])
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by PR size' }))
+    expect(bodyLogins()).toEqual(['Ana', 'bob', 'cy'])
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by 1st review' }))
+    expect(bodyLogins()).toEqual(['bob', 'Ana', 'cy'])
+    expect(screen.getByRole('columnheader', { name: /1st review/ }).getAttribute('aria-sort')).toBe('ascending')
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by 1st review' }))
+    expect(bodyLogins()).toEqual(['Ana', 'bob', 'cy'])
+  })
+
+  it('AC4: members without qualifying PRs show n/a, never 0 or NaN', () => {
+    renderTable()
+    const cells = within(screen.getByRole('row', { name: 'cy: select member' })).getAllByRole('cell')
+    expect(cells.slice(-2).map((c) => c.textContent)).toEqual(['n/a', 'n/a'])
+    expect(document.body).not.toHaveTextContent('NaN')
   })
 
   it('AC3: keeps the sort when the figures change', () => {

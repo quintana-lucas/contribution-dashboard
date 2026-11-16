@@ -3,6 +3,7 @@
 // excluded; login matching is case-insensitive.
 import { periodWindow } from './dashboard.ts'
 import type { Period, RepoEntry, RepoSelection } from './dashboard.ts'
+import { cycleDuration, firstReviewDurations, median } from './reviewMetrics.ts'
 
 export interface Kpis {
   /** True when at least one repo in scope has synced data. */
@@ -21,6 +22,10 @@ export interface Kpis {
   deletions: number
   /** PRs created in the window. */
   prsOpened: number
+  /** Median ms from opening to first review, over PRs opened in the window; null when none qualify. */
+  medianFirstReviewMs: number | null
+  /** Median ms from opening to merge, over PRs merged in the window; null when none. */
+  medianCycleMs: number | null
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -53,8 +58,12 @@ export function kpis(
     additions: 0,
     deletions: 0,
     prsOpened: 0,
+    medianFirstReviewMs: null,
+    medianCycleMs: null,
   }
   let changesRequested = 0
+  const firstReviews: number[] = []
+  const cycles: number[] = []
 
   const selected = selection === 'all' ? entries : entries.filter((x) => x.repo === selection)
   for (const entry of selected) {
@@ -79,6 +88,7 @@ export function kpis(
       }
     }
 
+    const firstReviewMs = firstReviewDurations(entry.data.pullRequests, entry.data.reviews)
     for (const pr of entry.data.pullRequests) {
       if (pr.authorIsBot || pr.author === null || !inTeam(pr.author)) continue
       if (pr.state === 'open') {
@@ -90,12 +100,18 @@ export function kpis(
           out.waitingOver24h += 1
         }
       }
-      if (pr.state === 'merged' && inWindow(pr.mergedAt)) out.mergedPrs += 1
+      if (pr.state === 'merged' && inWindow(pr.mergedAt)) {
+        out.mergedPrs += 1
+        const cycle = cycleDuration(pr)
+        if (cycle !== null) cycles.push(cycle)
+      }
       if (pr.state === 'closed' && inWindow(pr.closedAt)) out.closedWithoutMerge += 1
       if (inWindow(pr.createdAt)) {
         out.prsOpened += 1
         out.additions += pr.additions
         out.deletions += pr.deletions
+        const first = firstReviewMs.get(pr.number)
+        if (first !== undefined) firstReviews.push(first)
       }
     }
 
@@ -107,6 +123,8 @@ export function kpis(
       if (review.outcome === 'changes_requested') changesRequested += 1
     }
   }
+  out.medianFirstReviewMs = median(firstReviews)
+  out.medianCycleMs = median(cycles)
   if (out.reviews > 0) out.changesRequestedPercent = Math.round((100 * changesRequested) / out.reviews)
   return out
 }

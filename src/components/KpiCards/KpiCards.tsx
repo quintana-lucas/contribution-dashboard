@@ -1,8 +1,17 @@
+import { formatDuration } from '../../api/reviewMetrics'
 import { useDashboard } from '../DashboardProvider'
 import StatCard from '../StatCard'
 import styles from './KpiCards.module.css'
 
 const fmt = new Intl.NumberFormat('en-US')
+const LABELS = [
+  'Open PRs',
+  'Merged PRs',
+  'Code reviews',
+  'Lines changed (+/−)',
+  'Time to first review',
+  'Cycle time',
+] as const
 
 // Overview KPI cards. Reads only the dashboard context (local data); no requests of its own.
 function KpiCards() {
@@ -18,11 +27,13 @@ function KpiCards() {
       <StatCard key="merged" label="Merged PRs" value="…" />,
       <StatCard key="reviews" label="Code reviews" value="…" />,
       <StatCard key="lines" label="Lines changed (+/−)" value="…" />,
+      <StatCard key="first-review" label="Time to first review" value="…" />,
+      <StatCard key="cycle" label="Cycle time" value="…" />,
     ]
   } else {
     const k = kpis()
     if (!k.hasData) {
-      cards = ['Open PRs', 'Merged PRs', 'Code reviews', 'Lines changed (+/−)'].map((l) => (
+      cards = [...LABELS].map((l) => (
         <StatCard key={l} label={l} value="No data yet" compact />
       ))
     } else {
@@ -52,6 +63,20 @@ function KpiCards() {
           value={`+${added} / −${deleted}`}
           srText={`${added} lines added, ${deleted} lines deleted`}
           subline={`across ${fmt.format(k.prsOpened)} PR${k.prsOpened === 1 ? '' : 's'} opened`}
+        />,
+        <StatCard
+          key="first-review"
+          label="Time to first review"
+          value={formatDuration(k.medianFirstReviewMs)}
+          subline="median, opened to first review"
+          compact={k.medianFirstReviewMs === null}
+        />,
+        <StatCard
+          key="cycle"
+          label="Cycle time"
+          value={formatDuration(k.medianCycleMs)}
+          subline="median, opened to merged"
+          compact={k.medianCycleMs === null}
         />,
       ]
     }

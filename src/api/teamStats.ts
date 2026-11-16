@@ -3,6 +3,7 @@
 // login matching is case-insensitive.
 import { periodWindow } from './dashboard.ts'
 import type { Period, RepoEntry, RepoSelection } from './dashboard.ts'
+import { average, cycleDuration, firstReviewDurations, median } from './reviewMetrics.ts'
 
 export interface TeamStatsRow {
   login: string
@@ -14,6 +15,12 @@ export interface TeamStatsRow {
   reviewsReceived: number
   additions: number
   deletions: number
+  /** Average lines changed (additions + deletions) over PRs opened in the window; null when none. */
+  avgPrSize: number | null
+  /** Median ms from opening to first review, over PRs opened in the window; null when none qualify. */
+  medianFirstReviewMs: number | null
+  /** Median ms from opening to merge, over PRs merged in the window; null when none. */
+  medianCycleMs: number | null
 }
 
 /** One row per member, in the order of `members` (display casing kept). Does not sort. */
@@ -43,14 +50,26 @@ export function teamStats(
     reviewsReceived: 0,
     additions: 0,
     deletions: 0,
+    avgPrSize: null,
+    medianFirstReviewMs: null,
+    medianCycleMs: null,
   }))
   const byKey = new Map<string, TeamStatsRow>()
   for (const row of rows) byKey.set(row.login.toLowerCase(), row)
+  const sizes = new Map<string, number[]>()
+  const firstReviews = new Map<string, number[]>()
+  const cycles = new Map<string, number[]>()
+  const push = (map: Map<string, number[]>, key: string, value: number) => {
+    const list = map.get(key)
+    if (list) list.push(value)
+    else map.set(key, [value])
+  }
 
   const selected = selection === 'all' ? entries : entries.filter((x) => x.repo === selection)
   for (const entry of selected) {
     if (!entry.data) continue
     const authorByNumber = new Map<number, string>()
+    const firstReviewMs = firstReviewDurations(entry.data.pullRequests, entry.data.reviews)
     for (const pr of entry.data.pullRequests) {
       if (pr.authorIsBot || pr.author === null) continue
       const key = pr.author.toLowerCase()
@@ -60,8 +79,13 @@ export function teamStats(
       if (inWindow(pr.createdAt)) {
         row.opened += 1
         if (pr.state === 'open') row.open += 1
+        push(sizes, key, pr.additions + pr.deletions)
+        const first = firstReviewMs.get(pr.number)
+        if (first !== undefined) push(firstReviews, key, first)
       }
       if (pr.state === 'merged' && inWindow(pr.mergedAt)) {
+        const cycle = cycleDuration(pr)
+        if (cycle !== null) push(cycles, key, cycle)
         row.merged += 1
         row.additions += pr.additions
         row.deletions += pr.deletions
@@ -80,6 +104,11 @@ export function teamStats(
       const received = byKey.get(authorKey)
       if (received) received.reviewsReceived += 1
     }
+  }
+  for (const [key, row] of byKey) {
+    row.avgPrSize = average(sizes.get(key) ?? [])
+    row.medianFirstReviewMs = median(firstReviews.get(key) ?? [])
+    row.medianCycleMs = median(cycles.get(key) ?? [])
   }
   return rows
 }
