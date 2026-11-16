@@ -18,7 +18,7 @@ function Row({ pr }: { pr: WaitingPr }) {
   const reviewers =
     pr.requestedReviewers.length === 0 ? 'none requested' : pr.requestedReviewers.join(', ')
   return (
-    <li className={pr.overdue ? `${styles.item} ${styles.overdueItem}` : styles.item}>
+    <li className={styles.item}>
       <p className={styles.title}>
         {pr.title} #{pr.number}
       </p>
