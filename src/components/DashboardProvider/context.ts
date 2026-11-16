@@ -3,6 +3,7 @@ import type { Contributions } from '../../api/contributions'
 import type { Activity, Period, RepoEntry, RepoSelection } from '../../api/dashboard'
 import type { Kpis } from '../../api/kpis'
 import type { MemberDetail } from '../../api/memberDetail'
+import type { PrActivity } from '../../api/prActivity'
 import type { ReviewsGiven } from '../../api/reviews'
 import type { TeamStatsRow } from '../../api/teamStats'
 import type { WaitingPr } from '../../api/waiting'
@@ -29,6 +30,8 @@ export interface DashboardValue {
   reviewsGiven: () => ReviewsGiven[]
   /** Open pull requests with no review yet for the current selection and team (any age). */
   waiting: () => WaitingPr[]
+  /** Pull request activity (opened, merged, closed) per bucket for the current selection, period and team. */
+  prActivity: () => PrActivity
   /** Overview KPI figures for the current selection, period and team. */
   kpis: () => Kpis
   /** Selected team logins in their original casing; [] while the team is not chosen. */
