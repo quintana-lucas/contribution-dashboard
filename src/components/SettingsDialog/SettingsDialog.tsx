@@ -1,4 +1,4 @@
-import { useId, useRef } from 'react'
+import { useId, useRef, useState } from 'react'
 import {
   addRepo as defaultAddRepo,
   getTeam as defaultGetTeam,
@@ -53,9 +53,17 @@ export default function SettingsDialog({
   const changed = useRef(false)
   const bodyRef = useRef<HTMLDivElement>(null)
 
+  const [saved, setSaved] = useState(false)
+
+  const markChanged = () => {
+    changed.current = true
+    setSaved(true)
+  }
+
   const close = () => {
     const result = changed.current
     changed.current = false
+    setSaved(false)
     onClose(result)
   }
 
@@ -88,9 +96,7 @@ export default function SettingsDialog({
                     syncRepo={syncRepo}
                     getTokenStatus={getTokenStatus}
                     now={now}
-                    onChanged={() => {
-                      changed.current = true
-                    }}
+                    onChanged={markChanged}
                   />
                 ),
               },
@@ -101,18 +107,24 @@ export default function SettingsDialog({
                   <TeamMembersPanel
                     getTeam={getTeam}
                     saveTeam={saveTeam}
-                    onChanged={() => {
-                      changed.current = true
-                    }}
+                    onChanged={markChanged}
                   />
                 ),
               },
             ]}
           />
         </div>
-        <button type="button" className={styles.close} aria-label="Close settings" onClick={close}>
-          Close
+        <button
+          type="button"
+          className={styles.close}
+          aria-label={saved ? 'Done, close settings' : 'Close settings'}
+          onClick={close}
+        >
+          {saved ? 'Done' : 'Close'}
         </button>
+        <p role="status" className={styles.saved}>
+          {saved ? 'Changes saved' : ''}
+        </p>
       </div>
     </Modal>
   )

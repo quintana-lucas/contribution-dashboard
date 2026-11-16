@@ -3,7 +3,8 @@
   grid-template-columns: 1fr auto;
   grid-template-areas:
     'title close'
-    'tabs tabs';
+    'tabs tabs'
+    'saved saved';
   gap: var(--space-3);
   align-items: center;
 }
@@ -18,6 +19,19 @@
 
 .tabs {
   grid-area: tabs;
+}
+
+.saved {
+  grid-area: saved;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+}
+
+/* Stays in the DOM (never display: none) so screen readers observe it, but cancels the row gap while empty. */
+.saved:empty {
+  margin-top: calc(-1 * var(--space-3));
 }
 
 .close {
