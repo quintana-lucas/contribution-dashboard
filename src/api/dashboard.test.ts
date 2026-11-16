@@ -224,6 +224,27 @@ describe('never-synced repos', () => {
   })
 })
 
+describe('repos that failed to load', () => {
+  const failed = (repo: string) => ({ ...entry(repo, null), error: 'request_failed' as const })
+
+  it('#34 AC2: a failed repo is counted apart from the not-synced ones', () => {
+    const entries = [entry('a/x', ago(5 * 60000)), entry('c/z', null), failed('d/w')]
+    expect(syncText(entries, 'all', NOW)).toBe('synced 5 min ago (1 not synced yet, 1 could not be loaded)')
+  })
+
+  it('#34 AC2: a single failed repo has its own wording, not "not synced yet"', () => {
+    const entries = [entry('a/x', ago(60000)), failed('d/w')]
+    expect(toolbarSubline(entries, 'd/w', 30, NOW)).toBe('could not load this repository')
+  })
+
+  it('#34 AC3: with nothing synced, failures stay distinct from not synced', () => {
+    expect(toolbarSubline([entry('a/x', null), failed('d/w')], 'all', 30, NOW)).toBe(
+      '2 repositories · 1 not synced yet, 1 could not be loaded',
+    )
+    expect(toolbarSubline([failed('d/w')], 'all', 30, NOW)).toBe('1 repository · 1 could not be loaded')
+  })
+})
+
 describe('team members filter', () => {
   const e = entry(
     'a/x',

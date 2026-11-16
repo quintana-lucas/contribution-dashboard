@@ -1,5 +1,5 @@
 import { vi } from 'vitest'
-import type { GetTeamResult } from '../api/client'
+import type { GetTeamResult, ListReposResult, RepoDataResult } from '../api/client'
 import type { StoredRepo } from '../api/types'
 
 export const NOW = new Date('2026-06-15T12:00:00.000Z')
@@ -34,15 +34,17 @@ export function makeDeps() {
     'acme/api': storedRepo('acme/api', '2026-06-15T09:00:00.000Z', ['ana', 'bob'], 'develop'),
     'acme/web': storedRepo('acme/web', '2026-06-15T11:30:00.000Z', ['ana', 'cy', 'dee']),
   }
-  const listRepos = vi.fn(async () => ({
-    ok: true as const,
-    repos: [
-      { repo: 'acme/api', syncedAt: '2026-06-15T09:00:00.000Z', baseBranch: 'main', people: 2 },
-      { repo: 'acme/web', syncedAt: '2026-06-15T11:30:00.000Z', baseBranch: 'main', people: 2 },
-      { repo: 'acme/new', syncedAt: null, baseBranch: null, people: null },
-    ],
-  }))
-  const getRepoData = vi.fn(async (repo: string) => ({ ok: true as const, data: data[repo] }))
+  const listRepos = vi.fn(
+    async (): Promise<ListReposResult> => ({
+      ok: true,
+      repos: [
+        { repo: 'acme/api', syncedAt: '2026-06-15T09:00:00.000Z', baseBranch: 'main', people: 2 },
+        { repo: 'acme/web', syncedAt: '2026-06-15T11:30:00.000Z', baseBranch: 'main', people: 2 },
+        { repo: 'acme/new', syncedAt: null, baseBranch: null, people: null },
+      ],
+    }),
+  )
+  const getRepoData = vi.fn(async (repo: string): Promise<RepoDataResult> => ({ ok: true, data: data[repo] }))
   const addRepo = vi.fn(async (input: string) => ({
     ok: true as const,
     repo: input,

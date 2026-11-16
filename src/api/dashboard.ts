@@ -5,11 +5,23 @@ import type { StoredPullRequest, StoredRepo, StoredReview } from './types.ts'
 export type Period = 7 | 30 | 90
 export type RepoSelection = 'all' | string
 
+/** Why one repo's data could not be loaded. Distinct from "not synced". Extend with new kinds. */
+export type RepoLoadError = 'request_failed'
+
 export interface RepoEntry {
   repo: string
   syncedAt: string | null
   data: StoredRepo | null
+  /** Set when loading this repo failed; its data is null and it is not "not synced". */
+  error?: RepoLoadError
 }
+
+/** Toolbar wording for a single repo, per error kind. */
+const ERROR_TEXT: Record<RepoLoadError, string> = {
+  request_failed: 'could not load this repository',
+}
+/** Wording when counting failed repos among several, whatever the kind. */
+const FAILED_COUNT_TEXT = 'could not be loaded'
 
 /** `start` is inclusive, `end` is exclusive. */
 export interface Bucket {
@@ -132,13 +144,17 @@ function ago(syncedAt: string, now: Date): string {
 export function syncText(entries: RepoEntry[], selection: RepoSelection, now: Date): string {
   const selected = selectedEntries(entries, selection)
   const synced = selected.filter((e) => e.syncedAt !== null)
-  if (synced.length === 0) return 'not synced yet'
+  const failed = selected.filter((e) => e.error !== undefined).length
+  const missing = selected.length - synced.length - failed
+  const notes: string[] = []
+  if (missing > 0) notes.push(`${missing} not synced yet`)
+  if (failed > 0) notes.push(`${failed} ${FAILED_COUNT_TEXT}`)
+  if (synced.length === 0) return failed === 0 ? 'not synced yet' : notes.join(', ')
   const oldest = synced.reduce((a, b) =>
     new Date(a.syncedAt as string).getTime() <= new Date(b.syncedAt as string).getTime() ? a : b,
   )
   const text = ago(oldest.syncedAt as string, now)
-  const missing = selected.length - synced.length
-  return missing > 0 ? `${text} (${missing} not synced yet)` : text
+  return notes.length > 0 ? `${text} (${notes.join(', ')})` : text
 }
 
 function plural(n: number, singular: string, pluralForm: string): string {
@@ -161,6 +177,7 @@ export function toolbarSubline(
     return `${repos} · ${members} · ${sync}`
   }
   const entry = selected[0]
+  if (entry?.error) return ERROR_TEXT[entry.error]
   if (!entry || entry.syncedAt === null) return 'not synced yet'
   const members = plural(selectActivity(entries, selection, period, now, teamFilter).teamMemberCount, 'member', 'members')
   const branch = baseBranch(entry.data)

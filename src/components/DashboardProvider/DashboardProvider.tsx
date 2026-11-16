@@ -6,6 +6,7 @@ import {
   listRepos as defaultListRepos,
 } from '../../api/client'
 import type {
+  RepoDataResult,
   addRepo as AddRepo,
   getTokenStatus as GetTokenStatus,
   removeRepo as RemoveRepo,
@@ -17,7 +18,8 @@ import {
   selectActivity as selectActivityPure,
   toolbarSubline,
 } from '../../api/dashboard'
-import type { Period, RepoEntry, RepoSelection } from '../../api/dashboard'
+import type { Period, RepoEntry, RepoLoadError, RepoSelection } from '../../api/dashboard'
+import type { LinkedRepo } from '../../api/types'
 import { kpis as kpisPure } from '../../api/kpis'
 import { memberDetail as memberDetailPure } from '../../api/memberDetail'
 import { prActivity as prActivityPure } from '../../api/prActivity'
@@ -47,6 +49,25 @@ interface Loaded {
   team: ReadonlySet<string> | null
   /** Selected logins in original casing, deduplicated case-insensitively. */
   teamMembers: string[]
+}
+
+/** One repo's entry. A failure here never rejects: it becomes that entry's own `error`. */
+async function loadEntry(linked: LinkedRepo, get: typeof defaultGetRepoData): Promise<RepoEntry> {
+  if (linked.syncedAt === null) return { repo: linked.repo, syncedAt: null, data: null }
+  let result: RepoDataResult
+  try {
+    result = await get(linked.repo)
+  } catch {
+    return failedEntry(linked.repo, 'request_failed')
+  }
+  if (result.ok) return { repo: linked.repo, syncedAt: linked.syncedAt, data: result.data }
+  if (result.error === 'not_synced') return { repo: linked.repo, syncedAt: null, data: null }
+  // Add new per-repo error kinds (e.g. corrupt data) by mapping them here.
+  return failedEntry(linked.repo, 'request_failed')
+}
+
+function failedEntry(repo: string, error: RepoLoadError): RepoEntry {
+  return { repo, syncedAt: null, data: null, error }
 }
 
 // No DashboardProvider.module.css: this component renders no DOM of its own.
@@ -85,21 +106,8 @@ export default function DashboardProvider({
         seen.add(key)
         return true
       })
-      const entries: RepoEntry[] = []
-      for (const linked of res.repos) {
-        if (linked.syncedAt === null) {
-          entries.push({ repo: linked.repo, syncedAt: null, data: null })
-          continue
-        }
-        const result = await get(linked.repo)
-        if (result.ok) {
-          entries.push({ repo: linked.repo, syncedAt: linked.syncedAt, data: result.data })
-        } else if (result.error === 'not_synced') {
-          entries.push({ repo: linked.repo, syncedAt: null, data: null })
-        } else {
-          return failed
-        }
-      }
+      // All repos load at once; map keeps the original order whatever the arrival order.
+      const entries = await Promise.all(res.repos.map((linked) => loadEntry(linked, get)))
       return { status: 'ready', entries, team: teamSet, teamMembers }
     }
     const result = await load()
