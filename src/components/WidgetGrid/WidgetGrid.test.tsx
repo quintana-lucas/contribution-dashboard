@@ -6,7 +6,6 @@ import WidgetGrid from './WidgetGrid'
 
 const names = ['Widget 1', 'Widget 2', 'Widget 3', 'Widget 4']
 const placeholders = [
-  ['Widget 3', 'Future: pull request activity'],
   ['Widget 4', 'Future: to be decided'],
 ]
 
@@ -39,7 +38,14 @@ describe('WidgetGrid', () => {
     expect(region).not.toHaveTextContent('Placeholder. No data yet.')
   })
 
-  it('AC6: widgets 3 and 4 still show their hint and the placeholder body', () => {
+  it('AC7: widget 3 is the PR activity widget, not a placeholder', () => {
+    renderGrid()
+    const region = screen.getByRole('region', { name: 'Widget 3' })
+    expect(region).toHaveTextContent('Pull request activity')
+    expect(region).not.toHaveTextContent('Placeholder. No data yet.')
+  })
+
+  it('AC6: widget 4 still shows its hint and the placeholder body', () => {
     renderGrid()
     for (const [name, hint] of placeholders) {
       const region = screen.getByRole('region', { name })
