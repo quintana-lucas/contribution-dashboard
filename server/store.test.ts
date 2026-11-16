@@ -129,6 +129,29 @@ describe('store', () => {
     expect((await readRepo('acme/widgets', dir))?.pullRequests[0].title).toBe('Fake title')
   })
 
+  it('#61 AC4: every review outcome is read back exactly as written', async () => {
+    const outcomes = ['approved', 'changes_requested', 'commented', 'dismissed'] as const
+    const repo: StoredRepo = {
+      ...sample,
+      reviews: outcomes.map((outcome, i) => ({
+        id: `R${i + 1}`,
+        pullRequestNumber: 1,
+        reviewer: 'rev',
+        reviewerIsBot: false,
+        outcome,
+        submittedAt: '2026-05-02T00:00:00Z',
+      })),
+    }
+    await writeRepo(repo, dir)
+    const read = await readRepo('acme/widgets', dir)
+    expect(read?.reviews.map((r) => [r.id, r.outcome])).toEqual([
+      ['R1', 'approved'],
+      ['R2', 'changes_requested'],
+      ['R3', 'commented'],
+      ['R4', 'dismissed'],
+    ])
+  })
+
   it('AC6: rejects a repo name that could escape the data dir', async () => {
     await expect(writeRepo({ ...sample, repo: '../evil/x' }, dir)).rejects.toThrow()
   })
