@@ -91,11 +91,18 @@ describe('App', () => {
     const focusable = [
       ...container.querySelectorAll('a[href], button, input, select, textarea, [tabindex]'),
     ].filter((el) => el.closest('[hidden]') === null)
-    expect(focusable).toHaveLength(7)
+    expect(focusable).toHaveLength(8)
     const tabs = [...focusable].filter((el) => el.getAttribute('role') === 'tab')
     expect(tabs).toHaveLength(2)
     const others = [...focusable].filter((el) => el.getAttribute('role') !== 'tab')
-    expect(others.map((el) => el.tagName)).toEqual(['BUTTON', 'SELECT', 'INPUT', 'INPUT', 'INPUT'])
+    expect(others.map((el) => el.tagName)).toEqual([
+      'BUTTON',
+      'SELECT',
+      'INPUT',
+      'INPUT',
+      'INPUT',
+      'BUTTON',
+    ])
     expect(others[0]).toHaveAccessibleName('Open settings')
   })
 
@@ -271,6 +278,14 @@ describe('App settings', () => {
   it('#8 AC1: the empty-state button opens Settings', async () => {
     render(<App {...statefulDeps([])} />)
     await screen.findByText('Set up your dashboard')
+    fireEvent.click(screen.getByRole('button', { name: 'Add repositories' }))
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument()
+  })
+
+  it('#65 AC8: with no linked repos there is no Sync now button and Add repositories opens Settings', async () => {
+    render(<App {...statefulDeps([])} />)
+    await screen.findByText('Set up your dashboard')
+    expect(screen.queryByRole('button', { name: 'Sync now' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Add repositories' }))
     expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument()
   })

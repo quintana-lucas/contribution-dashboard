@@ -115,3 +115,62 @@
 .subline[data-state='error'] {
   color: var(--color-text);
 }
+
+.sync,
+.dismiss {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-dashed);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+  cursor: pointer;
+}
+
+.sync {
+  margin-left: auto;
+}
+
+.sync[aria-disabled='true'] {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.sync:focus-visible,
+.dismiss:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+}
+
+.result p,
+.failures {
+  margin: 0;
+}
+
+.summary {
+  color: var(--color-text);
+  font-weight: var(--text-lg-weight);
+}
+
+.failures {
+  padding-left: var(--space-4);
+}
+
+.resultLine {
+  color: var(--color-text-muted);
+}
