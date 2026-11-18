@@ -66,7 +66,7 @@ function ContributionsWidget({ onOpenSettings }: ContributionsWidgetProps) {
   }
 
   return (
-    <Widget title="Widget 1" hint={hint}>
+    <Widget title="Merged PRs per person" hint={hint}>
       {body}
     </Widget>
   )

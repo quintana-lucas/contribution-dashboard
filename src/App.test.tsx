@@ -59,7 +59,7 @@ describe('App', () => {
     const main = screen.getByRole('main')
     expect(main).not.toHaveTextContent('Widgets for GitHub team collaboration will appear here.')
     const kpis = within(main).getByRole('region', { name: /^Key figures/ })
-    const widget = within(main).getByRole('region', { name: 'Widget 1' })
+    const widget = within(main).getByRole('region', { name: 'Merged PRs per person' })
     expect(kpis.compareDocumentPosition(widget) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
@@ -118,14 +118,14 @@ describe('App', () => {
       'aria-selected',
       'false',
     )
-    expect(screen.getByRole('region', { name: 'Widget 1' })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Merged PRs per person' })).toBeVisible()
   })
 
   it('AC3: selecting Team shows the team table and hides the grid', async () => {
     await renderApp()
     fireEvent.click(screen.getByRole('tab', { name: 'Team' }))
     expect(screen.getByRole('table')).toBeVisible()
-    expect(screen.queryByRole('region', { name: 'Widget 1' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Merged PRs per person' })).toBeNull()
   })
 
   it('AC4: switching tabs makes no request and does not navigate', async () => {
@@ -146,13 +146,16 @@ describe('App', () => {
     }
   })
 
-  it('AC5: Widget 1..4 regions keep their names inside the Overview panel', async () => {
+  it('AC5: the four widget regions have their titles inside the Overview panel', async () => {
     await renderApp()
     const panel = screen.getByRole('tabpanel')
-    for (const n of [1, 2, 3, 4]) {
-      expect(
-        within(panel).getByRole('region', { name: `Widget ${n}` }),
-      ).toBeInTheDocument()
+    for (const name of [
+      'Merged PRs per person',
+      'Reviews given per person',
+      'PRs opened, merged and closed',
+      'Open PRs waiting for review',
+    ]) {
+      expect(within(panel).getByRole('region', { name })).toBeInTheDocument()
     }
     // The four widgets plus the KPI cards section.
     expect(within(panel).getAllByRole('region')).toHaveLength(5)

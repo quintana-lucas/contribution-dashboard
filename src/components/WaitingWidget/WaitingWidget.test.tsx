@@ -86,7 +86,9 @@ describe('WaitingWidget', () => {
     const rows = items()
     expect(rows).toHaveLength(1)
     expect(rows[0]).toHaveTextContent('acme/web')
-    expect(screen.getByRole('region', { name: 'Widget 4' })).not.toHaveTextContent('dependabot')
+    expect(
+      screen.getByRole('region', { name: 'Open PRs waiting for review' }),
+    ).not.toHaveTextContent('dependabot')
   })
 
   it('AC3: authors outside the selected team are excluded', async () => {
@@ -114,9 +116,9 @@ describe('WaitingWidget', () => {
     expect(screen.queryByRole('list')).toBeNull()
   })
 
-  it('AC5: is a region with an accessible name Widget 4', async () => {
+  it('AC5: is a region with an accessible name Open PRs waiting for review', async () => {
     await renderWidget()
-    expect(screen.getByRole('region', { name: 'Widget 4' })).toHaveTextContent(
+    expect(screen.getByRole('region', { name: 'Open PRs waiting for review' })).toHaveTextContent(
       'Pull requests waiting for review · All repositories',
     )
   })
