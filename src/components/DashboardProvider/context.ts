@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react'
+import type { StartSyncError, SyncRunState } from '../../api/client'
 import type { Contributions } from '../../api/contributions'
 import type { Activity, Period, RepoEntry, RepoSelection } from '../../api/dashboard'
 import type { Kpis } from '../../api/kpis'
@@ -9,6 +10,16 @@ import type { TeamStatsRow } from '../../api/teamStats'
 import type { WaitingPr } from '../../api/waiting'
 
 export type DashboardStatus = 'loading' | 'error' | 'ready'
+
+/**
+ * The all-repos sync (#65) as the UI sees it. `null` is idle: nothing to show.
+ * `finished` and `error` stay until dismissed or the next run starts.
+ */
+export type SyncUiState =
+  | null
+  | { status: 'running'; run: SyncRunState }
+  | { status: 'finished'; run: SyncRunState }
+  | { status: 'error'; error: StartSyncError; message?: string }
 
 export interface DashboardValue {
   status: DashboardStatus
@@ -43,6 +54,14 @@ export interface DashboardValue {
   /** The member picked in the Team table (in memory only), or null. */
   selectedMember: string | null
   setSelectedMember: (login: string | null) => void
+  /** All-repos sync state; null when idle. */
+  syncState: SyncUiState
+  /** True while a sync run is in progress (also reflects a run started before the page loaded). */
+  syncRunning: boolean
+  /** Starts the all-repos sync; a call while one is running or starting does nothing. */
+  startSync: () => void
+  /** Clears a finished or failed sync result. */
+  dismissSync: () => void
 }
 
 export const DashboardContext = createContext<DashboardValue | null>(null)

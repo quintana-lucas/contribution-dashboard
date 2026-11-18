@@ -1,5 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
-import { addRepo, getRepoData, getTeam, getTokenStatus, listRepos, removeRepo, saveTeam, syncRepo } from './client.ts'
+import {
+  addRepo,
+  getRepoData,
+  getSyncState,
+  getTeam,
+  getTokenStatus,
+  listRepos,
+  removeRepo,
+  saveTeam,
+  startSync,
+  syncRepo,
+} from './client.ts'
 import type { StoredRepo } from './types.ts'
 
 const stored: StoredRepo = { schemaVersion: 3, repo: 'acme/widgets', syncedAt: '2026-06-01T00:00:00.000Z', pullRequests: [], reviews: [] }
@@ -227,5 +238,63 @@ describe('removeRepo and getTokenStatus', () => {
       expect(url.startsWith('/api/')).toBe(true)
       expect(url).not.toContain('api.github.com')
     }
+  })
+})
+
+describe('startSync and getSyncState (#65)', () => {
+  const run = { running: true, total: 3, index: 1, current: 'acme/api', results: [] }
+  const down = vi.fn(async () => {
+    throw new Error('down')
+  }) as unknown as typeof fetch
+
+  it('#65 AC2: startSync POSTs /api/sync and returns the run state', async () => {
+    const f = reply(run, 202)
+    expect(await startSync(f)).toEqual({ ok: true, state: run })
+    expect(f).toHaveBeenCalledWith('/api/sync', { method: 'POST' })
+  })
+
+  it('#65 AC3: startSync maps already_running to its own error', async () => {
+    expect(await startSync(reply({ error: 'already_running' }, 409))).toEqual({ ok: false, error: 'already_running' })
+  })
+
+  it('#65 AC7: startSync maps missing_token and keeps the server message', async () => {
+    expect(await startSync(reply({ ok: false, code: 'missing_token', message: 'Set GITHUB_TOKEN' }, 503))).toEqual({
+      ok: false,
+      error: 'missing_token',
+      message: 'Set GITHUB_TOKEN',
+    })
+  })
+
+  it('#65 AC8: startSync maps no_repos and config_invalid', async () => {
+    expect(await startSync(reply({ error: 'no_repos' }, 400))).toEqual({ ok: false, error: 'no_repos' })
+    expect(await startSync(reply({ error: 'config_invalid' }, 500))).toEqual({ ok: false, error: 'config_invalid' })
+  })
+
+  it('#65 AC7: startSync maps a network failure, an unknown error and a malformed body to request_failed', async () => {
+    expect(await startSync(down)).toEqual({ ok: false, error: 'request_failed' })
+    expect(await startSync(reply({ error: 'weird' }, 500))).toEqual({ ok: false, error: 'request_failed' })
+    expect(await startSync(reply({ nope: 1 }, 202))).toEqual({ ok: false, error: 'request_failed' })
+  })
+
+  it('#65 AC11: getSyncState GETs /api/sync and returns the state with failure codes', async () => {
+    const done = {
+      running: false,
+      total: 2,
+      index: 2,
+      current: null,
+      results: [
+        { repo: 'acme/api', ok: true },
+        { repo: 'acme/web', ok: false, code: 'rate_limited' },
+      ],
+    }
+    const f = reply(done)
+    expect(await getSyncState(f)).toEqual({ ok: true, state: done })
+    expect(f).toHaveBeenCalledWith('/api/sync')
+  })
+
+  it('#65 AC11: getSyncState maps failures and malformed bodies to request_failed', async () => {
+    expect(await getSyncState(reply({}, 500))).toEqual({ ok: false, error: 'request_failed' })
+    expect(await getSyncState(reply({ running: 'yes' }))).toEqual({ ok: false, error: 'request_failed' })
+    expect(await getSyncState(down)).toEqual({ ok: false, error: 'request_failed' })
   })
 })

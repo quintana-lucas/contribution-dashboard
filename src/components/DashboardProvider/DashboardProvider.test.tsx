@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { SyncRunState } from '../../api/client'
 import { makeDeps, storedRepo } from '../../test/fakeDeps'
 import DashboardProvider, { useDashboard } from '.'
 
@@ -550,6 +551,163 @@ describe('DashboardProvider', () => {
     await waitFor(() =>
       expect(screen.getByTestId('entries')).toHaveTextContent('ready|acme/api:data,acme/web:data,acme/new:none'),
     )
+  })
+
+  describe('all-repos sync (#65)', () => {
+    const run = (over: Partial<SyncRunState> = {}): SyncRunState => ({
+      running: true,
+      total: 3,
+      index: 1,
+      current: 'acme/api',
+      results: [],
+      ...over,
+    })
+    const finishedRun = run({
+      running: false,
+      index: 3,
+      current: null,
+      results: [
+        { repo: 'acme/api', ok: true },
+        { repo: 'acme/web', ok: false, code: 'rate_limited' },
+        { repo: 'acme/new', ok: true },
+      ],
+    })
+
+    function SyncConsumer() {
+      const { status, syncState, syncRunning, startSync, dismissSync } = useDashboard()
+      return (
+        <div>
+          <p data-testid="sync">{`${status}|${syncRunning}|${JSON.stringify(syncState)}`}</p>
+          <button onClick={startSync}>start</button>
+          <button onClick={dismissSync}>dismiss</button>
+        </div>
+      )
+    }
+    const mount = (deps: ReturnType<typeof makeDeps>) =>
+      render(
+        <DashboardProvider {...deps}>
+          <SyncConsumer />
+        </DashboardProvider>,
+      )
+    const text = () => screen.getByTestId('sync').textContent ?? ''
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('#65 AC11: mounting while a run is in progress resumes its progress', async () => {
+      const deps = makeDeps()
+      deps.getSyncState.mockImplementation(async () => ({ ok: true as const, state: run({ index: 2 }) }))
+      mount(deps)
+      await waitFor(() => expect(text()).toContain('"status":"running"'))
+      expect(text()).toContain('|true|')
+      expect(text()).toContain('"index":2')
+    })
+
+    it('#65 AC11: mounting idle, or after a run finished while closed, shows nothing', async () => {
+      const deps = makeDeps()
+      deps.getSyncState.mockImplementation(async () => ({ ok: true as const, state: finishedRun }))
+      mount(deps)
+      await waitFor(() => expect(deps.getSyncState).toHaveBeenCalled())
+      await waitFor(() => expect(text()).toMatch(/^ready/))
+      expect(text()).toBe('ready|false|null')
+    })
+
+    it('#65 AC3: calling startSync twice in a row posts once', async () => {
+      const deps = makeDeps()
+      mount(deps)
+      await waitFor(() => expect(text()).toMatch(/^ready/))
+      act(() => {
+        fireEvent.click(screen.getByText('start'))
+        fireEvent.click(screen.getByText('start'))
+      })
+      await waitFor(() => expect(text()).toContain('"status":"running"'))
+      fireEvent.click(screen.getByText('start')) // still running
+      expect(deps.startSync).toHaveBeenCalledTimes(1)
+    })
+
+    it('#65 AC2: polls about every second only while running, and stops when it finishes', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const deps = makeDeps()
+      mount(deps)
+      await waitFor(() => expect(text()).toMatch(/^ready/))
+      const idleCalls = deps.getSyncState.mock.calls.length // the mount read
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
+      })
+      expect(deps.getSyncState).toHaveBeenCalledTimes(idleCalls) // idle: no polling
+
+      fireEvent.click(screen.getByText('start'))
+      await waitFor(() => expect(text()).toContain('"status":"running"'))
+      deps.getSyncState.mockImplementation(async () => ({ ok: true as const, state: run({ index: 2, current: 'acme/web' }) }))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(deps.getSyncState).toHaveBeenCalledTimes(idleCalls + 1)
+      expect(text()).toContain('"index":2')
+
+      deps.getSyncState.mockImplementation(async () => ({ ok: true as const, state: finishedRun }))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(text()).toContain('"status":"finished"')
+      const after = deps.getSyncState.mock.calls.length
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
+      })
+      expect(deps.getSyncState).toHaveBeenCalledTimes(after)
+    })
+
+    it('#65 AC4: at the end the repo data reloads silently, without a loading flash', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const deps = makeDeps()
+      mount(deps)
+      await waitFor(() => expect(text()).toMatch(/^ready/))
+      const lists = deps.listRepos.mock.calls.length
+      fireEvent.click(screen.getByText('start'))
+      await waitFor(() => expect(text()).toContain('"status":"running"'))
+      deps.getSyncState.mockImplementation(async () => ({ ok: true as const, state: finishedRun }))
+      const seen: string[] = []
+      const observer = new MutationObserver(() => seen.push(text()))
+      observer.observe(screen.getByTestId('sync'), { childList: true, characterData: true, subtree: true })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      await waitFor(() => expect(deps.listRepos).toHaveBeenCalledTimes(lists + 1))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(50)
+      })
+      observer.disconnect()
+      expect(text()).toContain('"status":"finished"')
+      expect(seen.some((s) => s.startsWith('loading'))).toBe(false)
+      expect(text()).toMatch(/^ready/)
+    })
+
+    it('#65 AC7: a start error is kept in state, and dismiss clears it', async () => {
+      const deps = makeDeps()
+      deps.startSync.mockImplementation(async () => ({
+        ok: false as const,
+        error: 'missing_token' as const,
+        message: 'Token not configured',
+      }))
+      mount(deps)
+      await waitFor(() => expect(text()).toMatch(/^ready/))
+      fireEvent.click(screen.getByText('start'))
+      await waitFor(() => expect(text()).toContain('"error":"missing_token"'))
+      expect(text()).toContain('|false|')
+      fireEvent.click(screen.getByText('dismiss'))
+      expect(text()).toBe('ready|false|null')
+    })
+
+    it('#65 AC3: already_running adopts the run in progress instead of failing', async () => {
+      const deps = makeDeps()
+      mount(deps)
+      await waitFor(() => expect(text()).toMatch(/^ready/))
+      deps.startSync.mockImplementation(async () => ({ ok: false as const, error: 'already_running' as const }))
+      deps.getSyncState.mockImplementation(async () => ({ ok: true as const, state: run({ index: 2 }) }))
+      fireEvent.click(screen.getByText('start'))
+      await waitFor(() => expect(text()).toContain('"status":"running"'))
+    })
   })
 
   it('#16 AC6: useDashboard throws outside the provider', () => {
