@@ -77,7 +77,78 @@ export function createApiRoutes({
   const findLinked = (repos: string[], repo: string) =>
     repos.find((r) => r.toLowerCase() === repo.toLowerCase())
 
+  // All-repos sync run (#65). In memory only; reset on restart. `index` is the 1-based
+  // position of the repo in progress (0 before the first one starts).
+  interface SyncRun {
+    running: boolean
+    total: number
+    index: number
+    current: string | null
+    results: Array<{ repo: string; ok: boolean; code?: string }>
+  }
+  let run: SyncRun = { running: false, total: 0, index: 0, current: null, results: [] }
+  const snapshot = (): SyncRun => ({ ...run, results: run.results.map((r) => ({ ...r })) })
+
+  async function runAll(token: string, repos: string[]): Promise<void> {
+    try {
+      for (const [i, repo] of repos.entries()) {
+        run.index = i + 1
+        run.current = repo
+        let result: Awaited<ReturnType<typeof syncRepo>>
+        try {
+          result = await syncRepo({ token, repo, dataDir, fetchImpl, now: now() })
+        } catch {
+          result = { ok: false, code: 'bad_response' }
+        }
+        run.results.push(result.ok ? { repo, ok: true } : { repo, ok: false, code: result.code })
+      }
+    } finally {
+      run.running = false
+      run.current = null
+    }
+  }
+
   return {
+    '/api/sync': {
+      GET: async (_req, res) => {
+        json(res, 200, snapshot())
+      },
+      POST: async (_req, res) => {
+        if (run.running) {
+          json(res, 409, { error: 'already_running' })
+          return
+        }
+        const token = getToken()
+        if (!token) {
+          json(res, 503, { ok: false, code: 'missing_token', message: MISSING_TOKEN })
+          return
+        }
+        // Lock before the first await so a second request cannot slip in.
+        run = { running: true, total: 0, index: 0, current: null, results: [] }
+        let repos: string[]
+        try {
+          const config = await readConfig(dataDir)
+          if (!config.ok) {
+            run.running = false
+            json(res, 500, { error: 'config_invalid' })
+            return
+          }
+          repos = config.repos
+          if (repos.length === 0) {
+            run.running = false
+            json(res, 400, { error: 'no_repos' })
+            return
+          }
+        } catch {
+          run.running = false
+          json(res, 500, { error: 'config_invalid' })
+          return
+        }
+        run.total = repos.length
+        void runAll(token, repos)
+        json(res, 202, snapshot())
+      },
+    },
     '/api/data': {
       // Reads the local store only; never touches the network.
       GET: async (req, res) => {
@@ -293,6 +364,10 @@ export function createApiRoutes({
         const repo = `${params.owner}/${params.name}`
         if (!isValidRepo(repo)) {
           json(res, 400, { error: 'invalid_repo' })
+          return
+        }
+        if (run.running) {
+          json(res, 409, { error: 'already_running' })
           return
         }
         const token = getToken()
