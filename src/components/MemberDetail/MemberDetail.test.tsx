@@ -159,6 +159,29 @@ describe('MemberDetail', () => {
     ])
   })
 
+  it('#68 AC5: outcomes with mixed digit counts share the BarList structure and proportional fills', () => {
+    renderDetail(
+      {},
+      detail({ reviewOutcomes: { approved: 42, changesRequested: 5, commented: 0 }, reviewsGiven: 47 }),
+    )
+    const list = screen.getByRole('list', { name: 'Reviews given by outcome' })
+    const rowsEls = within(list).getAllByRole('listitem')
+    expect(rowsEls).toHaveLength(3)
+    const classes = rowsEls.map((r) => r.className)
+    expect(new Set(classes).size).toBe(1)
+    const tracks = rowsEls.map((r) => r.children[2].className)
+    expect(new Set(tracks).size).toBe(1)
+    const counts = rowsEls.map((r) => r.children[3] as HTMLElement)
+    expect(counts.map((c) => c.textContent)).toEqual(['42', '5', '0'])
+    expect(new Set(counts.map((c) => c.className)).size).toBe(1)
+    const widths = within(list)
+      .getAllByTestId('bar-fill')
+      .map((f) => parseFloat((f as HTMLElement).style.width))
+    expect(widths[0]).toBeCloseTo(100)
+    expect(widths[1]).toBeCloseTo((5 / 42) * 100)
+    expect(widths[2]).toBe(0)
+  })
+
   it('AC4: lists recent pull requests with state, repo, title, lines and when', () => {
     renderDetail()
     const list = screen.getByRole('list', { name: '' })

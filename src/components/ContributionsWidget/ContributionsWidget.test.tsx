@@ -83,6 +83,32 @@ describe('ContributionsWidget', () => {
     expect(screen.getByRole('region', { name: 'Widget 1' })).toBeVisible()
   })
 
+  it('#68 AC5: mixed digit counts share the BarList structure and proportional fills', async () => {
+    const deps = makeDeps()
+    const many = Array.from({ length: 42 }, (_, i) =>
+      merged(i + 1, 'ana', '2026-06-10T10:00:00.000Z'),
+    )
+    const few = Array.from({ length: 5 }, (_, i) =>
+      merged(100 + i, 'bob', '2026-06-10T11:00:00.000Z'),
+    )
+    // The fake deps link two repos, so each count is doubled (84 and 10).
+    const data = repoData('acme/api', [...many, ...few])
+    deps.getRepoData = vi.fn(async () => ({ ok: true as const, data }))
+    await renderWidget(deps)
+    const items = rows()
+    expect(items).toHaveLength(2)
+    expect(new Set(items.map((r) => r.className)).size).toBe(1)
+    expect(new Set(items.map((r) => r.children[2].className)).size).toBe(1)
+    const counts = items.map((r) => r.children[3] as HTMLElement)
+    expect(counts.map((c) => c.textContent)).toEqual(['84', '10'])
+    expect(new Set(counts.map((c) => c.className)).size).toBe(1)
+    const widths = screen
+      .getAllByTestId('bar-fill')
+      .map((f) => parseFloat((f as HTMLElement).style.width))
+    expect(widths[0]).toBeCloseTo(100)
+    expect(widths[1]).toBeCloseTo((10 / 84) * 100)
+  })
+
   it('AC2: the list has an accessible name and per-row text', async () => {
     await renderWidget()
     expect(
