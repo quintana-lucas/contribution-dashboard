@@ -12,7 +12,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    // Process BarList's CSS so its test can assert the fixed count column (#68).
-    css: { include: [/BarList\.module\.css/] },
+    // Process BarList's and ReviewsChart's CSS so their tests can assert the
+    // fixed count column (#68, #72).
+    css: { include: [/BarList\.module\.css/, /ReviewsChart\.module\.css/] },
   },
 })
