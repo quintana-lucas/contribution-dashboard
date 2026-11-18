@@ -70,6 +70,19 @@ describe('leak guards', () => {
     expect(offenders).toEqual([])
   })
 
+  it('#65 AC10: src/ never reads the token or imports server code', () => {
+    const sources = trackedTextFiles().filter((f) => f.startsWith('src/') && /\.(ts|tsx)$/.test(f))
+    expect(sources.length).toBeGreaterThan(0)
+    const tokenRead = /process\.env|import\.meta\.env|Authorization|Bearer /
+    const serverImport = /from\s+['"](?:\.\.?\/)+(?:.*\/)?server(?:\/|['"])/
+    const offenders = sources.filter((file) => {
+      if (/\.test\.tsx?$/.test(file)) return false
+      const content = readFileSync(file, 'utf8')
+      return tokenRead.test(content) || serverImport.test(content)
+    })
+    expect(offenders).toEqual([])
+  })
+
   it('AC10: no VITE_ variable mentions or carries the token', () => {
     const pattern = new RegExp(['VITE', '_', '[A-Z0-9_]*', 'TOKEN'].join(''), 'i')
     const offenders = trackedTextFiles().filter((file) => pattern.test(readFileSync(file, 'utf8')))

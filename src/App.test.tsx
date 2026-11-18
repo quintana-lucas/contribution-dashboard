@@ -290,6 +290,22 @@ describe('App settings', () => {
     expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument()
   })
 
+  it('#65 AC12: Settings opened mid-run has the per-repo Sync buttons disabled and inert', async () => {
+    const deps = makeDeps()
+    deps.getSyncState.mockResolvedValue({
+      ok: true,
+      state: { running: true, total: 3, index: 1, current: 'acme/api', results: [] },
+    })
+    render(<App {...deps} />)
+    await screen.findByLabelText('Repository')
+    fireEvent.click(openSettingsButton())
+    const dialog = screen.getByRole('dialog', { name: 'Settings' })
+    const sync = await within(dialog).findByRole('button', { name: 'Sync acme/api' })
+    await waitFor(() => expect(sync).toHaveAttribute('aria-disabled', 'true'))
+    fireEvent.click(sync)
+    expect(deps.syncRepo).not.toHaveBeenCalled()
+  })
+
   it('#8 AC1: the Header Settings button opens Settings', async () => {
     render(<App {...makeDeps()} />)
     await screen.findByLabelText('Repository')

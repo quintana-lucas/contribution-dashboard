@@ -14,6 +14,8 @@ interface RepoRowProps {
   onSynced: () => void
   /** The repo was unlinked; the parent drops the row. */
   onRemoved: (repo: string) => void
+  /** A global "Sync now" run is active; the per-repo Sync is locked. */
+  syncLocked?: boolean
 }
 
 function peopleText(n: number): string {
@@ -31,7 +33,7 @@ function rowDetails(repo: LinkedRepo, now: Date): string {
 
 type Mode = 'idle' | 'confirm' | 'removing'
 
-export default function RepoRow({ repo, now, syncRepo, removeRepo, onSynced, onRemoved }: RepoRowProps) {
+export default function RepoRow({ repo, now, syncRepo, removeRepo, onSynced, onRemoved, syncLocked = false }: RepoRowProps) {
   const name = repo.repo
   const [mode, setMode] = useState<Mode>('idle')
   const [syncing, setSyncing] = useState(false)
@@ -49,7 +51,7 @@ export default function RepoRow({ repo, now, syncRepo, removeRepo, onSynced, onR
   }, [mode])
 
   const sync = async () => {
-    if (syncing || mode !== 'idle') return
+    if (syncing || syncLocked || mode !== 'idle') return
     setSyncing(true)
     setMessage('')
     const res = await syncRepo(name)
@@ -98,7 +100,7 @@ export default function RepoRow({ repo, now, syncRepo, removeRepo, onSynced, onR
               type="button"
               className={styles.button}
               aria-label={`Sync ${name}`}
-              aria-disabled={syncing}
+              aria-disabled={syncing || syncLocked}
               onClick={sync}
             >
               {syncing ? 'Syncing…' : 'Sync'}

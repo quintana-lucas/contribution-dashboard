@@ -22,6 +22,33 @@ describe('RepoRow', () => {
     expect(screen.getByText('Not synced yet')).toBeInTheDocument()
   })
 
+  it('#65 AC12: Sync is aria-disabled and inert while locked, enabled after', () => {
+    const syncRepo = vi.fn(async () => ({ ok: true as const, people: 1 }))
+    const noop = () => {}
+    const row = (locked: boolean) => (
+      <ul>
+        <RepoRow
+          repo={{ repo: 'a/b', syncedAt: null, baseBranch: null, people: null }}
+          now={NOW}
+          syncRepo={syncRepo}
+          removeRepo={vi.fn()}
+          onSynced={noop}
+          onRemoved={noop}
+          syncLocked={locked}
+        />
+      </ul>
+    )
+    const { rerender } = render(row(true))
+    const button = screen.getByRole('button', { name: 'Sync a/b' })
+    expect(button).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(button)
+    expect(syncRepo).not.toHaveBeenCalled()
+    rerender(row(false))
+    expect(screen.getByRole('button', { name: 'Sync a/b' })).toHaveAttribute('aria-disabled', 'false')
+    fireEvent.click(screen.getByRole('button', { name: 'Sync a/b' }))
+    expect(syncRepo).toHaveBeenCalledWith('a/b')
+  })
+
   it('#8 AC6: actions are named after the repo', () => {
     render(
       <ul>

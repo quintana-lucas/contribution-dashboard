@@ -31,6 +31,8 @@ export interface SettingsDialogProps {
   now?: () => Date
   /** Tab shown each time the dialog opens. Defaults to Repositories. */
   initialTab?: 'repositories' | 'team'
+  /** A global "Sync now" run is active; per-repo Sync buttons are locked. */
+  syncRunning?: boolean
 }
 
 const defaultNow = () => new Date()
@@ -48,6 +50,7 @@ export default function SettingsDialog({
   saveTeam = (team) => defaultSaveTeam(team),
   now = defaultNow,
   initialTab = 'repositories',
+  syncRunning = false,
 }: SettingsDialogProps) {
   const titleId = useId()
   const changed = useRef(false)
@@ -97,6 +100,7 @@ export default function SettingsDialog({
                     getTokenStatus={getTokenStatus}
                     now={now}
                     onChanged={markChanged}
+                    syncRunning={syncRunning}
                   />
                 ),
               },
