@@ -80,7 +80,7 @@ describe('ContributionsWidget', () => {
     expect(items[0]).toHaveTextContent('ana: 3 merged pull requests')
     expect(items[1]).toHaveTextContent('bob: 1 merged pull request')
     expect(items[0]).toHaveTextContent(/3$/)
-    expect(screen.getByRole('region', { name: 'Widget 1' })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Merged PRs per person' })).toBeVisible()
   })
 
   it('#68 AC5: mixed digit counts share the BarList structure and proportional fills', async () => {
@@ -186,7 +186,7 @@ describe('ContributionsWidget', () => {
 
   it('AC9: changing repo and period updates the list and hint without reloading', async () => {
     const { deps } = await renderWidget()
-    const region = screen.getByRole('region', { name: 'Widget 1' })
+    const region = screen.getByRole('region', { name: 'Merged PRs per person' })
     expect(region).toHaveTextContent(
       'Merged pull requests per person · All repositories · last 30 days',
     )

@@ -39,7 +39,7 @@ function ReviewsWidget({ onOpenSettings }: ReviewsWidgetProps) {
   }
 
   return (
-    <Widget title="Widget 2" hint={hint}>
+    <Widget title="Reviews given per person" hint={hint}>
       {body}
     </Widget>
   )

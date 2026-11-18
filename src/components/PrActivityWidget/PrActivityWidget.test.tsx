@@ -101,9 +101,9 @@ describe('PrActivityWidget', () => {
     expect(xhrSpy).not.toHaveBeenCalled()
   })
 
-  it('AC7: is a region named Widget 3 with the scope hint', async () => {
+  it('AC7: is a region named PRs opened, merged and closed with the scope hint', async () => {
     await renderWidget()
-    expect(screen.getByRole('region', { name: 'Widget 3' })).toHaveTextContent(
+    expect(screen.getByRole('region', { name: 'PRs opened, merged and closed' })).toHaveTextContent(
       'Pull request activity · All repositories · last 30 days',
     )
   })
@@ -112,7 +112,9 @@ describe('PrActivityWidget', () => {
     const { deps } = await renderWidget()
     const calls = deps.getRepoData.mock.calls.length
     fireEvent.change(screen.getByLabelText('Repository'), { target: { value: 'acme/api' } })
-    expect(screen.getByRole('region', { name: 'Widget 3' })).toHaveTextContent('acme/api')
+    expect(
+      screen.getByRole('region', { name: 'PRs opened, merged and closed' }),
+    ).toHaveTextContent('acme/api')
     expect(column(tableRows(), 0)).toBe(2)
     fireEvent.click(screen.getByRole('radio', { name: '7 days' }))
     expect(column(tableRows(), 0)).toBe(2)

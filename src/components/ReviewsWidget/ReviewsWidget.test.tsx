@@ -63,9 +63,9 @@ describe('ReviewsWidget', () => {
     expect(items[1]).toHaveTextContent('dee: 1 reviews')
   })
 
-  it('AC6: is a region named Widget 2 with the scope hint', async () => {
+  it('AC6: is a region named Reviews given per person with the scope hint', async () => {
     await renderWidget()
-    expect(screen.getByRole('region', { name: 'Widget 2' })).toHaveTextContent(
+    expect(screen.getByRole('region', { name: 'Reviews given per person' })).toHaveTextContent(
       'Reviews given per person · All repositories · last 30 days',
     )
   })
@@ -133,7 +133,7 @@ describe('ReviewsWidget', () => {
 
   it('AC8: changing repo and period updates the chart and hint without reloading', async () => {
     const { deps } = await renderWidget()
-    const region = screen.getByRole('region', { name: 'Widget 2' })
+    const region = screen.getByRole('region', { name: 'Reviews given per person' })
     const calls = deps.getRepoData.mock.calls.length
 
     fireEvent.click(screen.getByRole('radio', { name: '7 days' }))

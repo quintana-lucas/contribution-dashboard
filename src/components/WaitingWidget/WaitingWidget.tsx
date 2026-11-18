@@ -69,7 +69,7 @@ function WaitingWidget({ onOpenSettings }: WaitingWidgetProps) {
   }
 
   return (
-    <Widget title="Widget 4" hint={hint}>
+    <Widget title="Open PRs waiting for review" hint={hint}>
       {body}
     </Widget>
   )

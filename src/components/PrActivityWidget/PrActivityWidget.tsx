@@ -31,7 +31,7 @@ function PrActivityWidget({ onOpenSettings }: PrActivityWidgetProps) {
   }
 
   return (
-    <Widget title="Widget 3" hint={hint}>
+    <Widget title="PRs opened, merged and closed" hint={hint}>
       {body}
     </Widget>
   )
