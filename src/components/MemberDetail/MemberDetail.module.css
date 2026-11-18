@@ -191,7 +191,7 @@
 .badgeMerged {
   background: var(--color-bar);
   border-color: var(--color-bar);
-  color: #ffffff;
+  color: var(--color-on-accent);
 }
 
 .badgeOpen {
