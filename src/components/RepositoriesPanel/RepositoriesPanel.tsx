@@ -20,6 +20,8 @@ export interface RepositoriesPanelProps {
   now: () => Date
   /** An add, remove or sync succeeded. */
   onChanged: () => void
+  /** A global "Sync now" run is active; per-repo Sync buttons are locked. */
+  syncRunning?: boolean
 }
 
 type LoadState = 'loading' | 'ready' | 'error'
@@ -40,6 +42,7 @@ export default function RepositoriesPanel({
   getTokenStatus,
   now,
   onChanged,
+  syncRunning = false,
 }: RepositoriesPanelProps) {
   const [repos, setRepos] = useState<LinkedRepo[]>([])
   const [load, setLoad] = useState<LoadState>('loading')
@@ -162,6 +165,7 @@ export default function RepositoriesPanel({
               now={date}
               syncRepo={syncRepo}
               removeRepo={removeRepo}
+              syncLocked={syncRunning}
               onSynced={handleSynced}
               onRemoved={handleRemoved}
             />

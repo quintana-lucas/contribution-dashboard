@@ -72,7 +72,7 @@ interface SettingsHostProps extends DashboardDeps {
 
 // Lives inside DashboardProvider so a change can trigger one reload on close.
 function SettingsHost({ open, onClose, fallbackFocus, initialTab, ...deps }: SettingsHostProps) {
-  const { reload } = useDashboard()
+  const { reload, syncRunning } = useDashboard()
   return (
     <SettingsDialog
       open={open}
@@ -86,6 +86,7 @@ function SettingsHost({ open, onClose, fallbackFocus, initialTab, ...deps }: Set
       syncRepo={deps.syncRepo}
       getTokenStatus={deps.getTokenStatus}
       now={deps.now}
+      syncRunning={syncRunning}
       onClose={(changed) => {
         onClose()
         if (changed) reload()

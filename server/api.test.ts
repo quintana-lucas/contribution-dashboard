@@ -519,6 +519,197 @@ describe('GET /api/data', () => {
   })
 })
 
+describe('#65 /api/sync (all repos)', () => {
+  type Call = Awaited<ReturnType<typeof boot>>
+  const state = async (call: Call) => (await call('/api/sync')).json() as Promise<{
+    running: boolean
+    total: number
+    index: number
+    current: string | null
+    results: Array<{ repo: string; ok: boolean; code?: string }>
+  }>
+  const settle = async (call: Call) => {
+    for (let i = 0; i < 200; i++) {
+      const s = await state(call)
+      if (!s.running) return s
+      await new Promise((r) => setTimeout(r, 10))
+    }
+    throw new Error('sync did not finish')
+  }
+  const start = (call: Call) => call('/api/sync', { method: 'POST' })
+  const fileOf = (repo: string) => path.join(dir, 'repos', `${repo.replace('/', '__')}.json`)
+
+  it('#65 AC1: POST answers 202, syncs every linked repo and GET reports the finished run', async () => {
+    await link('acme/one', 'acme/two')
+    const f = gql(okPage)
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    const res = await start(call)
+    expect(res.status).toBe(202)
+    const done = await settle(call)
+    expect(done).toEqual({
+      running: false,
+      total: 2,
+      index: 2,
+      current: null,
+      results: [
+        { repo: 'acme/one', ok: true },
+        { repo: 'acme/two', ok: true },
+      ],
+    })
+    expect(JSON.parse(await readFile(fileOf('acme/one'), 'utf8')).repo).toBe('acme/one')
+    expect(JSON.parse(await readFile(fileOf('acme/two'), 'utf8')).repo).toBe('acme/two')
+  })
+
+  it('#65 AC1: GET before any run is idle', async () => {
+    const call = await boot({ token: TOKEN })
+    expect(await state(call)).toEqual({ running: false, total: 0, index: 0, current: null, results: [] })
+  })
+
+  it('#65 AC3: a second POST while running is 409 already_running and starts no second run', async () => {
+    await link('acme/one')
+    let release!: () => void
+    const gate = new Promise<void>((r) => (release = r))
+    const f = vi.fn(async () => {
+      await gate
+      return new Response(JSON.stringify(okPage))
+    }) as unknown as typeof fetch & ReturnType<typeof vi.fn>
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    const [a, b] = await Promise.all([start(call), start(call)])
+    expect([a.status, b.status].sort()).toEqual([202, 409])
+    const loser = a.status === 409 ? a : b
+    expect(await loser.json()).toEqual({ error: 'already_running' })
+    const mid = await state(call)
+    expect(mid.running).toBe(true)
+    expect(mid.total).toBe(1)
+    expect(mid.current).toBe('acme/one')
+    expect(mid.index).toBe(1)
+    release()
+    await settle(call)
+    // One repo = two GraphQL queries (open and closed states); a second run would double it.
+    expect(f).toHaveBeenCalledTimes(2)
+    // Lock released: a new run is accepted.
+    expect((await start(call)).status).toBe(202)
+    await settle(call)
+  })
+
+  it('#65 AC3: the per-repo POST is 409 already_running during a global run', async () => {
+    await link('acme/one')
+    let release!: () => void
+    const gate = new Promise<void>((r) => (release = r))
+    const f = vi.fn(async () => {
+      await gate
+      return new Response(JSON.stringify(okPage))
+    }) as unknown as typeof fetch
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    await start(call)
+    const res = await call('/api/repos/acme/one/sync', { method: 'POST' })
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ error: 'already_running' })
+    release()
+    await settle(call)
+  })
+
+  it('#65 AC5: a failing repo does not stop the others and is reported with only its code', async () => {
+    await link('acme/bad', 'acme/good')
+    const f = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body))
+      if (body.variables.name === 'bad') return new Response(`secret github body ${TOKEN}`, { status: 500 })
+      return new Response(JSON.stringify(okPage))
+    }) as unknown as typeof fetch
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    await start(call)
+    const done = await settle(call)
+    expect(done.results).toHaveLength(2)
+    expect(done.results[0]).toMatchObject({ repo: 'acme/bad', ok: false })
+    expect(typeof done.results[0].code).toBe('string')
+    expect(Object.keys(done.results[0]).sort()).toEqual(['code', 'ok', 'repo'])
+    expect(done.results[1]).toEqual({ repo: 'acme/good', ok: true })
+    expect(JSON.parse(await readFile(fileOf('acme/good'), 'utf8')).repo).toBe('acme/good')
+  })
+
+  it('#65 AC6: a failed repo keeps its previously stored file untouched', async () => {
+    await link('acme/widgets')
+    await writeRepo(stored, dir)
+    const before = await readFile(fileOf('acme/widgets'), 'utf8')
+    const f = vi.fn(async () => {
+      throw new Error(`boom ${TOKEN}`)
+    }) as unknown as typeof fetch
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    await start(call)
+    const done = await settle(call)
+    expect(done.results).toEqual([{ repo: 'acme/widgets', ok: false, code: 'network' }])
+    expect(await readFile(fileOf('acme/widgets'), 'utf8')).toBe(before)
+  })
+
+  it('#65 AC7: no token is 503 missing_token and no run starts', async () => {
+    await link('acme/one')
+    const f = gql(okPage)
+    const call = await boot({ fetchImpl: f })
+    const res = await start(call)
+    expect(res.status).toBe(503)
+    const body = (await res.json()) as { code: string; message: string }
+    expect(body.code).toBe('missing_token')
+    expect(body.message).toContain('GITHUB_TOKEN')
+    expect(f).not.toHaveBeenCalled()
+    expect((await state(call)).running).toBe(false)
+  })
+
+  it('#65 AC1: no linked repos starts no run (400 no_repos)', async () => {
+    const f = gql(okPage)
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    const res = await start(call)
+    expect(res.status).toBe(400)
+    expect(await res.json()).toEqual({ error: 'no_repos' })
+    expect(f).not.toHaveBeenCalled()
+    expect((await state(call)).running).toBe(false)
+  })
+
+  it('#65 AC9 AC10: no response body contains the token or raw GitHub text, including failures', async () => {
+    await link('acme/one', 'acme/two')
+    const f = vi.fn(async () => new Response(`RAW-GITHUB-TEXT ${TOKEN}`, { status: 401 })) as unknown as typeof fetch
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    const bodies: string[] = []
+    const res = await start(call)
+    bodies.push(await res.text())
+    for (let i = 0; i < 200; i++) {
+      const r = await call('/api/sync')
+      const text = await r.text()
+      bodies.push(text)
+      if (!(JSON.parse(text) as { running: boolean }).running) break
+      await new Promise((r2) => setTimeout(r2, 10))
+    }
+    const done = await state(call)
+    expect(done.results.map((r) => r.code)).toEqual(['unauthorized', 'unauthorized'])
+    for (const text of bodies) {
+      expect(text).not.toContain(TOKEN)
+      expect(text).not.toContain('RAW-GITHUB-TEXT')
+    }
+  })
+
+  it('#65 AC10: an unexpected throw releases the lock', async () => {
+    await link('acme/one')
+    let first = true
+    const f = vi.fn(async () => {
+      if (first) {
+        first = false
+        throw new Error('x')
+      }
+      return new Response(JSON.stringify(okPage))
+    }) as unknown as typeof fetch
+    const call = await boot({ token: TOKEN, fetchImpl: f })
+    await start(call)
+    await settle(call)
+    expect((await start(call)).status).toBe(202)
+    await settle(call)
+  })
+
+  it('#65 AC10: the server stays bound to 127.0.0.1', async () => {
+    await boot({ token: TOKEN })
+    const addr = server!.address()
+    expect(addr && typeof addr !== 'string' && addr.address).toBe('127.0.0.1')
+  })
+})
+
 describe('POST /api/repos/:owner/:name/sync', () => {
   it('#7 AC1: syncs a linked repo and stores it', async () => {
     await link('acme/widgets')

@@ -2,11 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   getRepoData as defaultGetRepoData,
+  getSyncState as defaultGetSyncState,
   getTeam as defaultGetTeam,
   listRepos as defaultListRepos,
+  startSync as defaultStartSync,
 } from '../../api/client'
 import type {
   RepoDataResult,
+  SyncRunState,
   addRepo as AddRepo,
   getTokenStatus as GetTokenStatus,
   removeRepo as RemoveRepo,
@@ -27,12 +30,16 @@ import { reviewsPerPerson } from '../../api/reviews'
 import { teamStats as teamStatsPure } from '../../api/teamStats'
 import { waitingForReview } from '../../api/waiting'
 import { DashboardContext } from './context'
-import type { DashboardStatus, DashboardValue } from './context'
+import type { DashboardStatus, DashboardValue, SyncUiState } from './context'
+
+const SYNC_POLL_MS = 1000
 
 export interface DashboardDeps {
   listRepos?: typeof defaultListRepos
   getRepoData?: typeof defaultGetRepoData
   getTeam?: typeof defaultGetTeam
+  getSyncState?: typeof defaultGetSyncState
+  startSync?: typeof defaultStartSync
   now?: () => Date
   // Settings deps: unused by the provider, forwarded by App to SettingsDialog.
   addRepo?: typeof AddRepo
@@ -87,6 +94,8 @@ export default function DashboardProvider({
   listRepos = defaultListRepos,
   getRepoData = defaultGetRepoData,
   getTeam = defaultGetTeam,
+  getSyncState = defaultGetSyncState,
+  startSync: startSyncDep = defaultStartSync,
   now = () => new Date(),
 }: DashboardDeps & { children: ReactNode }) {
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading', entries: [], team: null, teamMembers: [], damagedRepos: [] })
@@ -94,9 +103,11 @@ export default function DashboardProvider({
   const [selection, setSelection] = useState<RepoSelection>('all')
   const [period, setPeriod] = useState<Period>(30)
 
-  const latest = useRef({ listRepos, getRepoData, getTeam })
+  const [syncState, setSyncState] = useState<SyncUiState>(null)
+
+  const latest = useRef({ listRepos, getRepoData, getTeam, getSyncState, startSync: startSyncDep })
   useEffect(() => {
-    latest.current = { listRepos, getRepoData, getTeam }
+    latest.current = { listRepos, getRepoData, getTeam, getSyncState, startSync: startSyncDep }
   })
   const live = useRef(true)
   // Only the latest load may apply its result.
@@ -146,6 +157,83 @@ export default function DashboardProvider({
     void runLoad()
   }, [runLoad])
 
+  // --- All-repos sync (#65) ---
+  const syncRunning = syncState?.status === 'running'
+  // Set synchronously so a double call before the first await never posts twice.
+  const starting = useRef(false)
+
+  const applyRun = useCallback((run: SyncRunState) => {
+    if (run.running) {
+      setSyncState({ status: 'running', run })
+    } else {
+      setSyncState({ status: 'finished', run })
+      // Silent: no `loading` flash, so the Toolbar stays mounted.
+      void runLoad()
+    }
+  }, [runLoad])
+
+  // AC11: a run already in progress is picked up on mount; an idle or finished one shows nothing.
+  useEffect(() => {
+    let cancelled = false
+    void latest.current.getSyncState().then((res) => {
+      if (cancelled || !res.ok || !res.state.running) return
+      setSyncState((prev) => prev ?? { status: 'running', run: res.state })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Polls only while a run is in progress.
+  useEffect(() => {
+    if (!syncRunning) return
+    let cancelled = false
+    const id = setInterval(() => {
+      void latest.current.getSyncState().then((res) => {
+        if (cancelled) return
+        if (!res.ok) {
+          setSyncState({ status: 'error', error: 'request_failed' })
+          return
+        }
+        applyRun(res.state)
+      })
+    }, SYNC_POLL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [syncRunning, applyRun])
+
+  const startSync = useCallback(() => {
+    if (starting.current || syncRunning) return
+    starting.current = true
+    void (async () => {
+      try {
+        const res = await latest.current.startSync()
+        if (!live.current) return
+        if (res.ok) {
+          applyRun(res.state)
+        } else if (res.error === 'already_running') {
+          // Someone else started it (another tab): follow that run.
+          const current = await latest.current.getSyncState()
+          if (live.current && current.ok && current.state.running) applyRun(current.state)
+        } else {
+          setSyncState({
+            status: 'error',
+            error: res.error,
+            ...(res.message ? { message: res.message } : {}),
+          })
+        }
+      } finally {
+        starting.current = false
+      }
+    })()
+  }, [syncRunning, applyRun])
+
+  const dismissSync = useCallback(() => {
+    setSyncState((prev) => (prev?.status === 'running' ? prev : null))
+  }, [])
+
   const { status, entries, team, teamMembers, damagedRepos } = loaded
   const nowDate = now()
   const value = useMemo<DashboardValue>(
@@ -171,10 +259,14 @@ export default function DashboardProvider({
         selectedMember === null ? null : memberDetailPure(entries, selection, period, nowDate, selectedMember),
       selectedMember,
       setSelectedMember,
+      syncState,
+      syncRunning,
+      startSync,
+      dismissSync,
     }),
     // nowDate changes every render; recompute on state changes only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [status, entries, team, teamMembers, damagedRepos, selection, period, reload, selectedMember],
+    [status, entries, team, teamMembers, damagedRepos, selection, period, reload, selectedMember, syncState, syncRunning, startSync, dismissSync],
   )
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>

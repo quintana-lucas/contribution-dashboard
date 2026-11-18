@@ -105,6 +105,95 @@ export async function syncRepo(
   }
 }
 
+/** State of the all-repos sync run on the server; `index` is 1-based (0 before the first repo). */
+export interface SyncRunState {
+  running: boolean
+  total: number
+  index: number
+  current: string | null
+  results: Array<{ repo: string; ok: boolean; code?: string }>
+}
+
+export type StartSyncError =
+  | 'already_running'
+  | 'missing_token'
+  | 'no_repos'
+  | 'config_invalid'
+  | 'request_failed'
+
+export type StartSyncResult =
+  | { ok: true; state: SyncRunState }
+  | { ok: false; error: StartSyncError; message?: string }
+
+export type GetSyncStateResult = { ok: true; state: SyncRunState } | { ok: false; error: 'request_failed' }
+
+const START_SYNC_ERRORS: readonly string[] = ['already_running', 'missing_token', 'no_repos', 'config_invalid']
+
+/** Keeps only well-formed run state; anything else is rejected, never thrown. */
+function parseSyncState(value: unknown): SyncRunState | null {
+  if (!value || typeof value !== 'object') return null
+  const v = value as Record<string, unknown>
+  if (
+    typeof v.running !== 'boolean' ||
+    typeof v.total !== 'number' ||
+    typeof v.index !== 'number' ||
+    !(v.current === null || typeof v.current === 'string') ||
+    !Array.isArray(v.results)
+  ) {
+    return null
+  }
+  const results: SyncRunState['results'] = []
+  for (const r of v.results as { repo?: unknown; ok?: unknown; code?: unknown }[]) {
+    if (!r || typeof r.repo !== 'string' || typeof r.ok !== 'boolean') return null
+    results.push({
+      repo: r.repo,
+      ok: r.ok,
+      ...(typeof r.code === 'string' ? { code: r.code } : {}),
+    })
+  }
+  return { running: v.running, total: v.total, index: v.index, current: v.current, results }
+}
+
+/** Asks the server to start syncing every linked repo in the background. */
+export async function startSync(fetchImpl: FetchLike = (...a) => fetch(...a)): Promise<StartSyncResult> {
+  try {
+    const res = await fetchImpl('/api/sync', { method: 'POST' })
+    const body = (await res.json()) as Record<string, unknown>
+    if (res.ok) {
+      const state = parseSyncState(body)
+      if (state) return { ok: true, state }
+    } else {
+      const code = typeof body.error === 'string' ? body.error : body.code
+      if (typeof code === 'string' && START_SYNC_ERRORS.includes(code)) {
+        return {
+          ok: false,
+          error: code as StartSyncError,
+          ...(typeof body.message === 'string' ? { message: body.message } : {}),
+        }
+      }
+    }
+  } catch {
+    // fall through
+  }
+  return { ok: false, error: 'request_failed' }
+}
+
+/** Reads the current (or last) all-repos sync run from the server. */
+export async function getSyncState(
+  fetchImpl: FetchLike = (...a) => fetch(...a),
+): Promise<GetSyncStateResult> {
+  try {
+    const res = await fetchImpl('/api/sync')
+    if (res.ok) {
+      const state = parseSyncState(await res.json())
+      if (state) return { ok: true, state }
+    }
+  } catch {
+    // fall through
+  }
+  return { ok: false, error: 'request_failed' }
+}
+
 const ADD_ERRORS: readonly string[] = [
   'invalid_format',
   'duplicate',
