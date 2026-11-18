@@ -101,7 +101,9 @@
 
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+  /* Count column is a fixed 4ch (fits up to 4 digits) so every row's track
+     has the same width regardless of the number shown. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) 4ch;
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-sm);
@@ -139,6 +141,8 @@
 .count {
   font-variant-numeric: tabular-nums;
   text-align: right;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .scroll {

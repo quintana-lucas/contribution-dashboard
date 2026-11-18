@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import ReviewsChart from './ReviewsChart'
+import css from './ReviewsChart.module.css?inline'
 
 const rows = [
   { login: 'ada', approved: 5, changesRequested: 2, commented: 3, total: 10 },
@@ -54,5 +55,68 @@ describe('ReviewsChart', () => {
   it('AC3: has no region role', () => {
     render(<ReviewsChart rows={rows} />)
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
+  })
+
+  const stacks = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll<HTMLElement>('ol > li > span:nth-child(3) > span'))
+
+  it('#72 AC1: rows with different digit counts share the same structure', () => {
+    const { container } = render(
+      <ReviewsChart
+        rows={[
+          { login: 'a', approved: 5, changesRequested: 0, commented: 0, total: 5 },
+          { login: 'b', approved: 12, changesRequested: 0, commented: 0, total: 12 },
+        ]}
+      />,
+    )
+    const items = Array.from(container.querySelectorAll('ol > li'))
+    expect(items).toHaveLength(2)
+    const shape = (li: Element) => Array.from(li.children).map((c) => c.className)
+    expect(items[0].className).toBe(items[1].className)
+    expect(shape(items[0])).toEqual(shape(items[1]))
+    expect(items[0].children).toHaveLength(4)
+  })
+
+  it('#72 AC2: CSS gives the count column a fixed width, right-aligned, tabular', () => {
+    const cols = /grid-template-columns:\s*([^;]+);/.exec(css)?.[1] ?? ''
+    expect(cols).toMatch(/\s\d+ch\s*$/)
+    expect(cols).not.toMatch(/auto/)
+    expect(css).toMatch(/tabular-nums;\s*text-align:\s*right/)
+  })
+
+  it('#72 AC3: each stack width is proportional to total / max', () => {
+    const { container } = render(
+      <ReviewsChart
+        rows={[
+          { login: 'a', approved: 5, changesRequested: 0, commented: 0, total: 5 },
+          { login: 'b', approved: 12, changesRequested: 0, commented: 0, total: 12 },
+        ]}
+      />,
+    )
+    const [a, b] = stacks(container)
+    expect(parseFloat(a.style.width)).toBeCloseTo((5 / 12) * 100)
+    expect(b).toHaveStyle({ width: '100%' })
+  })
+
+  it('#72 AC4: a zero total shows "0" and an empty 0% stack', () => {
+    const { container } = render(
+      <ReviewsChart
+        rows={[
+          { login: 'z', approved: 0, changesRequested: 0, commented: 0, total: 0 },
+          { login: 'y', approved: 3, changesRequested: 0, commented: 0, total: 3 },
+        ]}
+      />,
+    )
+    const items = container.querySelectorAll('ol > li')
+    expect(items[0].children[3]).toHaveTextContent('0')
+    const [zero] = stacks(container)
+    expect(zero).toHaveStyle({ width: '0%' })
+    expect(zero.children).toHaveLength(0)
+  })
+
+  it('#72 AC4: empty rows render an empty list without crashing', () => {
+    render(<ReviewsChart rows={[]} />)
+    const list = screen.getByRole('list', { name: 'Reviews given per person' })
+    expect(list).toBeEmptyDOMElement()
   })
 })
