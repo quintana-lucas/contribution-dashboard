@@ -22,13 +22,6 @@ function Header({ onOpenSettings, settingsRef }: HeaderProps) {
           >
             Settings
           </button>
-          <div
-            role="group"
-            aria-label="Placeholder for future header controls"
-            className={styles.slot}
-          >
-            Profile (coming soon)
-          </div>
         </div>
       </div>
     </header>

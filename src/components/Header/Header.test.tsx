@@ -15,13 +15,15 @@ describe('Header', () => {
     ).toBeInTheDocument()
   })
 
-  it('AC2: renders the non-focusable profile slot', () => {
+  it('#67 AC1: does not render a Profile or coming-soon placeholder', () => {
     render(<Header onOpenSettings={() => {}} />)
-    const slot = screen.getByRole('group', {
-      name: 'Placeholder for future header controls',
-    })
-    expect(slot).toHaveTextContent('Profile (coming soon)')
-    expect(slot).not.toHaveAttribute('tabindex')
+    expect(screen.queryByText(/profile/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('group', {
+        name: 'Placeholder for future header controls',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('#8 AC1: the Settings button calls onOpenSettings and forwards its ref', () => {
