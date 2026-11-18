@@ -45,16 +45,6 @@
   outline-offset: 2px;
 }
 
-.slot {
-  padding: var(--space-1) var(--space-3);
-  border: 1px dashed var(--color-border-dashed);
-  border-radius: var(--radius-pill);
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  font-weight: var(--text-sm-weight);
-  line-height: var(--text-sm-line);
-}
-
 @media (min-width: 768px) {
   .inner {
     flex-direction: row;
