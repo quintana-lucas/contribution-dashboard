@@ -77,7 +77,7 @@
 
 .toggleButton[aria-pressed='true'] {
   background: var(--color-focus);
-  color: #ffffff;
+  color: var(--color-on-accent);
   font-weight: 600;
 }
 
@@ -87,7 +87,7 @@
 }
 
 .toggleButton[aria-pressed='true']:focus-visible {
-  outline-color: #ffffff;
+  outline-color: var(--color-on-accent);
 }
 
 .list {
