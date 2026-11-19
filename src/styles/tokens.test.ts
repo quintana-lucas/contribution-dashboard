@@ -42,6 +42,12 @@ describe("theme tokens", () => {
     expect(mediaDark).toEqual(dark);
   });
 
+  it("#82 AC5: --color-bar is declared in both dark maps with the same value", () => {
+    expect(mediaDark["--color-bar"]).toBeDefined();
+    expect(dark["--color-bar"]).toBeDefined();
+    expect(mediaDark["--color-bar"]).toBe(dark["--color-bar"]);
+  });
+
   for (const [name, t] of [
     ["light", light],
     ["dark", dark],
@@ -51,6 +57,14 @@ describe("theme tokens", () => {
       const bg = rgb(t["--color-bg"]);
       const text = rgb(t["--color-text"]);
       const accent = rgb(t["--color-accent"]);
+
+      it("#82 AC1: bar is an independent hex, not the accent, and at least 3:1 on surface", () => {
+        const bar = t["--color-bar"];
+        expect(bar).toMatch(/^#[0-9a-f]{6}$/i);
+        expect(bar).not.toBe("var(--color-accent)");
+        expect(bar.toLowerCase()).not.toBe(t["--color-accent"].toLowerCase());
+        expect(ratio(rgb(bar), surface)).toBeGreaterThanOrEqual(3);
+      });
 
       it("AC9: icon is at least 3:1 on surface and on the 12%/20% accent tints", () => {
         expect(ratio(text, surface)).toBeGreaterThanOrEqual(3);

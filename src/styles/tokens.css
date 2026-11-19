@@ -10,7 +10,7 @@
   --color-accent: #4a4fd0;
   --color-on-accent: #ffffff;
   --color-focus: var(--color-accent);
-  --color-bar: var(--color-accent);
+  --color-bar: #35527a;
   --color-bar-muted: var(--color-text-muted);
   --color-backdrop: rgba(27, 27, 33, 0.5);
 
@@ -59,6 +59,7 @@
     --color-border-dashed: #6d6d7c;
     --color-accent: #8e94ff;
     --color-on-accent: #10101a;
+    --color-bar: #8aa8d6;
     --color-backdrop: rgba(0, 0, 0, 0.6);
   }
 }
@@ -74,5 +75,6 @@
   --color-border-dashed: #6d6d7c;
   --color-accent: #8e94ff;
   --color-on-accent: #10101a;
+  --color-bar: #8aa8d6;
   --color-backdrop: rgba(0, 0, 0, 0.6);
 }
