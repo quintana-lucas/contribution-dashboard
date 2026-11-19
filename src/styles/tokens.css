@@ -43,8 +43,14 @@
   --modal-max: 640px;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* The dark values below are duplicated in the media block and in
+   [data-theme="dark"]; keep both identical. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --color-bg: #101014;
     --color-surface: #18181d;
     --color-text: #ececf1;
@@ -55,4 +61,18 @@
     --color-on-accent: #10101a;
     --color-backdrop: rgba(0, 0, 0, 0.6);
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-bg: #101014;
+  --color-surface: #18181d;
+  --color-text: #ececf1;
+  --color-text-muted: #a0a0ae;
+  --color-border: #2e2e37;
+  --color-border-dashed: #6d6d7c;
+  --color-accent: #8e94ff;
+  --color-on-accent: #10101a;
+  --color-backdrop: rgba(0, 0, 0, 0.6);
 }

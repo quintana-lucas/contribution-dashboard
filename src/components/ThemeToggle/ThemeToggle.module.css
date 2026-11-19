@@ -1,0 +1,32 @@
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--color-border-dashed);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.toggle:hover {
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+}
+
+.toggle:active {
+  background: color-mix(in srgb, var(--color-accent) 20%, var(--color-surface));
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+}

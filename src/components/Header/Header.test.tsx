@@ -36,4 +36,11 @@ describe('Header', () => {
     fireEvent.click(button)
     expect(onOpenSettings).toHaveBeenCalledTimes(1)
   })
+
+  it('#79 AC1: renders the theme toggle right after the Settings button', () => {
+    render(<Header onOpenSettings={() => {}} />)
+    const settings = screen.getByRole('button', { name: 'Open settings' })
+    const toggle = screen.getByRole('button', { name: 'Dark theme' })
+    expect(settings.nextElementSibling).toBe(toggle)
+  })
 })
