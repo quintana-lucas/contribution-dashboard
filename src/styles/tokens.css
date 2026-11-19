@@ -10,8 +10,12 @@
   --color-accent: #4a4fd0;
   --color-on-accent: #ffffff;
   --color-focus: var(--color-accent);
-  --color-bar: var(--color-accent);
+  --color-bar: #35527a;
   --color-bar-muted: var(--color-text-muted);
+  --color-good: #0a6b41;
+  --color-caution: #8f5300;
+  --color-good-bg: color-mix(in srgb, var(--color-good) 10%, var(--color-surface));
+  --color-caution-bg: color-mix(in srgb, var(--color-caution) 10%, var(--color-surface));
   --color-backdrop: rgba(27, 27, 33, 0.5);
 
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -60,6 +64,11 @@
     --color-border-dashed: #6d6d7c;
     --color-accent: #8e94ff;
     --color-on-accent: #10101a;
+    --color-bar: #8aa8d6;
+    --color-good: #4cc38a;
+    --color-caution: #e5a93d;
+    --color-good-bg: color-mix(in srgb, var(--color-good) 12%, var(--color-surface));
+    --color-caution-bg: color-mix(in srgb, var(--color-caution) 12%, var(--color-surface));
     --color-backdrop: rgba(0, 0, 0, 0.6);
   }
 }
@@ -75,5 +84,10 @@
   --color-border-dashed: #6d6d7c;
   --color-accent: #8e94ff;
   --color-on-accent: #10101a;
+  --color-bar: #8aa8d6;
+  --color-good: #4cc38a;
+  --color-caution: #e5a93d;
+  --color-good-bg: color-mix(in srgb, var(--color-good) 12%, var(--color-surface));
+  --color-caution-bg: color-mix(in srgb, var(--color-caution) 12%, var(--color-surface));
   --color-backdrop: rgba(0, 0, 0, 0.6);
 }
