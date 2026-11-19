@@ -1,4 +1,5 @@
 import type { Ref } from 'react'
+import ThemeToggle from '../ThemeToggle'
 import styles from './Header.module.css'
 
 interface HeaderProps {
@@ -22,6 +23,7 @@ function Header({ onOpenSettings, settingsRef }: HeaderProps) {
           >
             Settings
           </button>
+          <ThemeToggle />
         </div>
       </div>
     </header>

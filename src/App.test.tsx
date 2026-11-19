@@ -83,19 +83,20 @@ describe('App', () => {
   })
 
   // Superseded by #16 and then by #8: besides the two tabs, the only focusable elements are
-  // the Header Settings button and the toolbar controls (the repository select and the three
-  // period radios).
+  // the Header Settings button, the Header theme toggle (#79) and the toolbar controls (the
+  // repository select and the three period radios).
   it('AC6: only the two tabs, the Settings button and the toolbar controls are focusable', async () => {
     const { container } = await renderApp()
     // The Team panel is hidden here, so its table controls are not reachable.
     const focusable = [
       ...container.querySelectorAll('a[href], button, input, select, textarea, [tabindex]'),
     ].filter((el) => el.closest('[hidden]') === null)
-    expect(focusable).toHaveLength(8)
+    expect(focusable).toHaveLength(9)
     const tabs = [...focusable].filter((el) => el.getAttribute('role') === 'tab')
     expect(tabs).toHaveLength(2)
     const others = [...focusable].filter((el) => el.getAttribute('role') !== 'tab')
     expect(others.map((el) => el.tagName)).toEqual([
+      'BUTTON',
       'BUTTON',
       'SELECT',
       'INPUT',
@@ -104,6 +105,7 @@ describe('App', () => {
       'BUTTON',
     ])
     expect(others[0]).toHaveAccessibleName('Open settings')
+    expect(others[1]).toHaveAccessibleName('Dark theme')
   })
 
   it('AC1: shows Overview and Team tabs, Overview selected with the grid', async () => {
