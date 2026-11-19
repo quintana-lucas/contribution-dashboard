@@ -170,6 +170,11 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
             <tr>
               {COLUMNS.map((c) => {
                 const active = sort.key === c.key
+                const arrow = (
+                  <span className={styles.arrow} aria-hidden="true">
+                    {active ? (sort.dir === 'asc' ? '▲' : '▼') : ''}
+                  </span>
+                )
                 return (
                   <th
                     key={c.key}
@@ -183,7 +188,10 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
                       aria-label={`Sort by ${c.label}`}
                       onClick={() => onSort(c.key, c.label)}
                     >
-                      <span>
+                      {/* Fixed-width arrow slot: left of the label for numeric columns so the
+                          label's right edge matches the digits; after it for Member. */}
+                      {c.numeric && arrow}
+                      <span className={styles.label}>
                         {c.label}
                         {c.unit && (
                           <>
@@ -192,9 +200,7 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
                           </>
                         )}
                       </span>
-                      <span className={styles.arrow} aria-hidden="true">
-                        {active ? (sort.dir === 'asc' ? '▲' : '▼') : ''}
-                      </span>
+                      {!c.numeric && arrow}
                     </button>
                   </th>
                 )

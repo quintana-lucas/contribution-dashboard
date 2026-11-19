@@ -177,6 +177,40 @@ describe('TeamTable', () => {
     expect(ana[7].className).not.toMatch(/(^|[\s_])na([\s_]|$)/)
   })
 
+  it('AC1 (#89), AC2 (#89): the arrow slot is always rendered in a stable position', () => {
+    renderTable()
+    const buttons = screen.getAllByRole('button').filter((b) => b.getAttribute('aria-label')?.startsWith('Sort by'))
+    const isArrow = (el: Element | null) => !!el && /(^|[\s_])arrow([\s_]|$)/.test(el.className)
+    buttons.forEach((b, i) => {
+      expect(b.children).toHaveLength(2)
+      // Member (first) has the slot after the label; numeric columns have it before.
+      expect(isArrow(i === 0 ? b.lastElementChild : b.firstElementChild)).toBe(true)
+      expect(isArrow(i === 0 ? b.firstElementChild : b.lastElementChild)).toBe(false)
+    })
+    // Moving the sort changes only the arrow text, never the number of elements.
+    const merged = screen.getByRole('button', { name: 'Sort by Merged' })
+    expect(merged.firstElementChild?.textContent).toBe('▼')
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by Opened' }))
+    expect(merged.firstElementChild?.textContent).toBe('')
+    expect(merged.children).toHaveLength(2)
+  })
+
+  it('AC4 (#89): login cells carry the classes that keep them on one line', () => {
+    renderTable()
+    const login = screen.getAllByRole('rowheader')[0]
+    expect(login.className).toMatch(/(^|[\s_])login([\s_]|$)/)
+    expect(login.className).toMatch(/(^|[\s_])memberCol([\s_]|$)/)
+  })
+
+  it('AC6 (#89): header cells are sticky-head cells and Member is the pinned corner', () => {
+    renderTable()
+    const heads = screen.getAllByRole('columnheader')
+    for (const h of heads) expect(h.className).toMatch(/(^|[\s_])headCell([\s_]|$)/)
+    expect(heads[0].className).toMatch(/(^|[\s_])memberCol([\s_]|$)/)
+    expect(heads[1].className).not.toMatch(/(^|[\s_])memberCol([\s_]|$)/)
+    expect(screen.getByRole('region', { name: 'Team table, scrollable' }).className).toMatch(/scroll/)
+  })
+
   it('AC3 (#19): keeps the sort when the figures change', () => {
     const { rerenderWith } = renderTable()
     fireEvent.click(screen.getByRole('button', { name: 'Sort by Opened' }))
