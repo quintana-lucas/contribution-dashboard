@@ -130,7 +130,7 @@
 
 .row:hover td,
 .row:hover th {
-  background: var(--color-bg);
+  background: var(--color-row-active);
 }
 
 .row:focus-visible {
@@ -140,7 +140,7 @@
 
 .selected td,
 .selected th {
-  background: var(--color-bg);
+  background: var(--color-row-active);
 }
 
 .selected th {

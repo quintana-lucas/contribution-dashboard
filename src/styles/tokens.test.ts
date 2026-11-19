@@ -42,6 +42,14 @@ describe("theme tokens", () => {
     expect(mediaDark).toEqual(dark);
   });
 
+  it("AC10: row-active and scroll-edge tokens have parity across the two dark blocks", () => {
+    for (const k of ["--color-row-active", "--color-scroll-edge"]) {
+      expect(light[k]).toBeDefined();
+      expect(dark[k]).toBeDefined();
+      expect(mediaDark[k]).toBe(dark[k]);
+    }
+  });
+
   for (const [name, t] of [
     ["light", light],
     ["dark", dark],
@@ -57,6 +65,21 @@ describe("theme tokens", () => {
         expect(ratio(text, mix(accent, surface, 0.12))).toBeGreaterThanOrEqual(3);
         expect(ratio(text, mix(accent, surface, 0.2))).toBeGreaterThanOrEqual(3);
       });
+
+      it("AC9: row-active is raised (lighter than surface) in dark and distinct in light", () => {
+        const active = rgb(t["--color-row-active"]);
+        if (name === "dark") expect(lum(active)).toBeGreaterThan(lum(surface));
+        else expect(active).not.toEqual(surface);
+      });
+
+      it("AC10: text and muted text are at least 4.5:1 on row-active", () => {
+        const active = rgb(t["--color-row-active"]);
+        expect(ratio(text, active)).toBeGreaterThanOrEqual(4.5);
+        expect(ratio(rgb(t["--color-text-muted"]), active)).toBeGreaterThanOrEqual(4.5);
+      });
+
+      // AC10 (pending #83): the +/- add/delete colours are not tokens yet, so their
+      // contrast on row-active is not checked here. Add it when #83 lands.
 
       it("AC9: dashed border is at least 3:1 on surface", () => {
         expect(ratio(rgb(t["--color-border-dashed"]), surface)).toBeGreaterThanOrEqual(3);
