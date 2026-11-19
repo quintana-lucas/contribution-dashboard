@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import { formatDuration, formatSize } from '../../api/reviewMetrics'
+import { NOT_AVAILABLE, formatDuration, formatSizeNumber } from '../../api/reviewMetrics'
 import type { TeamStatsRow } from '../../api/teamStats'
 import { useDashboard } from '../DashboardProvider'
 import styles from './TeamTable.module.css'
@@ -22,23 +22,63 @@ type SortKey =
   | 'medianFirstReviewMs'
 type SortDir = 'asc' | 'desc'
 
-const COLUMNS: { key: SortKey; label: string; numeric: boolean }[] = [
-  { key: 'login', label: 'Member', numeric: false },
-  { key: 'opened', label: 'Opened', numeric: true },
-  { key: 'merged', label: 'Merged', numeric: true },
-  { key: 'closed', label: 'Closed', numeric: true },
-  { key: 'open', label: 'Open', numeric: true },
-  { key: 'reviewsGiven', label: 'Reviews given', numeric: true },
-  { key: 'reviewsReceived', label: 'Reviews received', numeric: true },
-  { key: 'lines', label: 'Lines (+/−)', numeric: true },
-  { key: 'avgPrSize', label: 'PR size', numeric: true },
-  { key: 'medianFirstReviewMs', label: '1st review', numeric: true },
+interface Column {
+  key: SortKey
+  label: string
+  /** Unit shown muted in the header, so cells hold only the bare number. */
+  unit?: string
+  numeric: boolean
+  /** Raw value used for sorting and for the n/a check; null means missing. */
+  value: (r: TeamStatsRow) => number | null
+  /** Cell text for a present value (bare number, no unit). */
+  format: (v: number, r: TeamStatsRow) => string
+}
+
+type CountKey = 'opened' | 'merged' | 'closed' | 'open' | 'reviewsGiven' | 'reviewsReceived'
+
+const count = (key: CountKey) => ({
+  value: (r: TeamStatsRow) => r[key],
+  format: (v: number) => String(v),
+})
+
+const COLUMNS: Column[] = [
+  { key: 'login', label: 'Member', numeric: false, value: () => 0, format: () => '' },
+  { key: 'opened', label: 'Opened', numeric: true, ...count('opened') },
+  { key: 'merged', label: 'Merged', numeric: true, ...count('merged') },
+  { key: 'closed', label: 'Closed', numeric: true, ...count('closed') },
+  { key: 'open', label: 'Open', numeric: true, ...count('open') },
+  { key: 'reviewsGiven', label: 'Reviews given', numeric: true, ...count('reviewsGiven') },
+  { key: 'reviewsReceived', label: 'Reviews received', numeric: true, ...count('reviewsReceived') },
+  {
+    key: 'lines',
+    label: 'Lines (+/−)',
+    numeric: true,
+    value: (r) => r.additions + r.deletions,
+    // The +/− pair is the cell content; its internals belong to #83.
+    format: (_v, r) => `+${r.additions} −${r.deletions}`,
+  },
+  {
+    key: 'avgPrSize',
+    label: 'PR size',
+    unit: 'lines',
+    numeric: true,
+    value: (r) => r.avgPrSize,
+    format: (v) => formatSizeNumber(v),
+  },
+  {
+    // Documented deviation from AC7: durations mix min, h and days, so each cell keeps its unit
+    // and the header has none.
+    key: 'medianFirstReviewMs',
+    label: '1st review',
+    numeric: true,
+    value: (r) => r.medianFirstReviewMs,
+    format: (v) => formatDuration(v),
+  },
 ]
 
 function sortValue(row: TeamStatsRow, key: SortKey): number | null {
-  if (key === 'lines') return row.additions + row.deletions
-  if (key === 'login') return 0
-  return row[key]
+  const col = COLUMNS.find((c) => c.key === key)
+  return col ? col.value(row) : null
 }
 
 function compareLogin(a: TeamStatsRow, b: TeamStatsRow): number {
@@ -75,6 +115,11 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
   } = useDashboard()
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'merged', dir: 'desc' })
   const [announcement, setAnnouncement] = useState('')
+  // True when columns are scrolled beneath the sticky Member column (drives the edge shadow).
+  const [scrolled, setScrolled] = useState(false)
+  const scrollRef = useCallback((el: HTMLDivElement | null) => {
+    if (el) setScrolled(el.scrollLeft > 0)
+  }, [])
 
   if (status === 'loading') {
     return <p className={styles.muted}>Loading team data…</p>
@@ -123,13 +168,28 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
       <p className={styles.hint}>
         Per member · {scope} · last {period} days
       </p>
-      <div className={styles.scroll} role="region" tabIndex={0} aria-label="Team table, scrollable">
+      <div
+        ref={scrollRef}
+        className={styles.scroll}
+        role="region"
+        tabIndex={0}
+        aria-label="Team table, scrollable"
+        data-scrolled={scrolled ? 'true' : undefined}
+        onScroll={(e) => setScrolled(e.currentTarget.scrollLeft > 0)}
+      >
         <table className={styles.table}>
-          <caption className={styles.srOnly}>Team activity per member</caption>
+          <caption className={styles.srOnly}>
+            Team activity per member. Select a member to show their detail below the table.
+          </caption>
           <thead>
             <tr>
               {COLUMNS.map((c) => {
                 const active = sort.key === c.key
+                const arrow = (
+                  <span className={styles.arrow} aria-hidden="true">
+                    {active ? (sort.dir === 'asc' ? '▲' : '▼') : ''}
+                  </span>
+                )
                 return (
                   <th
                     key={c.key}
@@ -143,10 +203,19 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
                       aria-label={`Sort by ${c.label}`}
                       onClick={() => onSort(c.key, c.label)}
                     >
-                      <span>{c.label}</span>
-                      <span className={styles.arrow} aria-hidden="true">
-                        {active ? (sort.dir === 'asc' ? '▲' : '▼') : ''}
+                      {/* Fixed-width arrow slot: left of the label for numeric columns so the
+                          label's right edge matches the digits; after it for Member. */}
+                      {c.numeric && arrow}
+                      <span className={styles.label}>
+                        {c.label}
+                        {c.unit && (
+                          <>
+                            {' '}
+                            <span className={styles.unit}>({c.unit})</span>
+                          </>
+                        )}
                       </span>
+                      {!c.numeric && arrow}
                     </button>
                   </th>
                 )
@@ -160,7 +229,6 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
                 <tr
                   key={r.login.toLowerCase()}
                   tabIndex={0}
-                  aria-label={`${r.login}: select member`}
                   aria-current={isSelected ? 'true' : undefined}
                   className={`${styles.row} ${isSelected ? styles.selected : ''}`}
                   onClick={() => select(r.login)}
@@ -169,18 +237,18 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
                   <th scope="row" className={`${styles.memberCol} ${styles.login}`}>
                     {r.login}
                   </th>
-                  <td className={styles.num}>{r.opened}</td>
-                  <td className={styles.num}>{r.merged}</td>
-                  <td className={styles.num}>{r.closed}</td>
-                  <td className={styles.num}>{r.open}</td>
-                  <td className={styles.num}>{r.reviewsGiven}</td>
-                  <td className={styles.num}>{r.reviewsReceived}</td>
-                  <td className={styles.num}>
-                    +{r.additions} {'−'}
-                    {r.deletions}
-                  </td>
-                  <td className={styles.num}>{formatSize(r.avgPrSize)}</td>
-                  <td className={styles.num}>{formatDuration(r.medianFirstReviewMs)}</td>
+                  {COLUMNS.slice(1).map((c) => {
+                    const v = c.value(r)
+                    return v === null ? (
+                      <td key={c.key} className={`${styles.num} ${styles.na}`}>
+                        {NOT_AVAILABLE}
+                      </td>
+                    ) : (
+                      <td key={c.key} className={styles.num}>
+                        {c.format(v, r)}
+                      </td>
+                    )
+                  })}
                 </tr>
               )
             })}

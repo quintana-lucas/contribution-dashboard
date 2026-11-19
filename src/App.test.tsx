@@ -198,7 +198,7 @@ describe('App Team tab (#19)', () => {
   }
 
   const openedOf = (login: string) => {
-    const row = screen.getByRole('row', { name: new RegExp(`^${login}:`) })
+    const row = screen.getByRole('row', { name: new RegExp(`^${login}\\b`) })
     return within(row).getAllByRole('cell')[0].textContent
   }
 
@@ -232,7 +232,7 @@ describe('App Team tab (#19)', () => {
     await openTeam()
     expect(screen.getByText('Select a member to see their detail.')).toBeVisible()
     expect(screen.queryByRole('region', { name: 'ana' })).toBeNull()
-    fireEvent.click(screen.getByRole('row', { name: /^ana:/ }))
+    fireEvent.click(screen.getByRole('row', { name: /^ana\b/ }))
     const panel = screen.getByRole('region', { name: 'ana' })
     expect(screen.queryByText('Select a member to see their detail.')).toBeNull()
     expect(within(panel).getByText('All repositories · last 30 days')).toBeVisible()
@@ -272,8 +272,9 @@ describe('App Team tab (#19)', () => {
     const before = counts()
     fireEvent.click(screen.getByRole('button', { name: 'Sort by Opened' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sort by Opened' }))
-    fireEvent.click(screen.getByRole('row', { name: /^bob:/ }))
-    expect(screen.getByRole('row', { name: /^bob:/ })).toHaveAttribute('aria-current', 'true')
+    // #89: rows are named by their content now (no aria-label), so match on the login prefix.
+    fireEvent.click(screen.getByRole('row', { name: /^bob\b/ }))
+    expect(screen.getByRole('row', { name: /^bob\b/ })).toHaveAttribute('aria-current', 'true')
     expect(counts()).toEqual(before)
     expect(fetchSpy).not.toHaveBeenCalled()
   })

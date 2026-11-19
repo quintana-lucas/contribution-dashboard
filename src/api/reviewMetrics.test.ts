@@ -7,6 +7,7 @@ import {
   firstReviewDurations,
   formatDuration,
   formatSize,
+  formatSizeNumber,
   median,
 } from './reviewMetrics.ts'
 import { teamStats } from './teamStats.ts'
@@ -106,6 +107,16 @@ describe('formatDuration and formatSize', () => {
     expect(formatSize(1)).toBe('1 line')
     expect(formatSize(1234.4)).toBe('1,234 lines')
     expect(formatSize(0)).toBe('0 lines')
+  })
+})
+
+describe('formatSizeNumber', () => {
+  it('AC7 (#89): returns a bare rounded number without a unit, n/a for null', () => {
+    expect(formatSizeNumber(1)).toBe('1')
+    expect(formatSizeNumber(1234.4)).toBe('1,234')
+    expect(formatSizeNumber(0)).toBe('0')
+    expect(formatSizeNumber(null)).toBe('n/a')
+    expect(formatSizeNumber(Number.NaN)).toBe('n/a')
   })
 })
 

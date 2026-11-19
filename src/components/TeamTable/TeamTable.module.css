@@ -44,7 +44,11 @@
 }
 
 .scroll {
-  overflow-x: auto;
+  --table-max-height: 70vh;
+  --layer-sticky-head: 1;
+  --layer-sticky-corner: 2;
+  max-height: var(--table-max-height);
+  overflow: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
@@ -56,8 +60,7 @@
 }
 
 .table {
-  width: 100%;
-  min-width: 640px;
+  width: max-content;
   border-collapse: separate;
   border-spacing: 0;
   color: var(--color-text);
@@ -72,6 +75,7 @@
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
+  white-space: nowrap;
 }
 
 .table tbody tr:last-child th,
@@ -80,6 +84,9 @@
 }
 
 .table th.headCell {
+  position: sticky;
+  top: 0;
+  z-index: var(--layer-sticky-head);
   background: var(--color-bg);
   font-weight: 600;
 }
@@ -87,7 +94,28 @@
 .memberCol {
   position: sticky;
   left: 0;
+  z-index: var(--layer-sticky-head);
   text-align: left;
+}
+
+/* Static edge always present; the shadow only shows once columns scroll beneath. */
+.table th.memberCol {
+  border-right: 1px solid var(--color-border);
+}
+
+.scroll[data-scrolled] .table th.memberCol {
+  box-shadow: 4px 0 6px -2px var(--color-scroll-edge);
+}
+
+.scroll[data-scrolled] .selected th.memberCol {
+  box-shadow:
+    inset 3px 0 0 var(--color-focus),
+    4px 0 6px -2px var(--color-scroll-edge);
+}
+
+/* Member header is pinned both ways, above the other headers and the body column. */
+.table th.headCell.memberCol {
+  z-index: var(--layer-sticky-corner);
 }
 
 .num {
@@ -119,9 +147,20 @@
 }
 
 .arrow {
-  min-width: 1em;
+  display: inline-block;
+  width: 1em;
+  text-align: center;
   color: var(--color-text-muted);
   font-size: 0.75em;
+}
+
+.unit,
+.na {
+  color: var(--color-text-muted);
+}
+
+.unit {
+  font-weight: var(--text-sm-weight);
 }
 
 .row {
@@ -130,7 +169,7 @@
 
 .row:hover td,
 .row:hover th {
-  background: var(--color-bg);
+  background: var(--color-row-active);
 }
 
 .row:focus-visible {
@@ -140,7 +179,7 @@
 
 .selected td,
 .selected th {
-  background: var(--color-bg);
+  background: var(--color-row-active);
 }
 
 .selected th {
