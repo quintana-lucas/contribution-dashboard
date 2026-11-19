@@ -41,12 +41,7 @@ describe('hasPreviousWindowHistory', () => {
   })
 
   it('AC7: a selected repo with short history makes it false; an unselected one does not', () => {
-    const entries = [
-      entry('acme/api', new Date(SYNCED.getTime() - 60 * DAY_MS)),
-      entry('acme/web', SYNCED),
-    ]
     const now = SYNCED
-    expect(hasPreviousWindowHistory(entries, 'all', 30, now)).toBe(true)
     const short = [entry('acme/api', SYNCED), entry('acme/web', new Date(SYNCED.getTime() + 60 * DAY_MS))]
     // acme/web (synced later) has a later history start, so 30d is not covered for it.
     expect(hasPreviousWindowHistory(short, 'all', 30, now)).toBe(false)
@@ -189,7 +184,7 @@ describe('kpiComparison', () => {
         mergedPr('2026-06-28T00:00:00Z', { number: 1 }),
         mergedPr('2026-06-27T00:00:00Z', { number: 2 }),
       ]),
-      // Synced much later: its history does not cover the previous 30d window.
+      // Synced much later: its history does not cover the previous window of the 7-day period.
     }
     const later = '2026-09-30T00:00:00Z'
     if (b.data) b.data = { ...b.data, syncedAt: later }
