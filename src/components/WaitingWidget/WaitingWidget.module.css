@@ -39,7 +39,7 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -49,10 +49,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  padding: var(--space-3) 0;
+}
+
+.item + .item {
+  border-top: 1px solid var(--color-border);
 }
 
 .title {
@@ -76,5 +77,5 @@
   border: 1px solid var(--color-text);
   border-radius: var(--radius-md);
   color: var(--color-text);
-  font-weight: 700;
+  font-weight: var(--weight-medium);
 }

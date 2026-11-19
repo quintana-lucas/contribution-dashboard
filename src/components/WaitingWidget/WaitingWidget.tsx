@@ -1,4 +1,4 @@
-import type { WaitingPr } from '../../api/waiting'
+import { OVERDUE_HOURS, type WaitingPr } from '../../api/waiting'
 import { useDashboard } from '../DashboardProvider'
 import Widget from '../Widget'
 import styles from './WaitingWidget.module.css'
@@ -27,7 +27,12 @@ function Row({ pr }: { pr: WaitingPr }) {
       </p>
       <p className={styles.meta}>
         Reviewers: {reviewers} · Waiting {formatAge(pr.ageHours)}
-        {pr.overdue ? <span className={styles.overdue}>Overdue</span> : null}
+        {pr.overdue ? (
+          <>
+            {' '}
+            <span className={styles.overdue}>Overdue</span>
+          </>
+        ) : null}
       </p>
     </li>
   )
@@ -37,7 +42,7 @@ function Row({ pr }: { pr: WaitingPr }) {
 function WaitingWidget({ onOpenSettings }: WaitingWidgetProps) {
   const { status, entries, selection, waiting } = useDashboard()
   const scope = selection === 'all' ? 'All repositories' : selection
-  const hint = `Pull requests waiting for review · ${scope}`
+  const hint = `${scope} · overdue after ${OVERDUE_HOURS} h`
 
   let body = null
   if (status === 'loading') {

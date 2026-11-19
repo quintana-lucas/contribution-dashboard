@@ -42,6 +42,12 @@ describe("theme tokens", () => {
     expect(mediaDark).toEqual(dark);
   });
 
+  it("#88 AC4: --weight-medium is 500 in :root and not repeated in the dark blocks", () => {
+    expect(light["--weight-medium"]).toBe("500");
+    expect(dark["--weight-medium"]).toBeUndefined();
+    expect(mediaDark["--weight-medium"]).toBeUndefined();
+  });
+
   for (const [name, t] of [
     ["light", light],
     ["dark", dark],

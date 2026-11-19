@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { OVERDUE_HOURS } from '../../api/waiting'
 import type { StoredRepo } from '../../api/types'
 import { makeDeps, storedRepo } from '../../test/fakeDeps'
 import DashboardProvider from '../DashboardProvider'
@@ -116,11 +117,34 @@ describe('WaitingWidget', () => {
     expect(screen.queryByRole('list')).toBeNull()
   })
 
-  it('AC5: is a region with an accessible name Open PRs waiting for review', async () => {
+  it('#88 AC7: the hint states the scope and the overdue rule instead of repeating the heading', async () => {
+    await renderWidget()
+    const region = screen.getByRole('region', { name: 'Open PRs waiting for review' })
+    expect(region).toHaveTextContent('All repositories · overdue after')
+    expect(region).not.toHaveTextContent('Pull requests waiting for review ·')
+    fireEvent.change(screen.getByLabelText('Repository'), { target: { value: 'acme/web' } })
+    expect(region).toHaveTextContent('acme/web · overdue after')
+  })
+
+  it('#88 AC7: the hours in the hint come from OVERDUE_HOURS', async () => {
     await renderWidget()
     expect(screen.getByRole('region', { name: 'Open PRs waiting for review' })).toHaveTextContent(
-      'Pull requests waiting for review · All repositories',
+      `overdue after ${OVERDUE_HOURS} h`,
     )
+  })
+
+  it('#88 AC10: a space separates the age from the Overdue chip; non-overdue rows have no chip', async () => {
+    await renderWidget()
+    const rows = items()
+    expect(rows[0].textContent).toContain('Waiting 3d Overdue')
+    expect(rows[2].textContent).not.toContain('Overdue')
+    expect(within(rows[2]).queryByText('Overdue')).toBeNull()
+    expect(within(rows[0]).getByText('Overdue')).toBeInTheDocument()
+  })
+
+  it('AC5: is a region with an accessible name Open PRs waiting for review', async () => {
+    await renderWidget()
+    expect(screen.getByRole('region', { name: 'Open PRs waiting for review' })).toBeInTheDocument()
   })
 
   it('AC1: not synced state points to settings', async () => {
