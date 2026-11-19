@@ -12,6 +12,12 @@ body {
   font-size: var(--text-md);
   font-weight: var(--text-md-weight);
   line-height: var(--text-md-line);
+  accent-color: var(--color-accent);
+  caret-color: var(--color-accent);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
 :focus-visible {
