@@ -20,13 +20,21 @@ function Row({ pr }: { pr: WaitingPr }) {
   return (
     <li className={styles.item}>
       <p className={styles.title}>
-        {pr.title} #{pr.number}
+        <span className={styles.titleText}>{pr.title}</span>{' '}
+        <span className={styles.number}>#{pr.number}</span>
       </p>
       <p className={styles.meta}>
-        {pr.repo} · by {pr.author} · +{pr.additions} / -{pr.deletions}
+        {pr.repo} · by {pr.author} ·{' '}
+        <span className={styles.lines}>
+          +{pr.additions} / -{pr.deletions}
+        </span>
       </p>
       <p className={styles.meta}>
-        Reviewers: {reviewers} · Waiting {formatAge(pr.ageHours)}
+        Reviewers: {reviewers} ·{' '}
+        <span className={styles.age}>
+          <span className={styles.ageLabel}>Waiting</span>{' '}
+          <span className={styles.ageValue}>{formatAge(pr.ageHours)}</span>
+        </span>
         {pr.overdue ? (
           <>
             {' '}

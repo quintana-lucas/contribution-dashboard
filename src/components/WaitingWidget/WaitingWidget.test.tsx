@@ -142,6 +142,49 @@ describe('WaitingWidget', () => {
     expect(within(rows[0]).getByText('Overdue')).toBeInTheDocument()
   })
 
+  it('#88 AC2: the PR number is its own element, separate from the title text', async () => {
+    await renderWidget()
+    const row = items()[0]
+    const number = within(row).getByText('#1')
+    const title = within(row).getByText('Fake PR 1')
+    expect(number).not.toBe(title)
+    expect(title.textContent).toBe('Fake PR 1')
+    expect(number.textContent).toBe('#1')
+  })
+
+  it('#88 AC3: the Waiting label and the age value are separate elements in one wrapper, in order', async () => {
+    await renderWidget()
+    const row = items()[0]
+    const label = within(row).getByText('Waiting')
+    const value = within(row).getByText('3d')
+    expect(label).not.toBe(value)
+    expect(label.parentElement).toBe(value.parentElement)
+    expect(label.nextElementSibling).toBe(value)
+    expect(value.textContent).toBe('3d')
+  })
+
+  it('#88 AC5: identity and time/people sit on two separate meta lines', async () => {
+    await renderWidget()
+    const row = items()[0]
+    const lines = row.querySelectorAll('p')
+    expect(lines).toHaveLength(3)
+    const identity = lines[1]
+    const people = lines[2]
+    expect(identity).toHaveTextContent('acme/api')
+    expect(identity).toHaveTextContent('by ana')
+    expect(identity).not.toHaveTextContent('Reviewers')
+    expect(people).toHaveTextContent('Reviewers: dee')
+    expect(people).toHaveTextContent('Waiting 3d')
+  })
+
+  it('#88 AC6: the +/- figure is in its own single element, last on the identity line', async () => {
+    await renderWidget()
+    const row = items()[0]
+    const figure = within(row).getByText('+40 / -7')
+    expect(figure.children).toHaveLength(0)
+    expect(figure.parentElement?.lastElementChild).toBe(figure)
+  })
+
   it('AC5: is a region with an accessible name Open PRs waiting for review', async () => {
     await renderWidget()
     expect(screen.getByRole('region', { name: 'Open PRs waiting for review' })).toBeInTheDocument()

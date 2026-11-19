@@ -59,8 +59,19 @@
 .title {
   margin: 0;
   color: var(--color-text);
-  font-size: var(--text-md);
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--text-sm-line);
+}
+
+.titleText {
+  overflow-wrap: anywhere;
+}
+
+.number {
+  color: var(--color-text-muted);
+  font-weight: var(--text-sm-weight);
+  white-space: nowrap;
 }
 
 .meta {
@@ -71,6 +82,26 @@
   line-height: var(--text-sm-line);
 }
 
+.lines {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.age {
+  white-space: nowrap;
+}
+
+.ageLabel {
+  color: var(--color-text-muted);
+  font-weight: var(--text-sm-weight);
+}
+
+.ageValue {
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
 .overdue {
   margin-left: var(--space-2);
   padding: 0 var(--space-2);
@@ -78,4 +109,5 @@
   border-radius: var(--radius-md);
   color: var(--color-text);
   font-weight: var(--weight-medium);
+  white-space: nowrap;
 }
