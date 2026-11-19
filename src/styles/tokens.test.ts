@@ -52,6 +52,11 @@ describe("theme tokens", () => {
       const text = rgb(t["--color-text"]);
       const accent = rgb(t["--color-accent"]);
 
+      it("#88 AC11: text and muted text are at least 4.5:1 on surface", () => {
+        expect(ratio(text, surface)).toBeGreaterThanOrEqual(4.5);
+        expect(ratio(rgb(t["--color-text-muted"]), surface)).toBeGreaterThanOrEqual(4.5);
+      });
+
       it("AC9: icon is at least 3:1 on surface and on the 12%/20% accent tints", () => {
         expect(ratio(text, surface)).toBeGreaterThanOrEqual(3);
         expect(ratio(text, mix(accent, surface, 0.12))).toBeGreaterThanOrEqual(3);
