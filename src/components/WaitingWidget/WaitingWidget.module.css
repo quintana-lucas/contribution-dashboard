@@ -39,7 +39,7 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -49,17 +49,29 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  padding: var(--space-3) 0;
+}
+
+.item + .item {
+  border-top: 1px solid var(--color-border);
 }
 
 .title {
   margin: 0;
   color: var(--color-text);
-  font-size: var(--text-md);
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  line-height: var(--text-sm-line);
+}
+
+.titleText {
+  overflow-wrap: anywhere;
+}
+
+.number {
+  color: var(--color-text-muted);
+  font-weight: var(--text-sm-weight);
+  white-space: nowrap;
 }
 
 .meta {
@@ -70,11 +82,32 @@
   line-height: var(--text-sm-line);
 }
 
+.lines {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.age {
+  white-space: nowrap;
+}
+
+.ageLabel {
+  color: var(--color-text-muted);
+  font-weight: var(--text-sm-weight);
+}
+
+.ageValue {
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
 .overdue {
   margin-left: var(--space-2);
   padding: 0 var(--space-2);
   border: 1px solid var(--color-text);
   border-radius: var(--radius-md);
   color: var(--color-text);
-  font-weight: 700;
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
 }

@@ -10,8 +10,12 @@
   --color-accent: #4a4fd0;
   --color-on-accent: #ffffff;
   --color-focus: var(--color-accent);
-  --color-bar: var(--color-accent);
+  --color-bar: #35527a;
   --color-bar-muted: var(--color-text-muted);
+  --color-good: #0a6b41;
+  --color-caution: #8f5300;
+  --color-good-bg: color-mix(in srgb, var(--color-good) 10%, var(--color-surface));
+  --color-caution-bg: color-mix(in srgb, var(--color-caution) 10%, var(--color-surface));
   --color-backdrop: rgba(27, 27, 33, 0.5);
   --color-row-active: #eef0fd;
   --color-scroll-edge: rgba(27, 27, 33, 0.16);
@@ -30,6 +34,7 @@
   --text-sm: 0.875rem;
   --text-sm-weight: 400;
   --text-sm-line: 1.4;
+  --weight-medium: 500;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -61,6 +66,11 @@
     --color-border-dashed: #6d6d7c;
     --color-accent: #8e94ff;
     --color-on-accent: #10101a;
+    --color-bar: #8aa8d6;
+    --color-good: #4cc38a;
+    --color-caution: #e5a93d;
+    --color-good-bg: color-mix(in srgb, var(--color-good) 12%, var(--color-surface));
+    --color-caution-bg: color-mix(in srgb, var(--color-caution) 12%, var(--color-surface));
     --color-backdrop: rgba(0, 0, 0, 0.6);
     --color-row-active: #23232b;
     --color-scroll-edge: rgba(0, 0, 0, 0.5);
@@ -78,6 +88,11 @@
   --color-border-dashed: #6d6d7c;
   --color-accent: #8e94ff;
   --color-on-accent: #10101a;
+  --color-bar: #8aa8d6;
+  --color-good: #4cc38a;
+  --color-caution: #e5a93d;
+  --color-good-bg: color-mix(in srgb, var(--color-good) 12%, var(--color-surface));
+  --color-caution-bg: color-mix(in srgb, var(--color-caution) 12%, var(--color-surface));
   --color-backdrop: rgba(0, 0, 0, 0.6);
   --color-row-active: #23232b;
   --color-scroll-edge: rgba(0, 0, 0, 0.5);

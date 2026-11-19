@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { OVERDUE_HOURS } from '../../api/waiting'
 import type { StoredRepo } from '../../api/types'
 import { makeDeps, storedRepo } from '../../test/fakeDeps'
 import DashboardProvider from '../DashboardProvider'
@@ -116,11 +117,77 @@ describe('WaitingWidget', () => {
     expect(screen.queryByRole('list')).toBeNull()
   })
 
-  it('AC5: is a region with an accessible name Open PRs waiting for review', async () => {
+  it('#88 AC7: the hint states the scope and the overdue rule instead of repeating the heading', async () => {
+    await renderWidget()
+    const region = screen.getByRole('region', { name: 'Open PRs waiting for review' })
+    expect(region).toHaveTextContent('All repositories · overdue after')
+    expect(region).not.toHaveTextContent('Pull requests waiting for review ·')
+    fireEvent.change(screen.getByLabelText('Repository'), { target: { value: 'acme/web' } })
+    expect(region).toHaveTextContent('acme/web · overdue after')
+  })
+
+  it('#88 AC7: the hours in the hint come from OVERDUE_HOURS', async () => {
     await renderWidget()
     expect(screen.getByRole('region', { name: 'Open PRs waiting for review' })).toHaveTextContent(
-      'Pull requests waiting for review · All repositories',
+      `overdue after ${OVERDUE_HOURS} h`,
     )
+  })
+
+  it('#88 AC10: a space separates the age from the Overdue chip; non-overdue rows have no chip', async () => {
+    await renderWidget()
+    const rows = items()
+    expect(rows[0].textContent).toContain('Waiting 3d Overdue')
+    expect(rows[2].textContent).not.toContain('Overdue')
+    expect(within(rows[2]).queryByText('Overdue')).toBeNull()
+    expect(within(rows[0]).getByText('Overdue')).toBeInTheDocument()
+  })
+
+  it('#88 AC2: the PR number is its own element, separate from the title text', async () => {
+    await renderWidget()
+    const row = items()[0]
+    const number = within(row).getByText('#1')
+    const title = within(row).getByText('Fake PR 1')
+    expect(number).not.toBe(title)
+    expect(title.textContent).toBe('Fake PR 1')
+    expect(number.textContent).toBe('#1')
+  })
+
+  it('#88 AC3: the Waiting label and the age value are separate elements in one wrapper, in order', async () => {
+    await renderWidget()
+    const row = items()[0]
+    const label = within(row).getByText('Waiting')
+    const value = within(row).getByText('3d')
+    expect(label).not.toBe(value)
+    expect(label.parentElement).toBe(value.parentElement)
+    expect(label.nextElementSibling).toBe(value)
+    expect(value.textContent).toBe('3d')
+  })
+
+  it('#88 AC5: identity and time/people sit on two separate meta lines', async () => {
+    await renderWidget()
+    const row = items()[0]
+    const lines = row.querySelectorAll('p')
+    expect(lines).toHaveLength(3)
+    const identity = lines[1]
+    const people = lines[2]
+    expect(identity).toHaveTextContent('acme/api')
+    expect(identity).toHaveTextContent('by ana')
+    expect(identity).not.toHaveTextContent('Reviewers')
+    expect(people).toHaveTextContent('Reviewers: dee')
+    expect(people).toHaveTextContent('Waiting 3d')
+  })
+
+  it('#88 AC6: the +/- figure is in its own single element, last on the identity line', async () => {
+    await renderWidget()
+    const row = items()[0]
+    const figure = within(row).getByText('+40 / -7')
+    expect(figure.children).toHaveLength(0)
+    expect(figure.parentElement?.lastElementChild).toBe(figure)
+  })
+
+  it('AC5: is a region with an accessible name Open PRs waiting for review', async () => {
+    await renderWidget()
+    expect(screen.getByRole('region', { name: 'Open PRs waiting for review' })).toBeInTheDocument()
   })
 
   it('AC1: not synced state points to settings', async () => {
