@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { NOT_AVAILABLE, formatDuration, formatSizeNumber } from '../../api/reviewMetrics'
 import type { TeamStatsRow } from '../../api/teamStats'
@@ -115,6 +115,11 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
   } = useDashboard()
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'merged', dir: 'desc' })
   const [announcement, setAnnouncement] = useState('')
+  // True when columns are scrolled beneath the sticky Member column (drives the edge shadow).
+  const [scrolled, setScrolled] = useState(false)
+  const scrollRef = useCallback((el: HTMLDivElement | null) => {
+    if (el) setScrolled(el.scrollLeft > 0)
+  }, [])
 
   if (status === 'loading') {
     return <p className={styles.muted}>Loading team data…</p>
@@ -163,9 +168,19 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
       <p className={styles.hint}>
         Per member · {scope} · last {period} days
       </p>
-      <div className={styles.scroll} role="region" tabIndex={0} aria-label="Team table, scrollable">
+      <div
+        ref={scrollRef}
+        className={styles.scroll}
+        role="region"
+        tabIndex={0}
+        aria-label="Team table, scrollable"
+        data-scrolled={scrolled ? 'true' : undefined}
+        onScroll={(e) => setScrolled(e.currentTarget.scrollLeft > 0)}
+      >
         <table className={styles.table}>
-          <caption className={styles.srOnly}>Team activity per member</caption>
+          <caption className={styles.srOnly}>
+            Team activity per member. Select a member to show their detail below the table.
+          </caption>
           <thead>
             <tr>
               {COLUMNS.map((c) => {
@@ -214,7 +229,6 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
                 <tr
                   key={r.login.toLowerCase()}
                   tabIndex={0}
-                  aria-label={`${r.login}: select member`}
                   aria-current={isSelected ? 'true' : undefined}
                   className={`${styles.row} ${isSelected ? styles.selected : ''}`}
                   onClick={() => select(r.login)}

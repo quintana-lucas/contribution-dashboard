@@ -98,6 +98,21 @@
   text-align: left;
 }
 
+/* Static edge always present; the shadow only shows once columns scroll beneath. */
+.table th.memberCol {
+  border-right: 1px solid var(--color-border);
+}
+
+.scroll[data-scrolled] .table th.memberCol {
+  box-shadow: 4px 0 6px -2px var(--color-scroll-edge);
+}
+
+.scroll[data-scrolled] .selected th.memberCol {
+  box-shadow:
+    inset 3px 0 0 var(--color-focus),
+    4px 0 6px -2px var(--color-scroll-edge);
+}
+
 /* Member header is pinned both ways, above the other headers and the body column. */
 .table th.headCell.memberCol {
   z-index: var(--layer-sticky-corner);
