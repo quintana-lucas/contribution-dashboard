@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import { formatDuration, formatSize } from '../../api/reviewMetrics'
+import { NOT_AVAILABLE, formatDuration, formatSizeNumber } from '../../api/reviewMetrics'
 import type { TeamStatsRow } from '../../api/teamStats'
 import { useDashboard } from '../DashboardProvider'
 import styles from './TeamTable.module.css'
@@ -22,23 +22,63 @@ type SortKey =
   | 'medianFirstReviewMs'
 type SortDir = 'asc' | 'desc'
 
-const COLUMNS: { key: SortKey; label: string; numeric: boolean }[] = [
-  { key: 'login', label: 'Member', numeric: false },
-  { key: 'opened', label: 'Opened', numeric: true },
-  { key: 'merged', label: 'Merged', numeric: true },
-  { key: 'closed', label: 'Closed', numeric: true },
-  { key: 'open', label: 'Open', numeric: true },
-  { key: 'reviewsGiven', label: 'Reviews given', numeric: true },
-  { key: 'reviewsReceived', label: 'Reviews received', numeric: true },
-  { key: 'lines', label: 'Lines (+/−)', numeric: true },
-  { key: 'avgPrSize', label: 'PR size', numeric: true },
-  { key: 'medianFirstReviewMs', label: '1st review', numeric: true },
+interface Column {
+  key: SortKey
+  label: string
+  /** Unit shown muted in the header, so cells hold only the bare number. */
+  unit?: string
+  numeric: boolean
+  /** Raw value used for sorting and for the n/a check; null means missing. */
+  value: (r: TeamStatsRow) => number | null
+  /** Cell text for a present value (bare number, no unit). */
+  format: (v: number, r: TeamStatsRow) => string
+}
+
+type CountKey = 'opened' | 'merged' | 'closed' | 'open' | 'reviewsGiven' | 'reviewsReceived'
+
+const count = (key: CountKey) => ({
+  value: (r: TeamStatsRow) => r[key],
+  format: (v: number) => String(v),
+})
+
+const COLUMNS: Column[] = [
+  { key: 'login', label: 'Member', numeric: false, value: () => 0, format: () => '' },
+  { key: 'opened', label: 'Opened', numeric: true, ...count('opened') },
+  { key: 'merged', label: 'Merged', numeric: true, ...count('merged') },
+  { key: 'closed', label: 'Closed', numeric: true, ...count('closed') },
+  { key: 'open', label: 'Open', numeric: true, ...count('open') },
+  { key: 'reviewsGiven', label: 'Reviews given', numeric: true, ...count('reviewsGiven') },
+  { key: 'reviewsReceived', label: 'Reviews received', numeric: true, ...count('reviewsReceived') },
+  {
+    key: 'lines',
+    label: 'Lines (+/−)',
+    numeric: true,
+    value: (r) => r.additions + r.deletions,
+    // The +/− pair is the cell content; its internals belong to #83.
+    format: (_v, r) => `+${r.additions} −${r.deletions}`,
+  },
+  {
+    key: 'avgPrSize',
+    label: 'PR size',
+    unit: 'lines',
+    numeric: true,
+    value: (r) => r.avgPrSize,
+    format: (v) => formatSizeNumber(v),
+  },
+  {
+    // Documented deviation from AC7: durations mix min, h and days, so each cell keeps its unit
+    // and the header has none.
+    key: 'medianFirstReviewMs',
+    label: '1st review',
+    numeric: true,
+    value: (r) => r.medianFirstReviewMs,
+    format: (v) => formatDuration(v),
+  },
 ]
 
 function sortValue(row: TeamStatsRow, key: SortKey): number | null {
-  if (key === 'lines') return row.additions + row.deletions
-  if (key === 'login') return 0
-  return row[key]
+  const col = COLUMNS.find((c) => c.key === key)
+  return col ? col.value(row) : null
 }
 
 function compareLogin(a: TeamStatsRow, b: TeamStatsRow): number {
@@ -143,7 +183,15 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
                       aria-label={`Sort by ${c.label}`}
                       onClick={() => onSort(c.key, c.label)}
                     >
-                      <span>{c.label}</span>
+                      <span>
+                        {c.label}
+                        {c.unit && (
+                          <>
+                            {' '}
+                            <span className={styles.unit}>({c.unit})</span>
+                          </>
+                        )}
+                      </span>
                       <span className={styles.arrow} aria-hidden="true">
                         {active ? (sort.dir === 'asc' ? '▲' : '▼') : ''}
                       </span>
@@ -169,18 +217,18 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
                   <th scope="row" className={`${styles.memberCol} ${styles.login}`}>
                     {r.login}
                   </th>
-                  <td className={styles.num}>{r.opened}</td>
-                  <td className={styles.num}>{r.merged}</td>
-                  <td className={styles.num}>{r.closed}</td>
-                  <td className={styles.num}>{r.open}</td>
-                  <td className={styles.num}>{r.reviewsGiven}</td>
-                  <td className={styles.num}>{r.reviewsReceived}</td>
-                  <td className={styles.num}>
-                    +{r.additions} {'−'}
-                    {r.deletions}
-                  </td>
-                  <td className={styles.num}>{formatSize(r.avgPrSize)}</td>
-                  <td className={styles.num}>{formatDuration(r.medianFirstReviewMs)}</td>
+                  {COLUMNS.slice(1).map((c) => {
+                    const v = c.value(r)
+                    return v === null ? (
+                      <td key={c.key} className={`${styles.num} ${styles.na}`}>
+                        {NOT_AVAILABLE}
+                      </td>
+                    ) : (
+                      <td key={c.key} className={styles.num}>
+                        {c.format(v, r)}
+                      </td>
+                    )
+                  })}
                 </tr>
               )
             })}

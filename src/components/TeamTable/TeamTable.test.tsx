@@ -77,13 +77,14 @@ describe('TeamTable', () => {
       'Reviews given',
       'Reviews received',
       'Lines (+/−)',
-      'PR size',
+      'PR size (lines)',
       '1st review',
     ])
     expect(screen.getAllByRole('row')).toHaveLength(4)
     const ana = screen.getByRole('row', { name: 'Ana: select member' })
     expect(within(ana).getAllByRole('cell').map((c) => c.textContent)).toEqual([
-      '5', '3', '1', '1', '4', '2', '+120 −45', '300 lines', '5.5 h',
+      // #89: PR size is now a bare "300" (the unit moved to the header); 1st review keeps its unit.
+      '5', '3', '1', '1', '4', '2', '+120 −45', '300', '5.5 h',
     ])
     expect(within(screen.getByRole('row', { name: 'cy: select member' })).getAllByRole('cell')[0].textContent).toBe('0')
     expect(screen.getByText('Per member · All repositories · last 30 days')).toBeTruthy()
@@ -146,6 +147,34 @@ describe('TeamTable', () => {
     const cells = within(screen.getByRole('row', { name: 'cy: select member' })).getAllByRole('cell')
     expect(cells.slice(-2).map((c) => c.textContent)).toEqual(['n/a', 'n/a'])
     expect(document.body).not.toHaveTextContent('NaN')
+  })
+
+  it('AC7 (#89): PR size cells hold only the bare number and the unit is in the header', () => {
+    renderTable()
+    const header = screen.getByRole('columnheader', { name: /PR size/ })
+    expect(header.textContent).toContain('(lines)')
+    const unit = header.querySelector('span span')
+    expect(unit?.textContent).toBe('(lines)')
+    const ana = within(screen.getByRole('row', { name: 'Ana: select member' })).getAllByRole('cell')
+    expect(ana[7].textContent).toBe('300')
+    for (const r of screen.getAllByRole('row').slice(1)) {
+      expect(within(r).getAllByRole('cell')[7].textContent).not.toMatch(/lines?/)
+    }
+    // Documented deviation: 1st review keeps its per-cell unit and has no header unit.
+    expect(ana[8].textContent).toBe('5.5 h')
+    expect(screen.getByRole('columnheader', { name: /1st review/ }).textContent).not.toContain('(')
+  })
+
+  it('AC8 (#89): a missing metric renders n/a in a muted cell, like the numbers', () => {
+    renderTable()
+    const cy = within(screen.getByRole('row', { name: 'cy: select member' })).getAllByRole('cell')
+    for (const c of cy.slice(-2)) {
+      expect(c.textContent).toBe('n/a')
+      expect(c.className).toMatch(/(^|[\s_])na([\s_]|$)/)
+      expect(c.className).toMatch(/(^|[\s_])num([\s_]|$)/)
+    }
+    const ana = within(screen.getByRole('row', { name: 'Ana: select member' })).getAllByRole('cell')
+    expect(ana[7].className).not.toMatch(/(^|[\s_])na([\s_]|$)/)
   })
 
   it('AC3 (#19): keeps the sort when the figures change', () => {

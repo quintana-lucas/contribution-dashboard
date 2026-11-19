@@ -72,6 +72,12 @@ export function formatDuration(ms: number | null): string {
   return `${trim(days)} ${trim(days) === '1' ? 'day' : 'days'}`
 }
 
+/** Average PR size as a bare whole number ("320", no unit: the column header carries it); "n/a" for null. */
+export function formatSizeNumber(lines: number | null): string {
+  if (lines === null || !Number.isFinite(lines)) return NOT_AVAILABLE
+  return new Intl.NumberFormat('en-US').format(Math.round(lines))
+}
+
 /** Average PR size as a whole number of lines with its unit ("320 lines"); "n/a" for null. */
 export function formatSize(lines: number | null): string {
   if (lines === null || !Number.isFinite(lines)) return NOT_AVAILABLE

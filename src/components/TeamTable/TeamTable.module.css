@@ -124,6 +124,15 @@
   font-size: 0.75em;
 }
 
+.unit,
+.na {
+  color: var(--color-text-muted);
+}
+
+.unit {
+  font-weight: var(--text-sm-weight);
+}
+
 .row {
   cursor: pointer;
 }
