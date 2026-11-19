@@ -71,6 +71,12 @@ describe("theme tokens", () => {
     expect(mediaDark).toEqual(dark);
   });
 
+  it("#88 AC4: --weight-medium is 500 in :root and not repeated in the dark blocks", () => {
+    expect(light["--weight-medium"]).toBe("500");
+    expect(dark["--weight-medium"]).toBeUndefined();
+    expect(mediaDark["--weight-medium"]).toBeUndefined();
+  });
+
   it("#82 AC5: --color-bar is declared in both dark maps with the same value", () => {
     expect(mediaDark["--color-bar"]).toBeDefined();
     expect(dark["--color-bar"]).toBeDefined();
@@ -86,6 +92,11 @@ describe("theme tokens", () => {
       const bg = rgb(t["--color-bg"]);
       const text = rgb(t["--color-text"]);
       const accent = rgb(t["--color-accent"]);
+
+      it("#88 AC11: text and muted text are at least 4.5:1 on surface", () => {
+        expect(ratio(text, surface)).toBeGreaterThanOrEqual(4.5);
+        expect(ratio(rgb(t["--color-text-muted"]), surface)).toBeGreaterThanOrEqual(4.5);
+      });
 
       it("#82 AC1: bar is an independent hex, not the accent, and at least 3:1 on surface", () => {
         const bar = t["--color-bar"];

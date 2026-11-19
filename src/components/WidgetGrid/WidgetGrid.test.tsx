@@ -59,7 +59,7 @@ describe('WidgetGrid', () => {
   it('AC5: widget 4 is the waiting widget, not a placeholder', () => {
     renderGrid()
     const region = screen.getByRole('region', { name: 'Open PRs waiting for review' })
-    expect(region).toHaveTextContent('Pull requests waiting for review')
+    expect(region).toHaveTextContent('overdue after')
     expect(region).not.toHaveTextContent('Placeholder. No data yet.')
   })
 
