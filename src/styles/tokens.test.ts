@@ -37,9 +37,44 @@ const ratio = (a: RGB, b: RGB) => {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 };
 
+// Resolves a plain hex, `var(--x)`, or `color-mix(in srgb, var(--x) N%, var(--y))` against a theme map.
+function resolve(t: Record<string, string>, value: string): RGB {
+  const v = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(v)) return rgb(v);
+  const ref = v.match(/^var\((--[\w-]+)\)$/);
+  if (ref) return resolve(t, t[ref[1]]);
+  const m = v.match(/^color-mix\(in srgb,\s*(.+?)\s+(\d+(?:\.\d+)?)%,\s*(.+)\)$/);
+  if (!m) throw new Error(`cannot resolve ${value}`);
+  return mix(resolve(t, m[1]), resolve(t, m[3]), Number(m[2]) / 100);
+}
+
+const semanticTokens = ["--color-good", "--color-caution", "--color-good-bg", "--color-caution-bg"];
+
 describe("theme tokens", () => {
+  it("#82 AC2: the four semantic tokens exist in light and in both dark maps", () => {
+    for (const map of [light, mediaDark, dark]) {
+      for (const name of semanticTokens) expect(map[name]).toBeDefined();
+    }
+  });
+
+  it("#82 AC2: no red/critical/danger/error token exists", () => {
+    for (const map of [light, mediaDark, dark]) {
+      for (const name of Object.keys(map)) expect(name).not.toMatch(/red|critical|danger|error/i);
+    }
+  });
+
+  it("#82 AC5: the semantic tokens have identical values in both dark maps", () => {
+    for (const name of semanticTokens) expect(mediaDark[name]).toBe(dark[name]);
+  });
+
   it("AC7: the dark set under data-theme matches the media-query dark set", () => {
     expect(mediaDark).toEqual(dark);
+  });
+
+  it("#82 AC5: --color-bar is declared in both dark maps with the same value", () => {
+    expect(mediaDark["--color-bar"]).toBeDefined();
+    expect(dark["--color-bar"]).toBeDefined();
+    expect(mediaDark["--color-bar"]).toBe(dark["--color-bar"]);
   });
 
   for (const [name, t] of [
@@ -51,6 +86,28 @@ describe("theme tokens", () => {
       const bg = rgb(t["--color-bg"]);
       const text = rgb(t["--color-text"]);
       const accent = rgb(t["--color-accent"]);
+
+      it("#82 AC1: bar is an independent hex, not the accent, and at least 3:1 on surface", () => {
+        const bar = t["--color-bar"];
+        expect(bar).toMatch(/^#[0-9a-f]{6}$/i);
+        expect(bar).not.toBe("var(--color-accent)");
+        expect(bar.toLowerCase()).not.toBe(t["--color-accent"].toLowerCase());
+        expect(ratio(rgb(bar), surface)).toBeGreaterThanOrEqual(3);
+      });
+
+      for (const kind of ["good", "caution"] as const) {
+        it(`#82 AC3: ${kind} is at least 4.5:1 (text) and 3:1 (graphic) on surface`, () => {
+          const c = resolve(t, t[`--color-${kind}`]);
+          expect(ratio(c, surface)).toBeGreaterThanOrEqual(4.5);
+          expect(ratio(c, surface)).toBeGreaterThanOrEqual(3);
+        });
+
+        it(`#82 AC4: ${kind} text on its own tint is at least 4.5:1`, () => {
+          const c = resolve(t, t[`--color-${kind}`]);
+          const tint = resolve(t, t[`--color-${kind}-bg`]);
+          expect(ratio(c, tint)).toBeGreaterThanOrEqual(4.5);
+        });
+      }
 
       it("AC9: icon is at least 3:1 on surface and on the 12%/20% accent tints", () => {
         expect(ratio(text, surface)).toBeGreaterThanOrEqual(3);
