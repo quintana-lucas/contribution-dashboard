@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import type { StartSyncError, SyncRunState } from '../../api/client'
 import type { Period } from '../../api/dashboard'
 import { useDashboard } from '../DashboardProvider'
+import Skeleton from '../Skeleton'
 import styles from './Toolbar.module.css'
 
 const PERIODS: Period[] = [7, 30, 90]
@@ -109,13 +110,33 @@ export default function Toolbar() {
   // No linked repos: the toolbar is hidden, not disabled (AC4).
   if (status === 'ready' && entries.length === 0) return null
 
+  if (status === 'loading') {
+    // Placeholders match the loaded controls' sizes so nothing shifts on arrival.
+    return (
+      <div className={styles.toolbar} role="group" aria-label="Dashboard filters" aria-busy="true">
+        <div className={styles.controls}>
+          <div className={styles.field}>
+            <Skeleton width={80} height={20} />
+            <Skeleton shape="block" width={220} height={44} />
+          </div>
+          <div className={styles.field}>
+            <Skeleton width={60} height={20} />
+            <Skeleton shape="block" width={276} height={44} />
+          </div>
+          <Skeleton shape="block" className={styles.sync} width={104} height={44} />
+        </div>
+        <div className={styles.subline}>
+          <Skeleton width={320} height={20} />
+        </div>
+      </div>
+    )
+  }
+
   if (status !== 'ready') {
     return (
       <div className={styles.toolbar} role="group" aria-label="Dashboard filters">
         <p className={styles.subline} role="status" data-state={status}>
-          {status === 'loading'
-            ? 'Loading repository data…'
-            : 'Could not load repository data. Check that the local server is running, then reload the page.'}
+          Could not load repository data. Check that the local server is running, then reload the page.
         </p>
       </div>
     )
