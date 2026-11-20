@@ -23,6 +23,29 @@ describe('StatCard', () => {
     expect(container.firstElementChild?.children).toHaveLength(2)
   })
 
+  // #84 AC3, AC5
+  it('#84 AC3: sublineTone caution adds a caution class and renders the icon before the text in one element', () => {
+    render(
+      <StatCard
+        label="Open PRs"
+        value="3"
+        subline="3 waiting for review over 24 h"
+        sublineTone="caution"
+        sublineIcon={<svg data-testid="icon" />}
+      />,
+    )
+    const sub = screen.getByText('3 waiting for review over 24 h')
+    expect(sub.className).toMatch(/caution/i)
+    expect(sub.firstElementChild).toBe(screen.getByTestId('icon').parentElement)
+  })
+
+  it('#84 AC4: without tone or icon the sub-line is neutral and has no icon', () => {
+    render(<StatCard label="Open PRs" value="0" subline="0 waiting for review over 24 h" />)
+    const sub = screen.getByText('0 waiting for review over 24 h')
+    expect(sub.className).not.toMatch(/caution/i)
+    expect(sub.querySelector('svg')).toBeNull()
+  })
+
   it('AC4: value is never empty', () => {
     render(<StatCard label="Merged PRs" value="" />)
     expect(screen.getByText('…')).toBeInTheDocument()
