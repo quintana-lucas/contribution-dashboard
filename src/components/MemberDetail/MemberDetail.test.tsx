@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { buckets } from '../../api/dashboard'
@@ -196,17 +198,107 @@ describe('MemberDetail', () => {
     expect(meta).toHaveTextContent(/acme\/api · \+10−2 ·/)
     expect(meta.querySelector('[role="img"]')).toHaveAttribute('aria-label', '10 added, 2 removed')
     expect(meta.closest('a')).toBeNull()
-    // AC9: no sr-only sentence and nothing aria-hidden in the row
-    expect(items[0].querySelector('[aria-hidden="true"]')).toBeNull()
-    expect(items[0]).not.toHaveTextContent(/pull request #1/)
+    // AC9: no sr-only sentence and nothing aria-hidden in any row; AC5: meta and state outside every link
+    for (const [i, item] of items.entries()) {
+      expect(item.querySelector('[aria-hidden="true"]')).toBeNull()
+      expect(item).not.toHaveTextContent(/pull request #/)
+      expect(item).not.toHaveTextContent(`#${i + 1}`)
+      const link = within(item).getByRole('link')
+      const metaEl = item.querySelector('time')!.parentElement as HTMLElement
+      expect(link.contains(metaEl)).toBe(false)
+      expect(metaEl.closest('a')).toBeNull()
+      expect(link.contains(within(item).getByText(i === 0 ? 'Merged' : 'Open'))).toBe(false)
+      expect(link.querySelector('time, [role="img"]')).toBeNull()
+    }
     expect(within(items[0]).getAllByText('Fix the thing')).toHaveLength(1)
-    // AC13: PR number is no longer announced
-    expect(items[0]).not.toHaveTextContent('#1')
     const time = items[1].querySelector('time')!
     expect(time).toHaveAttribute('datetime', '2026-05-01T09:00:00.000Z')
     expect(time.textContent).toBe('May 1')
     expect(time.getAttribute('title')).toBeTruthy()
     expect(screen.queryByText(/most recent of/)).toBeNull()
+  })
+
+  describe('#91: PR title links', () => {
+    const MIXED = [
+      pr({ repo: 'acme/api', number: 11, title: 'Fix login bug' }),
+      pr({ repo: 'other-org/web.app', number: 5, state: 'open', title: 'Add widget' }),
+      pr({ repo: 'acme/docs', number: 230, state: 'closed', title: 'Update guide' }),
+      pr({ repo: 'not a repo', number: 7, title: 'Broken repo row' }),
+    ]
+
+    function rows() {
+      renderDetail({}, detail({ recentPrs: MIXED, recentTotal: MIXED.length }))
+      return within(screen.getByRole('list', { name: '' })).getAllByRole('listitem')
+    }
+
+    it('AC1, AC2, AC3: each valid row links to its own repo and number, in a new tab', () => {
+      const items = rows()
+      const hrefs = items.slice(0, 3).map((li) => within(li).getByRole('link').getAttribute('href'))
+      expect(hrefs).toEqual([
+        'https://github.com/acme/api/pull/11',
+        'https://github.com/other-org/web.app/pull/5',
+        'https://github.com/acme/docs/pull/230',
+      ])
+      for (const li of items.slice(0, 3)) {
+        const link = within(li).getByRole('link')
+        expect(link).toHaveAttribute('target', '_blank')
+        expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+      }
+    })
+
+    it('AC1, AC5: the link name is the title plus the new-tab hint, without figure, repo or date', () => {
+      const items = rows()
+      expect(within(items[0]).getByRole('link', { name: 'Fix login bug (opens in a new tab)' })).toBeInTheDocument()
+      for (const li of items.slice(0, 3)) {
+        const link = within(li).getByRole('link')
+        expect(link.textContent).not.toMatch(/acme|other-org|added|removed|[+−]\d/)
+        expect(link.querySelector('time')).toBeNull()
+      }
+    })
+
+    it('AC4: an invalid repo keeps the title as plain text and the rest of the row', () => {
+      const li = rows()[3]
+      expect(within(li).queryByRole('link')).toBeNull()
+      expect(within(li).getByText('Broken repo row')).toHaveAttribute('title', 'Broken repo row')
+      expect(within(li).getByText('Merged')).toBeInTheDocument()
+      expect(li).toHaveTextContent('not a repo')
+      expect(li.querySelector('[role="img"]')).toHaveAttribute('aria-label', '10 added, 2 removed')
+      expect(li.querySelector('time')).not.toBeNull()
+    })
+
+    it('AC9: no nested interactive elements and each title is read once', () => {
+      const items = rows()
+      for (const li of items) {
+        for (const link of li.querySelectorAll('a')) {
+          expect(link.querySelector('a, button, input, select, textarea, [tabindex], [role]')).toBeNull()
+        }
+        expect(li.querySelector('[aria-hidden="true"]')).toBeNull()
+      }
+      expect(screen.getAllByText('Fix login bug')).toHaveLength(1)
+    })
+
+    it('AC7: one focus stop per valid link and no tabindex', () => {
+      rows()
+      const list = screen.getByRole('list', { name: '' })
+      expect(within(list).getAllByRole('link')).toHaveLength(3)
+      expect(list.querySelectorAll('[tabindex]')).toHaveLength(0)
+      expect(list.querySelectorAll('button, input, select, textarea')).toHaveLength(0)
+    })
+
+    it('AC10: rendering the links makes no request', () => {
+      const fetchSpy = vi.fn()
+      vi.stubGlobal('fetch', fetchSpy)
+      rows()
+      expect(fetchSpy).not.toHaveBeenCalled()
+      vi.unstubAllGlobals()
+    })
+
+    it('AC11: reuses the shared PrLink and prUrl instead of copying them', () => {
+      const source = readFileSync(join(__dirname, 'MemberDetail.tsx'), 'utf8')
+      expect(source).toMatch(/import PrLink from '\.\.\/PrLink'/)
+      expect(source).not.toMatch(/github\.com\/\$\{[^}]*\}\/pull/)
+      expect(source).not.toContain('pull/')
+    })
   })
 
   it('AC4: notes the limit when there are more than 10', () => {

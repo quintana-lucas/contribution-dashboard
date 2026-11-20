@@ -5,6 +5,7 @@ import BarList from '../BarList'
 import ColumnChart from '../ColumnChart'
 import { useDashboard } from '../DashboardProvider'
 import LinesDelta from '../LinesDelta'
+import PrLink from '../PrLink'
 import { dayLabel, formatFull, formatWhen, weekLabel } from './formatWhen'
 import styles from './MemberDetail.module.css'
 
@@ -170,9 +171,11 @@ function MemberDetail({ now }: MemberDetailProps) {
                         {STATE_LABEL[pr.state]}
                       </span>
                       <span className={styles.prTitle}>
-                        <span className={styles.prTitleText} title={pr.title}>
-                          {pr.title}
-                        </span>
+                        <PrLink repo={pr.repo} number={pr.number}>
+                          <span className={styles.prTitleText} title={pr.title}>
+                            {pr.title}
+                          </span>
+                        </PrLink>
                       </span>
                     </span>
                     <span className={styles.prMeta}>
