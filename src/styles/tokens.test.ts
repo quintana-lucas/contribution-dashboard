@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 // Vitest blanks CSS imports (including `?raw`/`?inline`), so read the file directly.
@@ -124,6 +124,26 @@ describe("theme tokens", () => {
     for (const map of [light, mediaDark, dark]) {
       expect(map["--color-del"]).not.toMatch(/var\(/);
       expect(map["--color-del"]).not.toMatch(/critical|error|danger/i);
+    }
+  });
+
+  it("AC2: --shadow-tooltip and --chart-min-mark exist in :root with exact values, not in the dark blocks", () => {
+    expect(light["--shadow-tooltip"]).toBe("0 2px 8px var(--color-scroll-edge)");
+    expect(light["--chart-min-mark"]).toBe("4px");
+    for (const map of [dark, mediaDark]) {
+      expect(map["--shadow-tooltip"]).toBeUndefined();
+      expect(map["--chart-min-mark"]).toBeUndefined();
+    }
+    expect(mediaDark).toEqual(dark);
+  });
+
+  it("AC2: chart module CSS hardcodes no color (colors come from var(--color-*))", () => {
+    const dirs = ["ReviewsChart", "PrActivityChart", "ColumnChart", "BarList", "ChartTooltip", "ChartFrame"];
+    for (const dir of dirs) {
+      const file = `src/components/${dir}/${dir}.module.css`;
+      if (!existsSync(file)) continue;
+      const src = readFileSync(file, "utf8");
+      expect(src, file).not.toMatch(/#[0-9a-f]{3,8}\b|\b(?:rgb|hsl)a?\(/i);
     }
   });
 

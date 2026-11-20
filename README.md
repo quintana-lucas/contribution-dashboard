@@ -71,3 +71,7 @@ Revoke or regenerate the token at GitHub, Settings, Developer settings, Personal
 ### Where the token lives
 
 The token stays in the local server process, which listens only on 127.0.0.1. It never reaches the browser or the built `dist/`.
+
+## Charts
+
+See [docs/charts.md](docs/charts.md) for how to build a chart on the shared foundation (ChartFrame, ChartTooltip, tokens and test helpers).
