@@ -49,14 +49,18 @@ describe('Toolbar', () => {
     )
   })
 
-  it('#16 AC1: shows the loading text before data arrives', () => {
+  it('#102 follow-up: shows skeletons, no loading text and aria-busy before data arrives', () => {
     const deps = { ...makeDeps(), listRepos: vi.fn(() => new Promise<never>(() => {})) }
-    render(
+    const { container } = render(
       <DashboardProvider {...deps}>
         <Toolbar />
       </DashboardProvider>,
     )
-    expect(screen.getByRole('status')).toHaveTextContent('Loading repository data…')
+    const group = screen.getByRole('group', { name: 'Dashboard filters' })
+    expect(group).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0)
+    expect(container).not.toHaveTextContent(/loading/i)
+    expect(screen.queryByRole('status')).toBeNull()
     expect(screen.queryByLabelText('Repository')).toBeNull()
   })
 
