@@ -16,6 +16,8 @@
   --color-caution: #8f5300;
   --color-good-bg: color-mix(in srgb, var(--color-good) 10%, var(--color-surface));
   --color-caution-bg: color-mix(in srgb, var(--color-caution) 10%, var(--color-surface));
+  --color-add: #0b6b3a;
+  --color-del: #c2344d;
   --color-backdrop: rgba(27, 27, 33, 0.5);
   --color-row-active: #eef0fd;
   --color-scroll-edge: rgba(27, 27, 33, 0.16);
@@ -71,6 +73,8 @@
     --color-caution: #e5a93d;
     --color-good-bg: color-mix(in srgb, var(--color-good) 12%, var(--color-surface));
     --color-caution-bg: color-mix(in srgb, var(--color-caution) 12%, var(--color-surface));
+    --color-add: #6fd6a0;
+    --color-del: #f08a9c;
     --color-backdrop: rgba(0, 0, 0, 0.6);
     --color-row-active: #23232b;
     --color-scroll-edge: rgba(0, 0, 0, 0.5);
@@ -93,6 +97,8 @@
   --color-caution: #e5a93d;
   --color-good-bg: color-mix(in srgb, var(--color-good) 12%, var(--color-surface));
   --color-caution-bg: color-mix(in srgb, var(--color-caution) 12%, var(--color-surface));
+  --color-add: #6fd6a0;
+  --color-del: #f08a9c;
   --color-backdrop: rgba(0, 0, 0, 0.6);
   --color-row-active: #23232b;
   --color-scroll-edge: rgba(0, 0, 0, 0.5);
