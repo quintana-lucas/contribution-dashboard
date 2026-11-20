@@ -1,6 +1,7 @@
 import { OVERDUE_HOURS, type WaitingPr } from '../../api/waiting'
 import { useDashboard } from '../DashboardProvider'
 import PrLink from '../PrLink'
+import Skeleton from '../Skeleton'
 import WarningIcon from '../WarningIcon'
 import Widget from '../Widget'
 import styles from './WaitingWidget.module.css'
@@ -63,7 +64,17 @@ function WaitingWidget({ onOpenSettings }: WaitingWidgetProps) {
 
   let body = null
   if (status === 'loading') {
-    body = <p className={styles.muted}>Loading…</p>
+    body = (
+      <div>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={styles.skeletonItem}>
+            <Skeleton width="70%" />
+            <Skeleton width="55%" />
+            <Skeleton width="45%" />
+          </div>
+        ))}
+      </div>
+    )
   } else if (status === 'ready') {
     const inScope = selection === 'all' ? entries : entries.filter((e) => e.repo === selection)
     if (!inScope.some((e) => e.data !== null)) {
@@ -91,7 +102,7 @@ function WaitingWidget({ onOpenSettings }: WaitingWidgetProps) {
   }
 
   return (
-    <Widget title="Open PRs waiting for review" hint={hint}>
+    <Widget title="Open PRs waiting for review" hint={hint} busy={status === 'loading'}>
       {body}
     </Widget>
   )

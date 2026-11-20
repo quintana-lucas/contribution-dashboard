@@ -1,5 +1,6 @@
 import { useDashboard } from '../DashboardProvider'
 import PrActivityChart from '../PrActivityChart'
+import Skeleton from '../Skeleton'
 import Widget from '../Widget'
 import styles from './PrActivityWidget.module.css'
 
@@ -15,7 +16,7 @@ function PrActivityWidget({ onOpenSettings }: PrActivityWidgetProps) {
 
   let body = null
   if (status === 'loading') {
-    body = <p className={styles.muted}>Loading…</p>
+    body = <Skeleton shape="block" height={200} />
   } else if (status === 'ready') {
     const activity = prActivity()
     body = activity.hasData ? (
@@ -31,7 +32,7 @@ function PrActivityWidget({ onOpenSettings }: PrActivityWidgetProps) {
   }
 
   return (
-    <Widget title="PRs opened, merged and closed" hint={hint}>
+    <Widget title="PRs opened, merged and closed" hint={hint} busy={status === 'loading'}>
       {body}
     </Widget>
   )

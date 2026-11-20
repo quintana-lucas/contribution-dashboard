@@ -1,6 +1,7 @@
 import BarList from '../BarList'
 import type { BarListItem } from '../BarList'
 import { useDashboard } from '../DashboardProvider'
+import Skeleton from '../Skeleton'
 import Widget from '../Widget'
 import styles from './ContributionsWidget.module.css'
 
@@ -20,7 +21,13 @@ function ContributionsWidget({ onOpenSettings }: ContributionsWidgetProps) {
 
   let body = null
   if (status === 'loading') {
-    body = <p className={styles.muted}>Loading…</p>
+    body = (
+      <div className={styles.skeletonRows}>
+        {['90%', '70%', '55%', '40%', '30%'].map((w) => (
+          <Skeleton key={w} width={w} height={20} />
+        ))}
+      </div>
+    )
   } else if (status === 'ready') {
     const inScope = selection === 'all' ? entries : entries.filter((e) => e.repo === selection)
     if (!inScope.some((e) => e.data !== null)) {
@@ -66,7 +73,7 @@ function ContributionsWidget({ onOpenSettings }: ContributionsWidgetProps) {
   }
 
   return (
-    <Widget title="Merged PRs per person" hint={hint}>
+    <Widget title="Merged PRs per person" hint={hint} busy={status === 'loading'}>
       {body}
     </Widget>
   )

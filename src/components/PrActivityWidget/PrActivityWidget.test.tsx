@@ -49,6 +49,19 @@ describe('PrActivityWidget', () => {
     vi.unstubAllGlobals()
   })
 
+  it('#102 AC1, AC4, AC7: loading shows a skeleton, no text, and a busy container', () => {
+    const deps = { ...makeActivityDeps(), listRepos: vi.fn(() => new Promise<never>(() => {})) }
+    const { container } = render(
+      <DashboardProvider {...deps}>
+        <PrActivityWidget onOpenSettings={() => {}} />
+      </DashboardProvider>,
+    )
+    const busy = container.querySelector('[aria-busy="true"]')
+    expect(busy).not.toBeNull()
+    expect(busy!.querySelectorAll('[class*="keleton"]').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/loading/i)).toBeNull()
+  })
+
   it('AC1: defaults to weekly buckets for 30 days and daily for 7 days', async () => {
     await renderWidget()
     expect(tableRows()).toHaveLength(5)

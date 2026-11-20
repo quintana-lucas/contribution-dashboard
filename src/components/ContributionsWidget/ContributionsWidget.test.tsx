@@ -154,14 +154,17 @@ describe('ContributionsWidget', () => {
     expect(screen.getByText('No merged pull requests in the last 7 days.')).toBeInTheDocument()
   })
 
-  it('AC4: shows Loading… while loading and no chart on error', async () => {
+  it('#102 AC1, AC4, AC7: shows a skeleton (no text, busy) while loading and no chart on error', async () => {
     const pending = { ...makeMergedDeps(), listRepos: vi.fn(() => new Promise<never>(() => {})) }
     const first = render(
       <DashboardProvider {...pending}>
         <ContributionsWidget onOpenSettings={() => {}} />
       </DashboardProvider>,
     )
-    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    const busy = first.container.querySelector('[aria-busy="true"]')
+    expect(busy).not.toBeNull()
+    expect(busy!.querySelectorAll('[class*="keleton"]').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/loading/i)).toBeNull()
     first.unmount()
 
     const base = makeMergedDeps()
@@ -174,7 +177,7 @@ describe('ContributionsWidget', () => {
         <ContributionsWidget onOpenSettings={() => {}} />
       </DashboardProvider>,
     )
-    await vi.waitFor(() => expect(screen.queryByText('Loading…')).toBeNull())
+    await vi.waitFor(() => expect(document.querySelector('[aria-busy="true"]')).toBeNull())
     expect(screen.queryByRole('list')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Open settings' })).toBeNull()
   })

@@ -6,6 +6,13 @@
   line-height: var(--text-sm-line);
 }
 
+.skeletonRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 160px;
+}
+
 .empty {
   display: flex;
   flex-direction: column;

@@ -7,9 +7,11 @@ type WidgetProps = {
   hint: string
   /** Replaces the placeholder body when present. */
   children?: ReactNode
+  /** Marks the content container as busy (skeleton shown while data loads). */
+  busy?: boolean
 }
 
-function Widget({ title, hint, children }: WidgetProps) {
+function Widget({ title, hint, children, busy }: WidgetProps) {
   const id = useId()
   return (
     <section className={styles.widget} aria-labelledby={id}>
@@ -20,7 +22,7 @@ function Widget({ title, hint, children }: WidgetProps) {
       {children === undefined ? (
         <div className={styles.body}>Placeholder. No data yet.</div>
       ) : (
-        <div className={styles.content}>{children}</div>
+        <div className={styles.content} aria-busy={busy ? true : undefined}>{children}</div>
       )}
     </section>
   )

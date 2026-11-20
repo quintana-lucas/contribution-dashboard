@@ -5,7 +5,7 @@ type StatCardProps = {
   label: string
   /** Text or a node (e.g. LinesDelta); never empty. */
   value: ReactNode
-  subline?: string
+  subline?: ReactNode
   /** Caution colour for the sub-line (never the only signal: pair with text and an icon). */
   sublineTone?: 'caution'
   /** Decorative icon rendered before the sub-line text. */
