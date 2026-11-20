@@ -61,7 +61,7 @@ describe('WaitingWidget', () => {
     await renderWidget()
     const rows = items()
     expect(rows).toHaveLength(3)
-    expect(rows[0]).toHaveTextContent('Fake PR 1 #1')
+    expect(rows[0]).toHaveTextContent('Fake PR 1 (opens in a new tab) #1')
     expect(rows[0]).toHaveTextContent('acme/api')
     expect(rows[0]).toHaveTextContent('by ana')
     expect(rows[0]).toHaveTextContent('+40 / -7')
@@ -199,6 +199,58 @@ describe('WaitingWidget', () => {
     const { onOpenSettings } = await renderWidget(deps)
     fireEvent.click(screen.getByRole('button', { name: 'Open settings' }))
     expect(onOpenSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it('#90 AC1 AC2: each row has one link to its PR on GitHub, named by title plus the new-tab hint', async () => {
+    await renderWidget()
+    const rows = items()
+    const hrefs = rows.map((row) => within(row).getByRole('link').getAttribute('href'))
+    expect(hrefs).toEqual([
+      'https://github.com/acme/api/pull/1',
+      'https://github.com/acme/web/pull/1',
+      'https://github.com/acme/api/pull/2',
+    ])
+    expect(within(rows[0]).getByRole('link', { name: 'Fake PR 1 (opens in a new tab)' })).toBeInTheDocument()
+    expect(within(rows[0]).getByText('#1').closest('a')).toBeNull()
+    expect(within(rows[0]).getAllByRole('link')).toHaveLength(1)
+  })
+
+  it('#90 AC5: tab order has exactly one stop per row', async () => {
+    await renderWidget()
+    const links = within(screen.getByRole('list', { name: 'Pull requests waiting for review' })).getAllByRole('link')
+    expect(links).toHaveLength(3)
+    for (const link of links) {
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link.getAttribute('tabindex')).toBeNull()
+    }
+  })
+
+  it('#90 AC4: a row with an invalid repo name shows the title as plain text and keeps its other content', async () => {
+    const deps = makeWaitingDeps()
+    deps.listRepos = vi.fn(async () => ({
+      ok: true as const,
+      repos: [{ repo: 'bad repo', syncedAt: '2026-06-15T09:00:00.000Z', baseBranch: 'main', people: 1 }],
+    }))
+    deps.getRepoData = vi.fn(async (repo: string) => ({
+      ok: true as const,
+      data: storedRepo(repo, '2026-06-15T09:00:00.000Z', ['ana']),
+    }))
+    await renderWidget(deps)
+    const rows = items()
+    expect(rows).toHaveLength(1)
+    expect(within(rows[0]).queryByRole('link')).toBeNull()
+    expect(rows[0]).toHaveTextContent('Fake PR 1 #1')
+    expect(rows[0]).not.toHaveTextContent('opens in a new tab')
+    expect(rows[0]).toHaveTextContent('bad repo')
+    expect(rows[0]).toHaveTextContent('by ana')
+  })
+
+  it('#90 AC8 AC11: rendering the links makes no network requests', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    await renderWidget()
+    expect(screen.getAllByRole('link')).toHaveLength(3)
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it('AC6: rendering and changing the repo make no network requests', async () => {

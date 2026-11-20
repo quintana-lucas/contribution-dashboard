@@ -88,9 +88,14 @@ describe('App', () => {
   it('AC6: only the two tabs, the Settings button and the toolbar controls are focusable', async () => {
     const { container } = await renderApp()
     // The Team panel is hidden here, so its table controls are not reachable.
-    const focusable = [
+    const all = [
       ...container.querySelectorAll('a[href], button, input, select, textarea, [tabindex]'),
     ].filter((el) => el.closest('[hidden]') === null)
+    // #90: each Waiting row adds one PR link (one tab stop); they are checked apart from the fixed controls.
+    const prLinks = all.filter((el) => el.tagName === 'A')
+    expect(prLinks.length).toBeGreaterThan(0)
+    for (const link of prLinks) expect(link.getAttribute('href')).toMatch(/^https:\/\/github\.com\//)
+    const focusable = all.filter((el) => el.tagName !== 'A')
     expect(focusable).toHaveLength(9)
     const tabs = [...focusable].filter((el) => el.getAttribute('role') === 'tab')
     expect(tabs).toHaveLength(2)
