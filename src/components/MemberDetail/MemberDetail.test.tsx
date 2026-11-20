@@ -327,6 +327,18 @@ describe('MemberDetail', () => {
     })
   })
 
+  it('#113 AC2: PR rows show no PR number (no "#<n>" and no standalone number element)', () => {
+    renderDetail({}, detail({ recentPrs: [pr({ number: 123 }), pr({ number: 456, state: 'open', title: 'Other' })] }))
+    const items = within(screen.getByRole('list', { name: '' })).getAllByRole('listitem')
+    expect(items).toHaveLength(2)
+    for (const [i, item] of items.entries()) {
+      const n = i === 0 ? '123' : '456'
+      expect(item).not.toHaveTextContent(`#${n}`)
+      expect(within(item).queryByText(n)).toBeNull()
+      expect(item).not.toHaveTextContent(n)
+    }
+  })
+
   it('AC4: notes the limit when there are more than 10', () => {
     renderDetail({}, detail({ recentTotal: 14 }))
     expect(screen.getByText('Showing the 2 most recent of 14.')).toBeInTheDocument()

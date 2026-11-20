@@ -75,7 +75,7 @@ describe('WaitingWidget', () => {
     await renderWidget()
     const rows = items()
     expect(rows).toHaveLength(3)
-    expect(rows[0]).toHaveTextContent('Fake PR 1 (opens in a new tab) #1')
+    expect(rows[0]).toHaveTextContent('Fake PR 1 (opens in a new tab) 1')
     expect(rows[0]).toHaveTextContent('acme/api')
     expect(rows[0]).toHaveTextContent('by ana')
     expect(rows[0]).toHaveTextContent('+40 / -7')
@@ -159,11 +159,22 @@ describe('WaitingWidget', () => {
   it('#88 AC2: the PR number is its own element, separate from the title text', async () => {
     await renderWidget()
     const row = items()[0]
-    const number = within(row).getByText('#1')
+    const number = row.querySelector('[class*="number"]') as HTMLElement
     const title = within(row).getByText('Fake PR 1')
     expect(number).not.toBe(title)
     expect(title.textContent).toBe('Fake PR 1')
-    expect(number.textContent).toBe('#1')
+    expect(number.textContent).toBe('1')
+  })
+
+  it('#113 AC1: each row shows the bare PR number, with no "#" anywhere in the row', async () => {
+    await renderWidget()
+    const rows = items()
+    const expected = ['1', '1', '2']
+    for (const [i, row] of rows.entries()) {
+      const number = row.querySelector('[class*="number"]') as HTMLElement
+      expect(number.textContent).toBe(expected[i])
+      expect(row.textContent).not.toContain('#')
+    }
   })
 
   it('#88 AC3: the Waiting label and the age value are separate elements in one wrapper, in order', async () => {
@@ -254,7 +265,7 @@ describe('WaitingWidget', () => {
       'https://github.com/acme/api/pull/2',
     ])
     expect(within(rows[0]).getByRole('link', { name: 'Fake PR 1 (opens in a new tab)' })).toBeInTheDocument()
-    expect(within(rows[0]).getByText('#1').closest('a')).toBeNull()
+    expect((rows[0].querySelector('[class*="number"]') as HTMLElement).closest('a')).toBeNull()
     expect(within(rows[0]).getAllByRole('link')).toHaveLength(1)
   })
 
@@ -282,7 +293,7 @@ describe('WaitingWidget', () => {
     const rows = items()
     expect(rows).toHaveLength(1)
     expect(within(rows[0]).queryByRole('link')).toBeNull()
-    expect(rows[0]).toHaveTextContent('Fake PR 1 #1')
+    expect(rows[0]).toHaveTextContent('Fake PR 1 1')
     expect(rows[0]).not.toHaveTextContent('opens in a new tab')
     expect(rows[0]).toHaveTextContent('bad repo')
     expect(rows[0]).toHaveTextContent('by ana')
