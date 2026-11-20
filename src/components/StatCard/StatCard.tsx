@@ -1,9 +1,10 @@
+import type { ReactNode } from 'react'
 import styles from './StatCard.module.css'
 
 type StatCardProps = {
   label: string
-  /** Always rendered as text; never empty. */
-  value: string
+  /** Text or a node (e.g. LinesDelta); never empty. */
+  value: ReactNode
   subline?: string
   /** Screen-reader alternative for the value; the visible value is then aria-hidden. */
   srText?: string

@@ -1,5 +1,6 @@
 import { formatDuration } from '../../api/reviewMetrics'
 import { useDashboard } from '../DashboardProvider'
+import LinesDelta from '../LinesDelta'
 import StatCard from '../StatCard'
 import styles from './KpiCards.module.css'
 
@@ -41,8 +42,6 @@ function KpiCards() {
         k.changesRequestedPercent === null
           ? 'No reviews to measure'
           : `${k.changesRequestedPercent}% requested changes`
-      const added = fmt.format(k.additions)
-      const deleted = fmt.format(k.deletions)
       cards = [
         <StatCard
           key="open"
@@ -60,8 +59,7 @@ function KpiCards() {
         <StatCard
           key="lines"
           label="Lines changed (+/−)"
-          value={`+${added} / −${deleted}`}
-          srText={`${added} lines added, ${deleted} lines deleted`}
+          value={<LinesDelta additions={k.additions} deletions={k.deletions} layout="inline" />}
           subline={`across ${fmt.format(k.prsOpened)} PR${k.prsOpened === 1 ? '' : 's'} opened`}
         />,
         <StatCard
