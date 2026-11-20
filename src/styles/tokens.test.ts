@@ -50,7 +50,41 @@ function resolve(t: Record<string, string>, value: string): RGB {
 
 const semanticTokens = ["--color-good", "--color-caution", "--color-good-bg", "--color-caution-bg"];
 
+const prStates = ["open", "merged", "closed", "draft"] as const;
+
 describe("theme tokens", () => {
+  it("AC1 AC2 AC3 AC4: pr state tokens are 6-digit hex in all three blocks with dark parity", () => {
+    for (const s of prStates) {
+      for (const map of [light, mediaDark, dark]) {
+        expect(map[`--color-pr-${s}`]).toMatch(/^#[0-9a-f]{6}$/i);
+        expect(map[`--color-pr-${s}-bg`]).toBeDefined();
+      }
+      expect(mediaDark[`--color-pr-${s}`]).toBe(dark[`--color-pr-${s}`]);
+      expect(mediaDark[`--color-pr-${s}-bg`]).toBe(dark[`--color-pr-${s}-bg`]);
+    }
+  });
+
+  it("AC6: existing caution/add/del values are unchanged", () => {
+    expect(light["--color-caution"]).toBe("#8f5300");
+    expect(light["--color-add"]).toBe("#0b6b3a");
+    expect(light["--color-del"]).toBe("#c2344d");
+    expect(dark["--color-caution"]).toBe("#e5a93d");
+    expect(dark["--color-add"]).toBe("#6fd6a0");
+    expect(dark["--color-del"]).toBe("#f08a9c");
+  });
+
+  it("AC6: pr state colors differ from caution, add and del in each theme", () => {
+    for (const map of [light, dark]) {
+      for (const s of prStates) {
+        for (const other of ["caution", "add", "del"]) {
+          expect(map[`--color-pr-${s}`].toLowerCase()).not.toBe(
+            map[`--color-${other}`].toLowerCase(),
+          );
+        }
+      }
+    }
+  });
+
   it("#82 AC2: the four semantic tokens exist in light and in both dark maps", () => {
     for (const map of [light, mediaDark, dark]) {
       for (const name of semanticTokens) expect(map[name]).toBeDefined();
@@ -199,6 +233,14 @@ describe("theme tokens", () => {
           expect(Math.abs(ratio(c, active) - expected[kind][1])).toBeLessThan(0.1);
         }
       });
+
+      for (const s of prStates) {
+        it(`AC7: pr ${s} is at least 4.5:1 on surface and on its own tint`, () => {
+          const c = resolve(t, t[`--color-pr-${s}`]);
+          expect(ratio(c, surface)).toBeGreaterThanOrEqual(4.5);
+          expect(ratio(c, resolve(t, t[`--color-pr-${s}-bg`]))).toBeGreaterThanOrEqual(4.5);
+        });
+      }
 
       it("AC9: dashed border is at least 3:1 on surface", () => {
         expect(ratio(rgb(t["--color-border-dashed"]), surface)).toBeGreaterThanOrEqual(3);
