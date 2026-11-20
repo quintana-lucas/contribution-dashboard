@@ -13,7 +13,7 @@ The chart foundation is a small set of shared pieces. No existing chart consumes
 | `useChartTooltip` | `src/components/ChartTooltip` | Hover, focus, Escape and touch behavior. |
 | `clampToViewport` | `src/components/ChartTooltip` | Pure placement helper used by `ChartTooltip`. |
 | Test helpers | `src/test/chart.ts` | `mockResizeObserver`, `mockElementRect`, `renderChart`. |
-| Tokens | `src/styles/tokens.css` | `--shadow-tooltip`, `--chart-min-mark`, `--color-bar`, `--color-bar-muted`. |
+| Tokens | `src/styles/tokens.css` | `--shadow-tooltip`, `--chart-min-mark`, `--color-bar`, `--color-bar-muted`, `--color-good`, `--color-caution`. |
 
 Only `@visx/tooltip` is installed. Add another `@visx/*` package only in the change that imports it (a test fails if one is listed but unused).
 
@@ -60,7 +60,20 @@ const { open, bind } = useChartTooltip<Datum>()
 
 ## Colors
 
-Colors always come from `var(--color-*)` tokens; chart CSS must not hardcode a hex/rgb value (a test checks this). Series mapping carried over from #85: the primary series uses `--color-bar`, a secondary or muted series uses `--color-bar-muted`. Pass the token as the tooltip row `color` (`var(--color-bar)`), so the swatch matches the mark and follows the theme.
+Colors always come from `var(--color-*)` tokens; chart CSS must not hardcode a hex/rgb value (a test checks this). Series-to-token mapping from the #85 design brief:
+
+| Series | Chart | Token |
+| --- | --- | --- |
+| Approved | Reviews | `--color-good` |
+| Changes requested | Reviews | `--color-caution` |
+| Commented | Reviews | `--color-bar-muted` |
+| Opened | PR activity | `--color-bar` |
+| Merged | PR activity | `--color-good` |
+| Closed | PR activity | `--color-caution` |
+
+Avoid `--color-accent` (it reads as interactive) and `--color-add` / `--color-del` (they mean added/deleted lines).
+
+Pass the token as the tooltip row `color` (`var(--color-bar)`), so the swatch matches the mark and follows the theme.
 
 ## Minimum mark
 

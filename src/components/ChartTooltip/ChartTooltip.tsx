@@ -5,7 +5,7 @@ import { clampToViewport, type Position } from './clampToViewport'
 import styles from './ChartTooltip.module.css'
 
 export interface ChartTooltipRow {
-  /** CSS color for the swatch, e.g. `var(--color-series-a)`. */
+  /** CSS color for the swatch, e.g. `var(--color-bar)`. */
   color: string
   name: string
   value: ReactNode
