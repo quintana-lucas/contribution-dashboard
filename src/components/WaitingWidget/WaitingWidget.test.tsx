@@ -57,6 +57,20 @@ describe('WaitingWidget', () => {
     vi.unstubAllGlobals()
   })
 
+  it('#102 AC1, AC4, AC7: loading shows a skeleton, no text, and a busy container', () => {
+    const deps = { ...makeWaitingDeps(), listRepos: vi.fn(() => new Promise<never>(() => {})) }
+    const { container } = render(
+      <DashboardProvider {...deps}>
+        <WaitingWidget onOpenSettings={() => {}} />
+      </DashboardProvider>,
+    )
+    const busy = container.querySelector('[aria-busy="true"]')
+    expect(busy).not.toBeNull()
+    expect(busy!.querySelectorAll('[class*="keleton"]').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/loading/i)).toBeNull()
+    expect(screen.queryByRole('list')).toBeNull()
+  })
+
   it('AC1: lists unreviewed open PRs with title, number, repo, author, lines, reviewers and age', async () => {
     await renderWidget()
     const rows = items()

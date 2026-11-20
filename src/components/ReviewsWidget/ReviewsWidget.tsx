@@ -1,5 +1,6 @@
 import { useDashboard } from '../DashboardProvider'
 import ReviewsChart from '../ReviewsChart'
+import Skeleton from '../Skeleton'
 import Widget from '../Widget'
 import styles from './ReviewsWidget.module.css'
 
@@ -15,7 +16,13 @@ function ReviewsWidget({ onOpenSettings }: ReviewsWidgetProps) {
 
   let body = null
   if (status === 'loading') {
-    body = <p className={styles.muted}>Loading…</p>
+    body = (
+      <div className={styles.skeletonRows}>
+        {['90%', '70%', '55%', '40%', '30%'].map((w) => (
+          <Skeleton key={w} width={w} height={20} />
+        ))}
+      </div>
+    )
   } else if (status === 'ready') {
     const inScope = selection === 'all' ? entries : entries.filter((e) => e.repo === selection)
     if (!inScope.some((e) => e.data !== null)) {
@@ -39,7 +46,7 @@ function ReviewsWidget({ onOpenSettings }: ReviewsWidgetProps) {
   }
 
   return (
-    <Widget title="Reviews given per person" hint={hint}>
+    <Widget title="Reviews given per person" hint={hint} busy={status === 'loading'}>
       {body}
     </Widget>
   )

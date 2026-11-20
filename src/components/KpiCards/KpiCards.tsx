@@ -1,6 +1,7 @@
 import { formatDuration } from '../../api/reviewMetrics'
 import { useDashboard } from '../DashboardProvider'
 import LinesDelta from '../LinesDelta'
+import Skeleton from '../Skeleton'
 import StatCard from '../StatCard'
 import WarningIcon from '../WarningIcon'
 import styles from './KpiCards.module.css'
@@ -24,14 +25,15 @@ function KpiCards() {
 
   let cards
   if (status === 'loading') {
-    cards = [
-      <StatCard key="open" label="Open PRs" value="…" />,
-      <StatCard key="merged" label="Merged PRs" value="…" />,
-      <StatCard key="reviews" label="Code reviews" value="…" />,
-      <StatCard key="lines" label="Lines changed (+/−)" value="…" />,
-      <StatCard key="first-review" label="Time to first review" value="…" />,
-      <StatCard key="cycle" label="Cycle time" value="…" />,
-    ]
+    // Same card structure as the loaded state (label, value, sub-line) so nothing shifts.
+    cards = LABELS.map((l) => (
+      <StatCard
+        key={l}
+        label={l}
+        value={<Skeleton width="50%" height="calc(var(--text-xl) * var(--text-xl-line))" />}
+        subline={<Skeleton width="80%" />}
+      />
+    ))
   } else {
     const k = kpis()
     if (!k.hasData) {

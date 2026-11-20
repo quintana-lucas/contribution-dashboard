@@ -191,7 +191,7 @@ describe('KpiCards', () => {
     expect(document.body).not.toHaveTextContent('closed without merge')
   })
 
-  it('AC4: loading shows "…" values without sub-lines; error renders nothing', async () => {
+  it('#102 AC1, AC2, AC4: loading shows six skeleton cards with labels, no "…" text or figures', async () => {
     const deps = makeKpiDeps()
     deps.listRepos = vi.fn(() => new Promise(() => {})) as never
     render(
@@ -199,7 +199,9 @@ describe('KpiCards', () => {
         <KpiCards />
       </DashboardProvider>,
     )
-    expect(screen.getAllByText('…')).toHaveLength(6)
+    expect(screen.queryByText('…')).toBeNull()
+    expect(screen.getAllByRole('listitem')).toHaveLength(6)
+    expect(document.querySelectorAll('[class*="keleton"]').length).toBeGreaterThanOrEqual(12)
     // AC5: loading Lines card is neutral, with no add/del figures
     expect(screen.queryByRole('img')).toBeNull()
     expect(card('Lines changed (+/−)')).not.toHaveTextContent(/[+−]\d/)
