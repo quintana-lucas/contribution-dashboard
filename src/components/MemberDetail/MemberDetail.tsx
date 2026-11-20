@@ -1,29 +1,17 @@
 import { useEffect, useId, useRef } from 'react'
-import type { RecentPr } from '../../api/memberDetail'
 import { formatDuration, formatSize } from '../../api/reviewMetrics'
 import BarList from '../BarList'
 import ColumnChart from '../ColumnChart'
 import { useDashboard } from '../DashboardProvider'
 import LinesDelta from '../LinesDelta'
 import PrLink from '../PrLink'
+import PrStateBadge from '../PrStateBadge'
 import { dayLabel, formatFull, formatWhen, weekLabel } from './formatWhen'
 import styles from './MemberDetail.module.css'
 
 interface MemberDetailProps {
   /** Injected clock, for the "when" text. */
   now: () => Date
-}
-
-const STATE_LABEL: Record<RecentPr['state'], string> = {
-  merged: 'Merged',
-  open: 'Open',
-  closed: 'Closed',
-}
-
-const STATE_CLASS: Record<RecentPr['state'], string> = {
-  merged: styles.badgeMerged,
-  open: styles.badgeOpen,
-  closed: styles.badgeClosed,
 }
 
 function plural(n: number, one: string, many: string): string {
@@ -167,9 +155,7 @@ function MemberDetail({ now }: MemberDetailProps) {
                 return (
                   <li key={`${pr.repo}#${pr.number}`} className={styles.pr}>
                     <span className={styles.prTop}>
-                      <span className={`${styles.badge} ${STATE_CLASS[pr.state]}`}>
-                        {STATE_LABEL[pr.state]}
-                      </span>
+                      <PrStateBadge state={pr.state} draft={pr.draft} />
                       <span className={styles.prTitle}>
                         <PrLink repo={pr.repo} number={pr.number}>
                           <span className={styles.prTitleText} title={pr.title}>

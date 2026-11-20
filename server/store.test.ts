@@ -96,6 +96,15 @@ describe('store', () => {
     expect(Object.keys(stored.reviews[0]).sort()).toEqual(Object.keys(sample.reviews[0]).sort())
   })
 
+  it('#101 AC4: the draft flag is persisted when present and omitted when absent', async () => {
+    const withDraft = JSON.parse(JSON.stringify(sample))
+    withDraft.pullRequests[0].draft = true
+    await writeRepo(withDraft, dir)
+    expect((await readRepo('acme/widgets', dir))?.pullRequests[0].draft).toBe(true)
+    await writeRepo(sample, dir)
+    expect((await readRepo('acme/widgets', dir))?.pullRequests[0]).not.toHaveProperty('draft')
+  })
+
   it('#13 AC5: .data/ is gitignored', async () => {
     const ignore = await readFile(path.resolve(import.meta.dirname, '..', '.gitignore'), 'utf8')
     expect(ignore.split(/\r?\n/)).toContain('.data/')

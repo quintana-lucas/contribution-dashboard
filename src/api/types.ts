@@ -13,6 +13,7 @@ export interface StoredPullRequest {
   author: string | null // login; null for deleted users ("ghost")
   authorIsBot: boolean
   state: 'open' | 'merged' | 'closed' // closed = closed without merge
+  draft?: boolean // absent in data synced before #101: read as not draft
   createdAt: string
   updatedAt: string
   mergedAt: string | null
