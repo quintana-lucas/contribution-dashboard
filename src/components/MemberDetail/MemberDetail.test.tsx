@@ -187,22 +187,25 @@ describe('MemberDetail', () => {
     const list = screen.getByRole('list', { name: '' })
     const items = within(list).getAllByRole('listitem')
     expect(items).toHaveLength(2)
-    expect(items[0]).toHaveTextContent(
-      'Merged pull request #1 in acme/api: Fix the thing. 10 lines added, 2 removed, 1 day ago.',
-    )
-    expect(within(items[0]).getByText('Fix the thing', { selector: 'span[title]' })).toHaveAttribute(
-      'title',
-      'Fix the thing',
-    )
-    // AC1, AC7: meta uses LinesDelta inside the aria-hidden span; the sentence above stays the only announcement
-    const meta = items[0].querySelector('[aria-hidden="true"]:last-child') as HTMLElement
+    // AC6: state is visible text outside any link
+    expect(within(items[0]).getByText('Merged')).toBeInTheDocument()
+    expect(within(items[1]).getByText('Open')).toBeInTheDocument()
+    expect(within(items[0]).getByText('Fix the thing')).toHaveAttribute('title', 'Fix the thing')
+    // AC5: repo, figure and date are plain visible content, read once through LinesDelta's own label
+    const meta = items[0].querySelector('time')!.parentElement as HTMLElement
     expect(meta).toHaveTextContent(/acme\/api · \+10−2 ·/)
     expect(meta.querySelector('[role="img"]')).toHaveAttribute('aria-label', '10 added, 2 removed')
+    expect(meta.closest('a')).toBeNull()
+    // AC9: no sr-only sentence and nothing aria-hidden in the row
+    expect(items[0].querySelector('[aria-hidden="true"]')).toBeNull()
+    expect(items[0]).not.toHaveTextContent(/pull request #1/)
+    expect(within(items[0]).getAllByText('Fix the thing')).toHaveLength(1)
+    // AC13: PR number is no longer announced
+    expect(items[0]).not.toHaveTextContent('#1')
     const time = items[1].querySelector('time')!
     expect(time).toHaveAttribute('datetime', '2026-05-01T09:00:00.000Z')
     expect(time.textContent).toBe('May 1')
     expect(time.getAttribute('title')).toBeTruthy()
-    expect(within(items[1]).getByText('Open', { selector: 'span:not(.srOnly)' })).toBeInTheDocument()
     expect(screen.queryByText(/most recent of/)).toBeNull()
   })
 

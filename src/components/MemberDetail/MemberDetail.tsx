@@ -165,18 +165,17 @@ function MemberDetail({ now }: MemberDetailProps) {
                 const when = formatWhen(pr.date, nowDate)
                 return (
                   <li key={`${pr.repo}#${pr.number}`} className={styles.pr}>
-                    <span className={styles.srOnly}>
-                      {`${STATE_LABEL[pr.state]} pull request #${pr.number} in ${pr.repo}: ${pr.title}. ${pr.additions} lines added, ${pr.deletions} removed, ${when}.`}
-                    </span>
-                    <span className={styles.prTop} aria-hidden="true">
+                    <span className={styles.prTop}>
                       <span className={`${styles.badge} ${STATE_CLASS[pr.state]}`}>
                         {STATE_LABEL[pr.state]}
                       </span>
-                      <span className={styles.prTitle} title={pr.title}>
-                        {pr.title}
+                      <span className={styles.prTitle}>
+                        <span className={styles.prTitleText} title={pr.title}>
+                          {pr.title}
+                        </span>
                       </span>
                     </span>
-                    <span className={styles.prMeta} aria-hidden="true">
+                    <span className={styles.prMeta}>
                       {pr.repo} ·{' '}
                       <LinesDelta additions={pr.additions} deletions={pr.deletions} layout="inline" /> ·{' '}
                       <time dateTime={pr.date} title={formatFull(pr.date)}>
