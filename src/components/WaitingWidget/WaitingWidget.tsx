@@ -1,6 +1,7 @@
 import { OVERDUE_HOURS, type WaitingPr } from '../../api/waiting'
 import { useDashboard } from '../DashboardProvider'
 import PrLink from '../PrLink'
+import WarningIcon from '../WarningIcon'
 import Widget from '../Widget'
 import styles from './WaitingWidget.module.css'
 
@@ -35,13 +36,18 @@ function Row({ pr }: { pr: WaitingPr }) {
       <p className={styles.meta}>
         Reviewers: {reviewers} ·{' '}
         <span className={styles.age}>
-          <span className={styles.ageLabel}>Waiting</span>{' '}
-          <span className={styles.ageValue}>{formatAge(pr.ageHours)}</span>
+          <span className={`${styles.ageLabel} ${pr.overdue ? styles.ageOverdue : ''}`.trim()}>Waiting</span>{' '}
+          <span className={`${styles.ageValue} ${pr.overdue ? styles.ageOverdue : ''}`.trim()}>
+            {formatAge(pr.ageHours)}
+          </span>
         </span>
         {pr.overdue ? (
           <>
             {' '}
-            <span className={styles.overdue}>Overdue</span>
+            <span className={styles.overdue}>
+              <WarningIcon />
+              Overdue
+            </span>
           </>
         ) : null}
       </p>

@@ -6,13 +6,17 @@ type StatCardProps = {
   /** Text or a node (e.g. LinesDelta); never empty. */
   value: ReactNode
   subline?: string
+  /** Caution colour for the sub-line (never the only signal: pair with text and an icon). */
+  sublineTone?: 'caution'
+  /** Decorative icon rendered before the sub-line text. */
+  sublineIcon?: ReactNode
   /** Screen-reader alternative for the value; the visible value is then aria-hidden. */
   srText?: string
   /** Smaller value type, for text values such as "No data yet". */
   compact?: boolean
 }
 
-function StatCard({ label, value, subline, srText, compact }: StatCardProps) {
+function StatCard({ label, value, subline, sublineTone, sublineIcon, srText, compact }:StatCardProps) {
   const shown = value === '' ? '…' : value
   return (
     <div className={styles.card}>
@@ -27,7 +31,12 @@ function StatCard({ label, value, subline, srText, compact }: StatCardProps) {
           </>
         )}
       </div>
-      {subline ? <div className={styles.subline}>{subline}</div> : null}
+      {subline ? (
+        <div className={sublineTone === 'caution' ? `${styles.subline} ${styles.sublineCaution}` : styles.subline}>
+          {sublineIcon ? <span className={styles.sublineIcon}>{sublineIcon}</span> : null}
+          {subline}
+        </div>
+      ) : null}
     </div>
   )
 }

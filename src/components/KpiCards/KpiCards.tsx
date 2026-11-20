@@ -2,6 +2,7 @@ import { formatDuration } from '../../api/reviewMetrics'
 import { useDashboard } from '../DashboardProvider'
 import LinesDelta from '../LinesDelta'
 import StatCard from '../StatCard'
+import WarningIcon from '../WarningIcon'
 import styles from './KpiCards.module.css'
 
 const fmt = new Intl.NumberFormat('en-US')
@@ -48,6 +49,8 @@ function KpiCards() {
           label="Open PRs"
           value={fmt.format(k.openPrs)}
           subline={`${fmt.format(k.waitingOver24h)} waiting for review over 24 h`}
+          sublineTone={k.waitingOver24h > 0 ? 'caution' : undefined}
+          sublineIcon={k.waitingOver24h > 0 ? <WarningIcon /> : undefined}
         />,
         <StatCard
           key="merged"

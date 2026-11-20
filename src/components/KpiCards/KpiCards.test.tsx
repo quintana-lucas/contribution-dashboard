@@ -139,6 +139,29 @@ describe('KpiCards', () => {
     expect(card('Lines changed (+/−)')).toHaveTextContent('across 4 PRs opened')
   })
 
+  it('#84 AC3, AC5: Open PRs subline with waiting PRs is caution-toned with the warning icon; other cards have none', async () => {
+    await renderCards()
+    const sub = screen.getByText('1 waiting for review over 24 h')
+    expect(sub.className).toMatch(/caution/i)
+    expect(sub.querySelector('svg[data-icon="warning"]')).not.toBeNull()
+    expect(document.querySelectorAll('svg[data-icon="warning"]')).toHaveLength(1)
+  })
+
+  it('#84 AC4: zero waiting PRs keep the neutral subline, no icon, no caution class', async () => {
+    await renderCards(makeKpiDeps({ 'acme/api': repo('acme/api', []), 'acme/web': repo('acme/web', []) }))
+    const sub = screen.getByText('0 waiting for review over 24 h')
+    expect(sub.className).not.toMatch(/caution/i)
+    expect(sub.querySelector('svg')).toBeNull()
+  })
+
+  it('#84 AC3, AC4: loading and empty states have no icon and no caution styling', async () => {
+    const deps = makeKpiDeps()
+    deps.getRepoData = vi.fn(async () => ({ ok: true as const, data: null })) as never
+    await renderCards(deps)
+    expect(document.querySelector('svg[data-icon="warning"]')).toBeNull()
+    expect(document.querySelector('[class*="aution"]')).toBeNull()
+  })
+
   it('AC5: changing repository or period updates figures and the label', async () => {
     await renderCards()
     fireEvent.change(screen.getByLabelText('Repository'), { target: { value: 'acme/web' } })

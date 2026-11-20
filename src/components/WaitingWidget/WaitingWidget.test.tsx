@@ -185,6 +185,35 @@ describe('WaitingWidget', () => {
     expect(figure.parentElement?.lastElementChild).toBe(figure)
   })
 
+  it('#84 AC1 AC5: the overdue chip has the warning icon before the word Overdue; the icon adds no text', async () => {
+    await renderWidget()
+    const chip = within(items()[0]).getByText('Overdue')
+    expect(chip.className).toMatch(/overdue/)
+    const icon = chip.querySelector('svg[data-icon="warning"]')
+    expect(icon).not.toBeNull()
+    expect(icon).toHaveAttribute('aria-hidden', 'true')
+    expect(chip.firstElementChild).toBe(icon)
+    expect(chip.textContent).toBe('Overdue')
+  })
+
+  it('#84 AC1: non-overdue rows have no chip and no warning icon', async () => {
+    await renderWidget()
+    const row = items()[2]
+    expect(row.querySelector('svg')).toBeNull()
+    expect(row.querySelector('[class*="overdue"]')).toBeNull()
+  })
+
+  it('#84 AC2: overdue rows color the whole age (label and value) with the caution modifier; others stay neutral', async () => {
+    await renderWidget()
+    const rows = items()
+    for (const row of [rows[0], rows[1]]) {
+      expect(within(row).getByText('Waiting').className).toMatch(/Overdue/)
+    }
+    expect(within(rows[0]).getByText('3d').className).toMatch(/Overdue/)
+    expect(within(rows[2]).getByText('Waiting').className).not.toMatch(/Overdue/)
+    expect(within(rows[2]).getByText('2h').className).not.toMatch(/Overdue/)
+  })
+
   it('AC5: is a region with an accessible name Open PRs waiting for review', async () => {
     await renderWidget()
     expect(screen.getByRole('region', { name: 'Open PRs waiting for review' })).toBeInTheDocument()

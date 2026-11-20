@@ -22,6 +22,17 @@
   overflow-wrap: anywhere;
 }
 
+.sublineCaution {
+  color: var(--color-caution);
+}
+
+.sublineIcon {
+  display: inline-block;
+  margin-right: var(--space-1);
+  vertical-align: -0.125em;
+  line-height: 1;
+}
+
 .value {
   min-width: 0;
   color: var(--color-text);
