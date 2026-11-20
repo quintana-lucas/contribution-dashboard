@@ -26,8 +26,16 @@ describe("WaitingWidget styles", () => {
   it("#88 AC4: the Overdue chip is medium weight and keeps its border", () => {
     const overdue = rule(".overdue");
     expect(overdue).toContain("font-weight: var(--weight-medium);");
-    expect(overdue).toContain("border: 1px solid var(--color-text);");
+    expect(overdue).toContain("border: 1px solid var(--color-caution);");
     expect(overdue).not.toMatch(/font-weight:\s*700/);
+  });
+
+  it("#84 AC1 AC2 AC6: the chip and overdue age use caution tokens, nowrap chip", () => {
+    const overdue = rule(".overdue");
+    expect(overdue).toContain("background: var(--color-caution-bg);");
+    expect(overdue).toContain("color: var(--color-caution);");
+    expect(overdue).toContain("white-space: nowrap;");
+    expect(rule(".ageOverdue")).toContain("color: var(--color-caution);");
   });
 
   it("#88 AC4: tokens only, no hex colours", () => {
