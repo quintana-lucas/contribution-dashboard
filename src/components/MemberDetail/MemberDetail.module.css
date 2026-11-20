@@ -163,11 +163,15 @@
   display: block;
   flex: 1 1 auto;
   min-width: 0;
+  font-size: var(--text-md);
+  line-height: var(--text-md-line);
+}
+
+.prTitleText {
+  display: block;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: var(--text-md);
-  line-height: var(--text-md-line);
 }
 
 .prMeta {
@@ -204,18 +208,6 @@
   background: var(--color-surface);
   border-color: var(--color-bar-muted);
   color: var(--color-bar-muted);
-}
-
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
 
 @media (min-width: 768px) {
