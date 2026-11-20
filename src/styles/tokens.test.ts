@@ -142,6 +142,24 @@ describe("theme tokens", () => {
         });
       }
 
+      it("#84 AC6: caution is at least 4.5:1 (text) and 3:1 (icon) on surface and on caution-bg", () => {
+        const c = resolve(t, t["--color-caution"]);
+        const tint = resolve(t, t["--color-caution-bg"]);
+        for (const bgc of [surface, tint]) {
+          expect(ratio(c, bgc)).toBeGreaterThanOrEqual(4.5);
+          expect(ratio(c, bgc)).toBeGreaterThanOrEqual(3);
+        }
+      });
+
+      it("#84 AC6: caution contrast matches the designed values", () => {
+        const c = resolve(t, t["--color-caution"]);
+        const tint = resolve(t, t["--color-caution-bg"]);
+        const expected = name === "light" ? [6.2, 5.3] : [8.5, 6.8];
+        // Tolerance 0.1: the designer's numbers were computed by hand.
+        expect(Math.abs(ratio(c, surface) - expected[0])).toBeLessThan(0.1);
+        expect(Math.abs(ratio(c, tint) - expected[1])).toBeLessThan(0.1);
+      });
+
       it("AC9: icon is at least 3:1 on surface and on the 12%/20% accent tints", () => {
         expect(ratio(text, surface)).toBeGreaterThanOrEqual(3);
         expect(ratio(text, mix(accent, surface, 0.12))).toBeGreaterThanOrEqual(3);
