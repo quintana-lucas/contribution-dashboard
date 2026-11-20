@@ -194,7 +194,10 @@ describe('MemberDetail', () => {
       'title',
       'Fix the thing',
     )
-    expect(within(items[0]).getByText(/acme\/api · \+10 −2/)).toBeInTheDocument()
+    // AC1, AC7: meta uses LinesDelta inside the aria-hidden span; the sentence above stays the only announcement
+    const meta = items[0].querySelector('[aria-hidden="true"]:last-child') as HTMLElement
+    expect(meta).toHaveTextContent(/acme\/api · \+10−2 ·/)
+    expect(meta.querySelector('[role="img"]')).toHaveAttribute('aria-label', '10 added, 2 removed')
     const time = items[1].querySelector('time')!
     expect(time).toHaveAttribute('datetime', '2026-05-01T09:00:00.000Z')
     expect(time.textContent).toBe('May 1')

@@ -131,8 +131,11 @@ describe('KpiCards', () => {
     expect(card('Merged PRs')).toHaveTextContent('1 closed without merge')
     expect(card('Code reviews')).toHaveTextContent(/^Code reviews2/)
     expect(card('Code reviews')).toHaveTextContent('50% requested changes')
-    expect(card('Lines changed (+/−)')).toHaveTextContent('+1,200 / −300')
-    expect(card('Lines changed (+/−)')).toHaveTextContent('1,200 lines added, 300 lines deleted')
+    // AC1, AC7
+    expect(card('Lines changed (+/−)')).toHaveTextContent('+1,200−300')
+    expect(
+      within(card('Lines changed (+/−)')).getByRole('img', { name: '1,200 added, 300 removed' }),
+    ).toBeInTheDocument()
     expect(card('Lines changed (+/−)')).toHaveTextContent('across 4 PRs opened')
   })
 
@@ -151,7 +154,7 @@ describe('KpiCards', () => {
     await renderCards(makeKpiDeps({ 'acme/api': repo('acme/api', []), 'acme/web': repo('acme/web', []) }))
     expect(card('Open PRs')).toHaveTextContent(/^Open PRs0/)
     expect(card('Code reviews')).toHaveTextContent('No reviews to measure')
-    expect(card('Lines changed (+/−)')).toHaveTextContent('+0 / −0')
+    expect(card('Lines changed (+/−)')).toHaveTextContent('+0−0')
     expect(card('Lines changed (+/−)')).toHaveTextContent('across 0 PRs opened')
     expect(document.body).not.toHaveTextContent(/NaN|undefined/)
   })
@@ -174,6 +177,9 @@ describe('KpiCards', () => {
       </DashboardProvider>,
     )
     expect(screen.getAllByText('…')).toHaveLength(6)
+    // AC5: loading Lines card is neutral, with no add/del figures
+    expect(screen.queryByRole('img')).toBeNull()
+    expect(card('Lines changed (+/−)')).not.toHaveTextContent(/[+−]\d/)
     expect(screen.getByRole('region')).toHaveAttribute('aria-busy', 'true')
     expect(document.body).not.toHaveTextContent('waiting for review')
   })
@@ -201,8 +207,9 @@ describe('KpiCards', () => {
     expect(deps.getRepoData.mock.calls.length).toBe(dataCalls)
   })
 
-  it('AC3: lines value is exposed as text for screen readers', async () => {
+  it('AC7: lines value is announced once, via the LinesDelta accessible name', async () => {
     await renderCards()
-    expect(screen.getByText('1,200 lines added, 300 lines deleted')).toBeInTheDocument()
+    expect(screen.getAllByRole('img', { name: '1,200 added, 300 removed' })).toHaveLength(1)
+    expect(document.body).not.toHaveTextContent('lines added')
   })
 })

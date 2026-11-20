@@ -79,6 +79,20 @@ describe("theme tokens", () => {
     }
   });
 
+  it("#83 AC3: --color-add and --color-del exist in all three blocks with parity across the dark ones", () => {
+    for (const k of ["--color-add", "--color-del"]) {
+      for (const map of [light, mediaDark, dark]) expect(map[k]).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(mediaDark[k]).toBe(dark[k]);
+    }
+  });
+
+  it("#83 AC3: --color-del is a literal, not an alias of a critical/error token", () => {
+    for (const map of [light, mediaDark, dark]) {
+      expect(map["--color-del"]).not.toMatch(/var\(/);
+      expect(map["--color-del"]).not.toMatch(/critical|error|danger/i);
+    }
+  });
+
   it("#88 AC4: --weight-medium is 500 in :root and not repeated in the dark blocks", () => {
     expect(light["--weight-medium"]).toBe("500");
     expect(dark["--weight-medium"]).toBeUndefined();
@@ -146,8 +160,27 @@ describe("theme tokens", () => {
         expect(ratio(rgb(t["--color-text-muted"]), active)).toBeGreaterThanOrEqual(4.5);
       });
 
-      // AC10 (pending #83): the +/- add/delete colours are not tokens yet, so their
-      // contrast on row-active is not checked here. Add it when #83 lands.
+      for (const kind of ["add", "del"] as const) {
+        it(`#83 AC10: ${kind} is at least 4.5:1 on surface and on row-active`, () => {
+          const c = rgb(t[`--color-${kind}`]);
+          expect(ratio(c, surface)).toBeGreaterThanOrEqual(4.5);
+          expect(ratio(c, rgb(t["--color-row-active"]))).toBeGreaterThanOrEqual(4.5);
+        });
+      }
+
+      it("#83 AC10: add/del contrast matches the designed values", () => {
+        const active = rgb(t["--color-row-active"]);
+        const expected =
+          name === "light"
+            ? { add: [6.61, 5.83], del: [5.4, 4.76] }
+            : { add: [9.94, 8.7], del: [7.43, 6.51] };
+        for (const kind of ["add", "del"] as const) {
+          const c = rgb(t[`--color-${kind}`]);
+          // Tolerance 0.1: the designer's numbers were computed by hand.
+          expect(Math.abs(ratio(c, surface) - expected[kind][0])).toBeLessThan(0.1);
+          expect(Math.abs(ratio(c, active) - expected[kind][1])).toBeLessThan(0.1);
+        }
+      });
 
       it("AC9: dashed border is at least 3:1 on surface", () => {
         expect(ratio(rgb(t["--color-border-dashed"]), surface)).toBeGreaterThanOrEqual(3);

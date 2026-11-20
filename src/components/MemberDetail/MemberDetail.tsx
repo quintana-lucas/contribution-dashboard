@@ -4,6 +4,7 @@ import { formatDuration, formatSize } from '../../api/reviewMetrics'
 import BarList from '../BarList'
 import ColumnChart from '../ColumnChart'
 import { useDashboard } from '../DashboardProvider'
+import LinesDelta from '../LinesDelta'
 import { dayLabel, formatFull, formatWhen, weekLabel } from './formatWhen'
 import styles from './MemberDetail.module.css'
 
@@ -176,8 +177,8 @@ function MemberDetail({ now }: MemberDetailProps) {
                       </span>
                     </span>
                     <span className={styles.prMeta} aria-hidden="true">
-                      {pr.repo} · +{pr.additions} {'−'}
-                      {pr.deletions} ·{' '}
+                      {pr.repo} ·{' '}
+                      <LinesDelta additions={pr.additions} deletions={pr.deletions} layout="inline" /> ·{' '}
                       <time dateTime={pr.date} title={formatFull(pr.date)}>
                         {when}
                       </time>
