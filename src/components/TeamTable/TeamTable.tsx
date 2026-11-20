@@ -4,6 +4,7 @@ import { NOT_AVAILABLE, formatDuration, formatSizeNumber } from '../../api/revie
 import type { TeamStatsRow } from '../../api/teamStats'
 import { useDashboard } from '../DashboardProvider'
 import LinesDelta from '../LinesDelta'
+import Skeleton from '../Skeleton'
 import styles from './TeamTable.module.css'
 
 interface TeamTableProps {
@@ -79,6 +80,9 @@ const COLUMNS: Column[] = [
   },
 ]
 
+/** Body rows in the loading skeleton (plus one header row). */
+const SKELETON_ROWS = 5
+
 function sortValue(row: TeamStatsRow, key: SortKey): number | null {
   const col = COLUMNS.find((c) => c.key === key)
   return col ? col.value(row) : null
@@ -125,7 +129,19 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
   }, [])
 
   if (status === 'loading') {
-    return <p className={styles.muted}>Loading team data…</p>
+    return (
+      <div className={styles.wrap} aria-busy="true">
+        <Skeleton width={220} />
+        <div className={styles.skeletonTable}>
+          {Array.from({ length: SKELETON_ROWS + 1 }, (_, i) => (
+            <div key={i} className={styles.skeletonRow}>
+              <Skeleton width={96} />
+              <Skeleton width="60%" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
   if (status === 'error' || !teamChosen) return null
 

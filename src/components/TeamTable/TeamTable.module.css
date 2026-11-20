@@ -13,6 +13,26 @@
   line-height: var(--text-sm-line);
 }
 
+.skeletonTable {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.skeletonRow:last-child {
+  border-bottom: 0;
+}
+
 .empty {
   display: flex;
   flex-direction: column;

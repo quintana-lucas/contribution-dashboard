@@ -77,9 +77,17 @@ describe('MemberDetail', () => {
     expect(screen.queryByRole('region')).toBeNull()
   })
 
-  it('AC1: renders nothing while loading or for a member outside the team', () => {
-    const { container } = renderDetail({ status: 'loading' })
-    expect(container).toBeEmptyDOMElement()
+  it('#102 AC1, AC2, AC4, AC7: loading shows a busy skeleton with no text, even with no member selected', () => {
+    const { container } = renderDetail({ status: 'loading', selectedMember: null }, null)
+    const busy = container.querySelector('[aria-busy="true"]')
+    expect(busy).not.toBeNull()
+    expect(within(busy as HTMLElement).getAllByTestId('skeleton').length).toBeGreaterThan(6)
+    expect(container).toHaveTextContent('')
+    expect(screen.queryByText(/loading/i)).toBeNull()
+    expect(screen.queryByRole('heading')).toBeNull()
+  })
+
+  it('AC1: renders nothing for a member outside the team', () => {
     const other = renderDetail({ selectedMember: 'zed' }, detail({ login: 'zed' }))
     expect(other.container.querySelector('section')).toBeNull()
   })

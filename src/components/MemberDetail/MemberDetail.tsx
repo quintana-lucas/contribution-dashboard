@@ -6,6 +6,7 @@ import ColumnChart from '../ColumnChart'
 import { useDashboard } from '../DashboardProvider'
 import LinesDelta from '../LinesDelta'
 import PrLink from '../PrLink'
+import Skeleton from '../Skeleton'
 import { dayLabel, formatFull, formatWhen, weekLabel } from './formatWhen'
 import styles from './MemberDetail.module.css'
 
@@ -46,6 +47,42 @@ function MemberDetail({ now }: MemberDetailProps) {
     if (el.getBoundingClientRect().top > window.innerHeight) el.scrollIntoView({ block: 'nearest' })
   }, [login])
 
+  if (status === 'loading') {
+    return (
+      <section className={styles.panel} aria-busy="true">
+        <header className={styles.header}>
+          <div className={styles.headerText}>
+            <Skeleton width={160} height={24} />
+            <Skeleton width={200} />
+          </div>
+        </header>
+        <div className={styles.tiles}>
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className={styles.tile}>
+              <Skeleton width={48} height={28} />
+              <Skeleton width="80%" />
+            </div>
+          ))}
+        </div>
+        <div className={styles.charts}>
+          <div className={styles.block}>
+            <Skeleton width={180} />
+            <Skeleton shape="block" height={160} />
+          </div>
+          <div className={styles.block}>
+            <Skeleton width={120} />
+            <Skeleton shape="block" height={160} />
+          </div>
+        </div>
+        <div className={styles.block}>
+          <Skeleton width={180} />
+          {Array.from({ length: 3 }, (_, i) => (
+            <Skeleton key={i} shape="block" height={44} />
+          ))}
+        </div>
+      </section>
+    )
+  }
   if (status !== 'ready' || !teamChosen || teamMembers.length === 0) return null
   if (selectedMember === null) {
     return <p className={styles.hint}>Select a member to see their detail.</p>

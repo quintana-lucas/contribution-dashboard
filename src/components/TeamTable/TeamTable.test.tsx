@@ -115,10 +115,17 @@ describe('TeamTable', () => {
     expect(bodyLogins()).toEqual(['Ana', 'bob', 'cy'])
   })
 
-  it('AC1 (#19): shows a loading line and nothing on error', () => {
-    const { unmount } = renderTable({ status: 'loading' })
-    expect(screen.getByText('Loading team data…')).toBeTruthy()
-    unmount()
+  it('#102 AC1, AC4, AC7: loading shows a busy table skeleton with no text', () => {
+    const { container } = renderTable({ status: 'loading' })
+    const busy = container.querySelector('[aria-busy="true"]')
+    expect(busy).not.toBeNull()
+    expect(within(busy as HTMLElement).getAllByTestId('skeleton').length).toBeGreaterThan(6)
+    expect(container).toHaveTextContent('')
+    expect(screen.queryByText(/loading/i)).toBeNull()
+    expect(screen.queryByRole('table')).toBeNull()
+  })
+
+  it('AC1 (#19), AC6 (#102): renders nothing on error', () => {
     const { container } = renderTable({ status: 'error' })
     expect(container.textContent).toBe('')
   })

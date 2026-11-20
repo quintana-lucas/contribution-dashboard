@@ -26,5 +26,5 @@ export default function Skeleton({
   const classes = [styles.skeleton, styles[shape], className]
     .filter(Boolean)
     .join(' ')
-  return <span className={classes} style={style} aria-hidden="true" />
+  return <span className={classes} style={style} aria-hidden="true" data-testid="skeleton" />
 }
