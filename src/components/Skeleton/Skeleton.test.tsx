@@ -28,6 +28,15 @@ describe('Skeleton', () => {
     expect(el.style.height).toBe('2rem')
   })
 
+  it('AC3: default line has a valid non-zero height rule', () => {
+    const rule = /\.line\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    const height = /height:\s*([^;]+);/.exec(rule)?.[1].trim()
+    expect(height).toBeDefined()
+    // Must not be a bare unitless token (e.g. var(--text-sm-line)).
+    expect(height).toMatch(/calc\(|\d+(px|rem|em)\b/)
+    expect(height).not.toMatch(/^var\(/)
+  })
+
   it('AC5: disables the animation under prefers-reduced-motion', () => {
     const idx = css.indexOf('@media (prefers-reduced-motion: reduce)')
     expect(idx).toBeGreaterThan(-1)

@@ -6,8 +6,8 @@
 }
 
 .line {
-  height: var(--text-sm-line);
-  border-radius: var(--radius-sm, 4px);
+  height: calc(1em * var(--text-sm-line));
+  border-radius: var(--radius-md);
 }
 
 .block {
