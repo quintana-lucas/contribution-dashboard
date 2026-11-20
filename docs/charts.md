@@ -15,7 +15,7 @@ The chart foundation is a small set of shared pieces. No existing chart consumes
 | Test helpers | `src/test/chart.ts` | `mockResizeObserver`, `mockElementRect`, `renderChart`. |
 | Tokens | `src/styles/tokens.css` | `--shadow-tooltip`, `--chart-min-mark`, `--color-bar`, `--color-bar-muted`, `--color-good`, `--color-caution`. |
 
-Only `@visx/tooltip` is installed. Add another `@visx/*` package only in the change that imports it (a test fails if one is listed but unused).
+Installed: `@visx/tooltip`, `@visx/shape` and `@visx/scale` (Reviews chart). Add another `@visx/*` package only in the change that imports it (a test fails if one is listed but unused).
 
 ## ChartFrame
 

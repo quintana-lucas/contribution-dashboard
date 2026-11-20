@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import type { ReviewsGiven } from '../../api/reviews.ts'
+import { Bar } from '@visx/shape'
+import { scaleLinear } from '@visx/scale'
 import ChartTooltip, { useChartTooltip } from '../ChartTooltip'
+import { markSize } from '../ChartFrame'
 import styles from './ReviewsChart.module.css'
 
 interface ReviewsChartProps {
@@ -12,15 +15,31 @@ type View = 'chart' | 'table'
 const LABEL = 'Reviews given per person'
 
 const OUTCOMES = [
-  { key: 'approved', label: 'Approved', className: styles.approved, color: 'var(--color-good)' },
-  { key: 'changesRequested', label: 'Changes requested', className: styles.changes, color: 'var(--color-caution)' },
-  { key: 'commented', label: 'Commented', className: styles.commented, color: 'var(--color-bar-muted)' },
+  { key: 'approved', label: 'Approved', color: 'var(--color-good)' },
+  { key: 'changesRequested', label: 'Changes requested', color: 'var(--color-caution)' },
+  { key: 'commented', label: 'Commented', color: 'var(--color-bar-muted)' },
 ] as const
+
+/** Bars are drawn in a 100-unit wide viewBox that stretches to the track. */
+const BAR_UNITS = 100
+const BAR_HEIGHT = 20
+
+function segments(r: ReviewsGiven, scale: (value: number) => number) {
+  let x = 0
+  const out: { key: string; color: string; x: number; width: number }[] = []
+  for (const o of OUTCOMES) {
+    const width = markSize(r[o.key], scale)
+    if (width > 0) out.push({ key: o.key, color: o.color, x, width })
+    x += width
+  }
+  return out
+}
 
 function ReviewsChart({ rows }: ReviewsChartProps) {
   const [view, setView] = useState<View>('chart')
   const { open, bind } = useChartTooltip<ReviewsGiven>()
   const max = Math.max(0, ...rows.map((r) => r.total))
+  const scale = scaleLinear<number>({ domain: [0, max || 1], range: [0, BAR_UNITS] })
 
   return (
     <div className={styles.wrap}>
@@ -56,21 +75,26 @@ function ReviewsChart({ rows }: ReviewsChartProps) {
                 {r.login}
               </span>
               <span className={styles.track} aria-hidden="true">
-                <span
-                  className={styles.stack}
-                  style={{ width: `${max > 0 ? (r.total / max) * 100 : 0}%` }}
+                <svg
+                  className={styles.svg}
+                  viewBox={`0 0 ${BAR_UNITS} ${BAR_HEIGHT}`}
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                  focusable="false"
                 >
-                  {OUTCOMES.map((o) =>
-                    r[o.key] > 0 ? (
-                      <span
-                        key={o.key}
-                        className={`${styles.segment} ${o.className}`}
-                        data-outcome={o.key}
-                        style={{ flexGrow: r[o.key] }}
-                      />
-                    ) : null,
-                  )}
-                </span>
+                  {segments(r, scale).map((s) => (
+                    <Bar
+                      key={s.key}
+                      className={styles.segment}
+                      data-outcome={s.key}
+                      x={s.x}
+                      y={0}
+                      width={s.width}
+                      height={BAR_HEIGHT}
+                      fill={s.color}
+                    />
+                  ))}
+                </svg>
               </span>
               <span className={styles.count} aria-hidden="true">
                 {r.total}
@@ -109,7 +133,7 @@ function ReviewsChart({ rows }: ReviewsChartProps) {
       <ul className={styles.legend} aria-label="Legend">
         {OUTCOMES.map((o) => (
           <li key={o.key} className={styles.legendItem}>
-            <span className={`${styles.swatch} ${o.className}`} aria-hidden="true" />
+            <span className={styles.swatch} style={{ background: o.color }} aria-hidden="true" />
             {o.label}
           </li>
         ))}

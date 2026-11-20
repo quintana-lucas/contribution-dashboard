@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { CHART_MIN_MARK } from '../ChartFrame'
 import ReviewsChart from './ReviewsChart'
 import css from './ReviewsChart.module.css?inline'
 
@@ -57,8 +58,64 @@ describe('ReviewsChart', () => {
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
   })
 
-  const stacks = (container: HTMLElement) =>
-    Array.from(container.querySelectorAll<HTMLElement>('ol > li > span:nth-child(3) > span'))
+  const rects = (li: Element) => Array.from(li.querySelectorAll('svg rect'))
+  const stackWidth = (li: Element) =>
+    rects(li).reduce((sum, r) => sum + Number(r.getAttribute('width')), 0)
+
+  it('#105 AC1: stacked bar in order Approved, Changes requested, Commented with token fills', () => {
+    const { container } = render(<ReviewsChart rows={rows} />)
+    const [ada] = Array.from(container.querySelectorAll('ol > li'))
+    const segs = rects(ada)
+    expect(segs.map((s) => s.getAttribute('data-outcome'))).toEqual([
+      'approved',
+      'changesRequested',
+      'commented',
+    ])
+    expect(segs.map((s) => s.getAttribute('fill'))).toEqual([
+      'var(--color-good)',
+      'var(--color-caution)',
+      'var(--color-bar-muted)',
+    ])
+    const xs = segs.map((s) => Number(s.getAttribute('x')))
+    expect(xs[0]).toBe(0)
+    expect(xs[1]).toBeCloseTo(Number(segs[0].getAttribute('width')))
+    expect(xs[2]).toBeGreaterThan(xs[1])
+    expect(ada.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('#105 AC1: no stripe or dot fills and a 1px surface-colored gap', () => {
+    const { container } = render(<ReviewsChart rows={rows} />)
+    expect(container.querySelector('pattern, linearGradient')).toBeNull()
+    for (const r of container.querySelectorAll('rect')) {
+      expect(r.getAttribute('fill')).toMatch(/^var\(--color-(good|caution|bar-muted)\)$/)
+    }
+    expect(css).not.toMatch(/repeating-linear-gradient|radial-gradient/)
+    expect(css).toMatch(/\._segment_\w+\s*\{[^}]*stroke:\s*var\(--color-surface\)/)
+    expect(css).toMatch(/\._segment_\w+\s*\{[^}]*stroke-width:\s*1px/)
+  })
+
+  it('#105 AC2: a small non-zero count is at least the min mark and a zero draws nothing', () => {
+    const { container } = render(
+      <ReviewsChart
+        rows={[
+          { login: 'big', approved: 1000, changesRequested: 0, commented: 0, total: 1000 },
+          { login: 'tiny', approved: 1, changesRequested: 0, commented: 1000, total: 1001 },
+        ]}
+      />,
+    )
+    const [big, tiny] = Array.from(container.querySelectorAll('ol > li'))
+    expect(rects(big)).toHaveLength(1)
+    const approved = tiny.querySelector('rect[data-outcome="approved"]')!
+    expect(Number(approved.getAttribute('width'))).toBeGreaterThanOrEqual(CHART_MIN_MARK)
+    expect(tiny.querySelector('rect[data-outcome="changesRequested"]')).toBeNull()
+  })
+
+  it('#105 AC2: each row shows its total on the right', () => {
+    const { container } = render(<ReviewsChart rows={rows} />)
+    const items = container.querySelectorAll('ol > li')
+    expect(items[0].lastElementChild).toHaveTextContent('10')
+    expect(items[1].lastElementChild).toHaveTextContent('2')
+  })
 
   it('#105 AC3: toggle sits alone in its row, right-aligned, and the legend is below the chart', () => {
     const { container } = render(<ReviewsChart rows={rows} />)
@@ -137,9 +194,9 @@ describe('ReviewsChart', () => {
         ]}
       />,
     )
-    const [a, b] = stacks(container)
-    expect(parseFloat(a.style.width)).toBeCloseTo((5 / 12) * 100)
-    expect(b).toHaveStyle({ width: '100%' })
+    const [a, b] = Array.from(container.querySelectorAll('ol > li'))
+    expect(stackWidth(a)).toBeCloseTo((5 / 12) * 100)
+    expect(stackWidth(b)).toBeCloseTo(100)
   })
 
   it('#72 AC4: a zero total shows "0" and an empty 0% stack', () => {
@@ -153,9 +210,8 @@ describe('ReviewsChart', () => {
     )
     const items = container.querySelectorAll('ol > li')
     expect(items[0].children[3]).toHaveTextContent('0')
-    const [zero] = stacks(container)
-    expect(zero).toHaveStyle({ width: '0%' })
-    expect(zero.children).toHaveLength(0)
+    expect(rects(items[0])).toHaveLength(0)
+    expect(stackWidth(items[0])).toBe(0)
   })
 
   it('#72 AC4: empty rows render an empty list without crashing', () => {
