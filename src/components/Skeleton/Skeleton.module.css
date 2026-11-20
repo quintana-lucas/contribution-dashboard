@@ -1,0 +1,32 @@
+.skeleton {
+  display: block;
+  width: 100%;
+  background: var(--color-border);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.line {
+  height: var(--text-sm-line);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.block {
+  height: 80px;
+  border-radius: var(--radius-md);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
