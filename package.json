@@ -18,6 +18,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@visx/tooltip": "^4.0.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
