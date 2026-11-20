@@ -87,10 +87,32 @@ describe('TeamTable', () => {
     const ana = screen.getByRole('row', { name: /^Ana/ })
     expect(within(ana).getAllByRole('cell').map((c) => c.textContent)).toEqual([
       // #89: PR size is now a bare "300" (the unit moved to the header); 1st review keeps its unit.
-      '5', '3', '1', '1', '4', '2', '+120 −45', '300', '5.5 h',
+      '5', '3', '1', '1', '4', '2', '+120−45', '300', '5.5 h',
     ])
     expect(within(screen.getByRole('row', { name: /^cy/ })).getAllByRole('cell')[0].textContent).toBe('0')
     expect(screen.getByText('Per member · All repositories · last 30 days')).toBeTruthy()
+  })
+
+  it('AC1, AC8 (#83): + and − figures sit in separate subcolumns with the add/del colours', () => {
+    renderTable()
+    const ana = screen.getByRole('row', { name: /^Ana/ })
+    const img = within(ana).getByRole('img', { name: '120 added, 45 removed' })
+    expect(img.children).toHaveLength(2)
+    expect(img.children[0].textContent).toBe('+120')
+    expect(img.children[1].textContent).toBe('−45')
+    expect(img.children[0].className).toMatch(/add/)
+    expect(img.children[1].className).toMatch(/del/)
+    expect(img.className).toMatch(/columns/)
+    expect(within(screen.getByRole('row', { name: /^cy/ })).getByRole('img', { name: '0 added, 0 removed' })).toBeTruthy()
+  })
+
+  it('AC9 (#83): header stays "Lines (+/−)" and sorting by Lines is unchanged', () => {
+    renderTable()
+    const btn = screen.getByRole('button', { name: 'Sort by Lines (+/−)' })
+    fireEvent.click(btn)
+    expect(bodyLogins()).toEqual(['cy', 'bob', 'Ana'])
+    fireEvent.click(btn)
+    expect(bodyLogins()).toEqual(['Ana', 'bob', 'cy'])
   })
 
   it('AC1 (#19): shows a loading line and nothing on error', () => {

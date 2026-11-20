@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import { NOT_AVAILABLE, formatDuration, formatSizeNumber } from '../../api/reviewMetrics'
 import type { TeamStatsRow } from '../../api/teamStats'
 import { useDashboard } from '../DashboardProvider'
+import LinesDelta from '../LinesDelta'
 import styles from './TeamTable.module.css'
 
 interface TeamTableProps {
@@ -32,6 +33,8 @@ interface Column {
   value: (r: TeamStatsRow) => number | null
   /** Cell text for a present value (bare number, no unit). */
   format: (v: number, r: TeamStatsRow) => string
+  /** Optional rich cell renderer; replaces `format` for the cell content. */
+  render?: (v: number, r: TeamStatsRow) => ReactNode
 }
 
 type CountKey = 'opened' | 'merged' | 'closed' | 'open' | 'reviewsGiven' | 'reviewsReceived'
@@ -54,8 +57,8 @@ const COLUMNS: Column[] = [
     label: 'Lines (+/−)',
     numeric: true,
     value: (r) => r.additions + r.deletions,
-    // The +/− pair is the cell content; its internals belong to #83.
     format: (_v, r) => `+${r.additions} −${r.deletions}`,
+    render: (_v, r) => <LinesDelta additions={r.additions} deletions={r.deletions} layout="columns" />,
   },
   {
     key: 'avgPrSize',
@@ -245,7 +248,7 @@ function TeamTable({ onChooseTeam }: TeamTableProps) {
                       </td>
                     ) : (
                       <td key={c.key} className={styles.num}>
-                        {c.format(v, r)}
+                        {c.render ? c.render(v, r) : c.format(v, r)}
                       </td>
                     )
                   })}
