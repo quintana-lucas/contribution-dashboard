@@ -11,7 +11,7 @@ const rows = [
 ]
 
 describe('ReviewsChart', () => {
-  it('AC2: shows name, total and counts as text per row, chart view by default', () => {
+  it('#105 AC5: shows name, total and counts as text per row, chart view by default', () => {
     render(<ReviewsChart rows={rows} />)
     const list = screen.getByRole('list', { name: 'Reviews given per person' })
     const items = within(list).getAllByRole('listitem')
@@ -25,7 +25,7 @@ describe('ReviewsChart', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
-  it('AC2: toggles to a real table with caption and columns', () => {
+  it('#105 AC5: toggles to a real table with caption, scoped headers and columns', () => {
     render(<ReviewsChart rows={rows} />)
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByRole('button', { name: 'Table' })).toHaveAttribute('aria-pressed', 'true')
@@ -46,7 +46,7 @@ describe('ReviewsChart', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
-  it('AC3: legend labels outcomes by text', () => {
+  it('#105 AC3: legend labels outcomes by text', () => {
     render(<ReviewsChart rows={rows} />)
     const legend = screen.getByRole('list', { name: 'Legend' })
     expect(legend).toHaveTextContent('Approved')
@@ -54,9 +54,42 @@ describe('ReviewsChart', () => {
     expect(legend).toHaveTextContent('Commented')
   })
 
-  it('AC3: has no region role', () => {
+  it('#105 AC5: has no region role', () => {
     render(<ReviewsChart rows={rows} />)
     expect(screen.queryByRole('region')).not.toBeInTheDocument()
+  })
+
+  it('#105 AC5: the visual row parts are hidden from assistive tech, only the sr-only text is read', () => {
+    render(<ReviewsChart rows={rows} />)
+    const [ada] = within(screen.getByRole('list', { name: 'Reviews given per person' })).getAllByRole('listitem')
+    const hidden = Array.from(ada.querySelectorAll('[aria-hidden="true"]'))
+    expect(hidden.length).toBeGreaterThanOrEqual(3)
+    const visible = Array.from(ada.children).filter((c) => c.getAttribute('aria-hidden') !== 'true')
+    expect(visible).toHaveLength(1)
+    expect(visible[0].textContent).toBe(
+      'ada: 10 reviews: 5 approved, 2 changes requested, 3 commented',
+    )
+  })
+
+  it('#105 AC5: the toggle is aria-pressed, keeps focus on the clicked button and updates both buttons', () => {
+    render(<ReviewsChart rows={rows} />)
+    const table = screen.getByRole('button', { name: 'Table' })
+    table.focus()
+    fireEvent.click(table)
+    expect(document.activeElement).toBe(table)
+    expect(table).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Chart' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('#105 AC5: table headers use scope col and row', () => {
+    render(<ReviewsChart rows={rows} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+    const table = screen.getByRole('table')
+    expect(table.querySelector('caption')).toHaveTextContent('Reviews given per person')
+    const cols = Array.from(table.querySelectorAll('thead th'))
+    expect(cols).toHaveLength(5)
+    for (const th of cols) expect(th).toHaveAttribute('scope', 'col')
+    for (const th of table.querySelectorAll('tbody th')) expect(th).toHaveAttribute('scope', 'row')
   })
 
   const rects = (li: Element) => Array.from(li.querySelectorAll('svg rect'))
@@ -195,7 +228,7 @@ describe('ReviewsChart', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 
-  it('#72 AC1: rows with different digit counts share the same structure', () => {
+  it('#105 AC7 (#72 AC1): rows with different digit counts share the same structure', () => {
     const { container } = render(
       <ReviewsChart
         rows={[
@@ -212,14 +245,14 @@ describe('ReviewsChart', () => {
     expect(items[0].children).toHaveLength(4)
   })
 
-  it('#72 AC2: CSS gives the count column a fixed width, right-aligned, tabular', () => {
+  it('#105 AC2 (#72 AC2): CSS gives the count column a fixed width, right-aligned, tabular', () => {
     const cols = /grid-template-columns:\s*([^;]+);/.exec(css)?.[1] ?? ''
     expect(cols).toMatch(/\s\d+ch\s*$/)
     expect(cols).not.toMatch(/auto/)
     expect(css).toMatch(/tabular-nums;\s*text-align:\s*right/)
   })
 
-  it('#72 AC3: each stack width is proportional to total / max', () => {
+  it('#105 AC2 (#72 AC3): each stack width is proportional to total / max', () => {
     const { container } = render(
       <ReviewsChart
         rows={[
@@ -233,7 +266,7 @@ describe('ReviewsChart', () => {
     expect(stackWidth(b)).toBeCloseTo(100)
   })
 
-  it('#72 AC4: a zero total shows "0" and an empty 0% stack', () => {
+  it('#105 AC2 (#72 AC4): a zero total shows "0" and an empty 0% stack', () => {
     const { container } = render(
       <ReviewsChart
         rows={[
@@ -248,7 +281,7 @@ describe('ReviewsChart', () => {
     expect(stackWidth(items[0])).toBe(0)
   })
 
-  it('#72 AC4: empty rows render an empty list without crashing', () => {
+  it('#105 AC6 (#72 AC4): empty rows render an empty list without crashing', () => {
     render(<ReviewsChart rows={[]} />)
     const list = screen.getByRole('list', { name: 'Reviews given per person' })
     expect(list).toBeEmptyDOMElement()

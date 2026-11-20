@@ -55,7 +55,7 @@ describe('ReviewsWidget', () => {
     vi.unstubAllGlobals()
   })
 
-  it('AC1: renders reviewers sorted by total, aggregated across repos', async () => {
+  it('#105 AC5 (AC1): renders reviewers sorted by total with per-row text, aggregated across repos', async () => {
     await renderWidget()
     const items = rows()
     expect(items).toHaveLength(2)
@@ -63,14 +63,23 @@ describe('ReviewsWidget', () => {
     expect(items[1]).toHaveTextContent('dee: 1 reviews')
   })
 
-  it('AC6: is a region named Reviews given per person with the scope hint', async () => {
+  it('#105 AC5: the Chart/Table toggle works inside the widget and shows the table with caption', async () => {
+    await renderWidget()
+    expect(screen.getByRole('button', { name: 'Chart' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+    const table = screen.getByRole('table', { name: /reviews given per person/i })
+    expect(within(table).getAllByRole('row')).toHaveLength(3)
+    expect(within(table).getAllByRole('rowheader')[0]).toHaveTextContent('cy')
+  })
+
+  it('#105 AC7 (AC6): is a region named Reviews given per person with the scope hint', async () => {
     await renderWidget()
     expect(screen.getByRole('region', { name: 'Reviews given per person' })).toHaveTextContent(
       'Reviews given per person · All repositories · last 30 days',
     )
   })
 
-  it('AC4: not synced state points to settings', async () => {
+  it('#105 AC6 (AC4): not synced state points to settings', async () => {
     const deps = makeReviewDeps()
     deps.listRepos = vi.fn(async () => ({
       ok: true as const,
@@ -83,7 +92,7 @@ describe('ReviewsWidget', () => {
     expect(screen.queryByRole('list')).toBeNull()
   })
 
-  it('AC4: zero reviews state names the period', async () => {
+  it('#105 AC6 (AC4): zero reviews state names the period', async () => {
     const deps = makeReviewDeps()
     deps.getRepoData = vi.fn(async (repo: string) => ({
       ok: true as const,
@@ -95,7 +104,7 @@ describe('ReviewsWidget', () => {
     expect(screen.getByText('No reviews in the last 7 days.')).toBeInTheDocument()
   })
 
-  it('#102 AC1, AC4, AC7: shows a skeleton (no text, busy) while loading and no chart on error', async () => {
+  it('#105 AC6 (#102 AC1, AC4, AC7): shows a skeleton (no text, busy) while loading and no chart on error', async () => {
     const pending = { ...makeReviewDeps(), listRepos: vi.fn(() => new Promise<never>(() => {})) }
     const first = render(
       <DashboardProvider {...pending}>
@@ -123,7 +132,7 @@ describe('ReviewsWidget', () => {
     expect(screen.queryByRole('button', { name: 'Open settings' })).toBeNull()
   })
 
-  it('AC5: rendering and changing filters make no network requests', async () => {
+  it('#105 AC7 (AC5): rendering and changing filters make no network requests', async () => {
     const fetchSpy = vi.fn()
     vi.stubGlobal('fetch', fetchSpy)
     const xhrSpy = vi.spyOn(XMLHttpRequest.prototype, 'open')
@@ -134,7 +143,7 @@ describe('ReviewsWidget', () => {
     expect(xhrSpy).not.toHaveBeenCalled()
   })
 
-  it('AC8: changing repo and period updates the chart and hint without reloading', async () => {
+  it('#105 AC7 (AC8): changing repo and period updates the chart and hint without reloading', async () => {
     const { deps } = await renderWidget()
     const region = screen.getByRole('region', { name: 'Reviews given per person' })
     const calls = deps.getRepoData.mock.calls.length
