@@ -16,6 +16,7 @@ function pr(over: Partial<RecentPr> = {}): RecentPr {
     repo: 'acme/api',
     number: 1,
     state: 'merged',
+    draft: false,
     title: 'Fix the thing',
     additions: 10,
     deletions: 2,

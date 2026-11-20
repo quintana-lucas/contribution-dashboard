@@ -21,7 +21,7 @@ query($owner: String!, $name: String!, $cursor: String, $states: [PullRequestSta
     pullRequests(first: 50, after: $cursor, states: $states, orderBy: { field: UPDATED_AT, direction: DESC }) {
       pageInfo { hasNextPage endCursor }
       nodes {
-        number title state createdAt updatedAt mergedAt closedAt
+        number title state isDraft createdAt updatedAt mergedAt closedAt
         additions deletions baseRefName
         author { login __typename }
         reviewRequests(first: 20) {
@@ -77,6 +77,7 @@ interface RawPr {
   number: number
   title: string
   state: string
+  isDraft?: boolean
   createdAt: string
   updatedAt: string
   mergedAt: string | null
@@ -203,6 +204,7 @@ export async function fetchRepoActivity(opts: FetchRepoOptions): Promise<FetchRe
         author: pr.author?.login ?? null,
         authorIsBot: isBotAccount(pr.author?.login, pr.author?.__typename),
         state,
+        draft: pr.isDraft === true,
         createdAt: pr.createdAt,
         updatedAt: pr.updatedAt,
         mergedAt: pr.mergedAt ?? null,

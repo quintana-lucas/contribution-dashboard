@@ -135,6 +135,7 @@ describe('fetchRepoActivity', () => {
       title: 'Fake PR 1',
       author: 'fake-author',
       state: 'merged',
+      draft: false,
       createdAt: daysAgo(10),
       updatedAt: daysAgo(2),
       mergedAt: daysAgo(3),
@@ -153,6 +154,15 @@ describe('fetchRepoActivity', () => {
     ])
     expect(result.repo).toMatchObject({ schemaVersion: 3, repo: 'acme/widgets' })
     expect(JSON.stringify(result.repo)).not.toMatch(/secret|a@b\.c/)
+  })
+
+  it('#101 AC4: isDraft is requested and mapped to draft; missing flag maps to false', async () => {
+    const { result, bodies } = await run([
+      prPage([pr(1, { isDraft: true }), pr(2, { isDraft: false }), pr(3)]),
+    ])
+    if (!result.ok) throw new Error('expected ok')
+    expect(bodies[0].query).toContain('isDraft')
+    expect(result.repo.pullRequests.map((p) => p.draft)).toEqual([true, false, false])
   })
 
   it('AC4: a node duplicated across pages appears once, output sorted', async () => {

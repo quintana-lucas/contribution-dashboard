@@ -22,6 +22,7 @@ export function storedRepo(repo: string, syncedAt: string, authors: string[], ba
       author,
       authorIsBot: false,
       state: 'open' as const,
+      draft: false,
       createdAt: '2026-06-10T10:00:00.000Z',
       updatedAt: '2026-06-10T10:00:00.000Z',
       mergedAt: null,
