@@ -1,5 +1,6 @@
 import { OVERDUE_HOURS, type WaitingPr } from '../../api/waiting'
 import { useDashboard } from '../DashboardProvider'
+import PrLink from '../PrLink'
 import Widget from '../Widget'
 import styles from './WaitingWidget.module.css'
 
@@ -20,7 +21,9 @@ function Row({ pr }: { pr: WaitingPr }) {
   return (
     <li className={styles.item}>
       <p className={styles.title}>
-        <span className={styles.titleText}>{pr.title}</span>{' '}
+        <PrLink repo={pr.repo} number={pr.number}>
+          <span className={styles.titleText}>{pr.title}</span>
+        </PrLink>{' '}
         <span className={styles.number}>#{pr.number}</span>
       </p>
       <p className={styles.meta}>
