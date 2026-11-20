@@ -134,6 +134,7 @@ export function toStored(input: StoredRepo): StoredRepo {
         author: p.author,
         authorIsBot: p.authorIsBot,
         state: p.state,
+        ...(typeof p.draft === 'boolean' ? { draft: p.draft } : {}),
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
         mergedAt: p.mergedAt,

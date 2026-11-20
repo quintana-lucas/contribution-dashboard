@@ -23,6 +23,8 @@ export interface RecentPr {
   repo: string
   number: number
   state: 'open' | 'merged' | 'closed'
+  /** True only for open PRs flagged as draft. */
+  draft: boolean
   title: string
   additions: number
   deletions: number
@@ -83,6 +85,7 @@ export function memberDetail(
         repo: entry.repo,
         number: pr.number,
         state: pr.state,
+        draft: pr.state === 'open' && pr.draft === true,
         title: pr.title,
         additions: pr.additions,
         deletions: pr.deletions,

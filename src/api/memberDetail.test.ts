@@ -50,6 +50,19 @@ function entry(repo: string, prs: StoredPullRequest[], reviews: StoredReview[] =
 }
 
 describe('memberDetail', () => {
+  it('AC4: a draft open PR has draft true; flag on merged/closed is ignored; missing flag is false', () => {
+    const e = entry('o/a', [
+      pr({ number: 1, state: 'open', draft: true, createdAt: TWO_DAYS_AGO, mergedAt: null, closedAt: null }),
+      pr({ number: 2, state: 'open', createdAt: TWO_DAYS_AGO, mergedAt: null, closedAt: null }),
+      pr({ number: 3, state: 'merged', draft: true }),
+      pr({ number: 4, state: 'closed', draft: true, mergedAt: null }),
+    ])
+    const byNumber = Object.fromEntries(
+      memberDetail([e], 'all', 30, NOW, 'alice').recentPrs.map((p) => [p.number, p.draft]),
+    )
+    expect(byNumber).toEqual({ 1: true, 2: false, 3: false, 4: false })
+  })
+
   it('AC1: numbers equal the Team table row, login matched case-insensitively', () => {
     const e = entry(
       'o/a',
@@ -155,6 +168,7 @@ describe('memberDetail', () => {
       repo: 'o/a',
       number: 2,
       state: 'open',
+      draft: false,
       title: 'open',
       additions: 10,
       deletions: 4,
