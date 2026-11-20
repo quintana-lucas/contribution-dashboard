@@ -48,6 +48,9 @@
   --radius-md: 8px;
   --radius-pill: 999px;
 
+  --shadow-tooltip: 0 2px 8px var(--color-scroll-edge);
+  --chart-min-mark: 4px;
+
   --content-max: 1200px;
   --modal-max: 640px;
 }
