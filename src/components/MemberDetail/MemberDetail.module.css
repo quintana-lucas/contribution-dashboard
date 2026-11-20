@@ -182,34 +182,6 @@
   overflow-wrap: anywhere;
 }
 
-.badge {
-  display: inline-block;
-  flex: 0 0 auto;
-  padding: 0 var(--space-2);
-  border: 1px solid var(--color-bar);
-  border-radius: var(--radius-pill);
-  font-size: var(--text-sm);
-  line-height: var(--text-sm-line);
-}
-
-.badgeMerged {
-  background: var(--color-bar);
-  border-color: var(--color-bar);
-  color: var(--color-on-accent);
-}
-
-.badgeOpen {
-  background: var(--color-surface);
-  border-color: var(--color-bar);
-  color: var(--color-bar);
-}
-
-.badgeClosed {
-  background: var(--color-surface);
-  border-color: var(--color-bar-muted);
-  color: var(--color-bar-muted);
-}
-
 @media (min-width: 768px) {
   .header {
     flex-direction: row;

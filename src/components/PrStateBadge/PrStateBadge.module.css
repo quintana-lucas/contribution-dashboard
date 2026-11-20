@@ -1,0 +1,33 @@
+.badge {
+  display: inline-block;
+  flex: 0 0 auto;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+}
+
+.open {
+  background: var(--color-pr-open-bg);
+  border-color: var(--color-pr-open);
+  color: var(--color-pr-open);
+}
+
+.merged {
+  background: var(--color-pr-merged-bg);
+  border-color: var(--color-pr-merged);
+  color: var(--color-pr-merged);
+}
+
+.closed {
+  background: var(--color-pr-closed-bg);
+  border-color: var(--color-pr-closed);
+  color: var(--color-pr-closed);
+}
+
+.draft {
+  background: var(--color-pr-draft-bg);
+  border-color: var(--color-pr-draft);
+  color: var(--color-pr-draft);
+}

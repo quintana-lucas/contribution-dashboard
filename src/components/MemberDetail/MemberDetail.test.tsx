@@ -219,6 +219,23 @@ describe('MemberDetail', () => {
     expect(screen.queryByText(/most recent of/)).toBeNull()
   })
 
+  it('AC1, AC2, AC3, AC4, AC5: the list shows Open, Merged, Closed and Draft badges outside the links', () => {
+    const prs = [
+      pr({ number: 1, state: 'open', title: 'A' }),
+      pr({ number: 2, state: 'merged', title: 'B' }),
+      pr({ number: 3, state: 'closed', title: 'C' }),
+      pr({ number: 4, state: 'open', draft: true, title: 'D' }),
+    ]
+    renderDetail({}, detail({ recentPrs: prs, recentTotal: prs.length }))
+    const items = within(screen.getByRole('list', { name: '' })).getAllByRole('listitem')
+    const labels = ['Open', 'Merged', 'Closed', 'Draft']
+    for (const [i, item] of items.entries()) {
+      const badge = within(item).getByText(labels[i])
+      expect(within(item).getByRole('link').contains(badge)).toBe(false)
+    }
+    expect(within(items[3]).queryByText('Open')).toBeNull()
+  })
+
   describe('#91: PR title links', () => {
     const MIXED = [
       pr({ repo: 'acme/api', number: 11, title: 'Fix login bug' }),
