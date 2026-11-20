@@ -6,10 +6,7 @@
 
 .toolbar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
+  justify-content: flex-end;
 }
 
 .legend {
@@ -27,6 +24,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  white-space: nowrap;
 }
 
 .swatch {
@@ -35,27 +33,6 @@
   height: var(--space-3);
   border: 1px solid var(--color-text);
   border-radius: 2px;
-}
-
-/* Outcomes differ by fill pattern as well as by label: solid, diagonal stripes, dots. */
-.approved {
-  background: var(--color-bar);
-}
-
-.changes {
-  background: repeating-linear-gradient(
-    45deg,
-    var(--color-text) 0,
-    var(--color-text) 2px,
-    var(--color-surface) 2px,
-    var(--color-surface) 4px
-  );
-}
-
-.commented {
-  background-color: var(--color-surface);
-  background-image: radial-gradient(var(--color-bar-muted) 1px, transparent 1.5px);
-  background-size: 4px 4px;
 }
 
 .toggle {
@@ -109,6 +86,13 @@
   font-size: var(--text-sm);
   line-height: var(--text-sm-line);
   min-width: 0;
+  min-height: 28px;
+  border-radius: var(--radius-md);
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .name {
@@ -120,21 +104,15 @@
 
 .track {
   display: block;
-  height: var(--space-3);
+  height: 20px;
   background: var(--color-border);
   border-radius: var(--radius-pill);
   overflow: hidden;
 }
 
-.stack {
-  display: flex;
-  height: 100%;
-}
-
-.segment {
+.svg {
   display: block;
-  flex-basis: 0;
-  min-width: 2px;
+  width: 100%;
   height: 100%;
 }
 
