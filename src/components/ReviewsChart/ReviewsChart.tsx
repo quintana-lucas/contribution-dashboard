@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ReviewsGiven } from '../../api/reviews.ts'
+import ChartTooltip, { useChartTooltip } from '../ChartTooltip'
 import styles from './ReviewsChart.module.css'
 
 interface ReviewsChartProps {
@@ -11,26 +12,19 @@ type View = 'chart' | 'table'
 const LABEL = 'Reviews given per person'
 
 const OUTCOMES = [
-  { key: 'approved', label: 'Approved', className: styles.approved },
-  { key: 'changesRequested', label: 'Changes requested', className: styles.changes },
-  { key: 'commented', label: 'Commented', className: styles.commented },
+  { key: 'approved', label: 'Approved', className: styles.approved, color: 'var(--color-good)' },
+  { key: 'changesRequested', label: 'Changes requested', className: styles.changes, color: 'var(--color-caution)' },
+  { key: 'commented', label: 'Commented', className: styles.commented, color: 'var(--color-bar-muted)' },
 ] as const
 
 function ReviewsChart({ rows }: ReviewsChartProps) {
   const [view, setView] = useState<View>('chart')
+  const { open, bind } = useChartTooltip<ReviewsGiven>()
   const max = Math.max(0, ...rows.map((r) => r.total))
 
   return (
     <div className={styles.wrap}>
       <div className={styles.toolbar}>
-        <ul className={styles.legend} aria-label="Legend">
-          {OUTCOMES.map((o) => (
-            <li key={o.key} className={styles.legendItem}>
-              <span className={`${styles.swatch} ${o.className}`} aria-hidden="true" />
-              {o.label}
-            </li>
-          ))}
-        </ul>
         <div className={styles.toggle}>
           {(['chart', 'table'] as const).map((v) => (
             <button
@@ -49,7 +43,12 @@ function ReviewsChart({ rows }: ReviewsChartProps) {
       {view === 'chart' ? (
         <ol className={styles.list} aria-label={LABEL}>
           {rows.map((r) => (
-            <li key={r.login.toLowerCase()} className={styles.row}>
+            <li
+              key={r.login.toLowerCase()}
+              className={styles.row}
+              tabIndex={0}
+              {...bind(r)}
+            >
               <span className={styles.srOnly}>
                 {`${r.login}: ${r.total} reviews: ${r.approved} approved, ${r.changesRequested} changes requested, ${r.commented} commented`}
               </span>
@@ -105,6 +104,28 @@ function ReviewsChart({ rows }: ReviewsChartProps) {
             </tbody>
           </table>
         </div>
+      )}
+
+      <ul className={styles.legend} aria-label="Legend">
+        {OUTCOMES.map((o) => (
+          <li key={o.key} className={styles.legendItem}>
+            <span className={`${styles.swatch} ${o.className}`} aria-hidden="true" />
+            {o.label}
+          </li>
+        ))}
+      </ul>
+
+      {open && (
+        <ChartTooltip
+          anchor={open.anchor}
+          title={open.data.login}
+          rows={OUTCOMES.map((o) => ({
+            color: o.color,
+            name: o.label,
+            value: open.data[o.key],
+          }))}
+          footer={`Total: ${open.data.total} reviews`}
+        />
       )}
     </div>
   )

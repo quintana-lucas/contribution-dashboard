@@ -60,6 +60,50 @@ describe('ReviewsChart', () => {
   const stacks = (container: HTMLElement) =>
     Array.from(container.querySelectorAll<HTMLElement>('ol > li > span:nth-child(3) > span'))
 
+  it('#105 AC3: toggle sits alone in its row, right-aligned, and the legend is below the chart', () => {
+    const { container } = render(<ReviewsChart rows={rows} />)
+    const toolbar = screen.getByRole('button', { name: 'Chart' }).closest('div')!.parentElement!
+    expect(toolbar.children).toHaveLength(1)
+    expect(within(toolbar).queryByRole('list')).not.toBeInTheDocument()
+    expect(css).toMatch(/\._toolbar_\w+\s*\{[^}]*justify-content:\s*flex-end/)
+    const list = screen.getByRole('list', { name: 'Reviews given per person' })
+    const legend = screen.getByRole('list', { name: 'Legend' })
+    expect(list.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(container.contains(legend)).toBe(true)
+  })
+
+  it('#105 AC3: legend wraps without truncating; bars >= 20px and rows >= 28px', () => {
+    expect(css).toMatch(/\._legend_\w+\s*\{[^}]*flex-wrap:\s*wrap/)
+    expect(css).toMatch(/\._legendItem_\w+\s*\{[^}]*white-space:\s*nowrap/)
+    expect(css).toMatch(/\._track_\w+\s*\{[^}]*height:\s*20px/)
+    expect(css).toMatch(/\._row_\w+\s*\{[^}]*min-height:\s*28px/)
+    expect(css).toMatch(/\._row_\w+:focus-visible\s*\{[^}]*var\(--color-focus\)/)
+  })
+
+  it('#105 AC4: hover opens the tooltip with login, counts and total', async () => {
+    render(<ReviewsChart rows={rows} />)
+    const [ada] = within(screen.getByRole('list', { name: 'Reviews given per person' })).getAllByRole('listitem')
+    fireEvent.mouseEnter(ada)
+    const tip = await screen.findByRole('tooltip')
+    expect(tip).toHaveTextContent('ada')
+    expect(tip).toHaveTextContent('Approved5')
+    expect(tip).toHaveTextContent('Changes requested2')
+    expect(tip).toHaveTextContent('Commented3')
+    expect(tip).toHaveTextContent('Total: 10 reviews')
+    fireEvent.mouseLeave(ada)
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('#105 AC4: rows are focusable; focus opens the tooltip and Escape closes it', () => {
+    render(<ReviewsChart rows={rows} />)
+    const [, bob] = within(screen.getByRole('list', { name: 'Reviews given per person' })).getAllByRole('listitem')
+    expect(bob).toHaveAttribute('tabindex', '0')
+    fireEvent.focus(bob)
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Total: 2 reviews')
+    fireEvent.keyDown(bob, { key: 'Escape' })
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
   it('#72 AC1: rows with different digit counts share the same structure', () => {
     const { container } = render(
       <ReviewsChart
