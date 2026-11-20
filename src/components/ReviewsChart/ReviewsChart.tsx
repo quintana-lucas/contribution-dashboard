@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { ReviewsGiven } from '../../api/reviews.ts'
 import { Bar } from '@visx/shape'
 import { scaleLinear } from '@visx/scale'
 import ChartTooltip, { useChartTooltip } from '../ChartTooltip'
-import { markSize } from '../ChartFrame'
+import { CHART_MIN_MARK } from '../ChartFrame'
 import styles from './ReviewsChart.module.css'
 
 interface ReviewsChartProps {
@@ -20,26 +20,103 @@ const OUTCOMES = [
   { key: 'commented', label: 'Commented', color: 'var(--color-bar-muted)' },
 ] as const
 
-/** Bars are drawn in a 100-unit wide viewBox that stretches to the track. */
-const BAR_UNITS = 100
 const BAR_HEIGHT = 20
+/** Empty space between adjacent segments, in px. */
+const GAP = 1
+/** Track width used when the real one cannot be measured (no layout engine). */
+const FALLBACK_WIDTH = 100
 
-function segments(r: ReviewsGiven, scale: (value: number) => number) {
-  let x = 0
-  const out: { key: string; color: string; x: number; width: number }[] = []
-  for (const o of OUTCOMES) {
-    const width = markSize(r[o.key], scale)
-    if (width > 0) out.push({ key: o.key, color: o.color, x, width })
-    x += width
+/** Measures the width in px of the element the returned ref is attached to. */
+function useWidth() {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [width, setWidth] = useState(0)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const read = (w: number) => setWidth((prev) => (prev === w ? prev : w))
+    read(el.getBoundingClientRect().width)
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[entries.length - 1]
+      if (entry) read(entry.contentRect.width)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  return [ref, width || FALLBACK_WIDTH] as const
+}
+
+/**
+ * Lays out one row in real px. The stack is total * scale wide, but never
+ * narrower than a min mark per non-zero segment (plus gaps) nor wider than the
+ * track. Segments below the min mark are pinned to it and the rest share what
+ * remains, so everything fits and every non-zero count stays visible.
+ */
+function segments(r: ReviewsGiven, scale: (value: number) => number, trackWidth: number) {
+  const present = OUTCOMES.filter((o) => r[o.key] > 0)
+  const gaps = Math.max(0, present.length - 1) * GAP
+  const target = Math.min(
+    trackWidth,
+    Math.max(scale(r.total) + gaps, present.length * CHART_MIN_MARK + gaps),
+  )
+  const widths = new Map<string, number>()
+  let free = present.slice()
+  let budget = target - gaps
+  for (;;) {
+    const raw = free.reduce((sum, o) => sum + r[o.key], 0)
+    const k = raw > 0 ? Math.max(0, budget) / raw : 0
+    const small = free.filter((o) => r[o.key] * k < CHART_MIN_MARK)
+    if (small.length === 0) {
+      for (const o of free) widths.set(o.key, r[o.key] * k)
+      break
+    }
+    for (const o of small) {
+      widths.set(o.key, CHART_MIN_MARK)
+      budget -= CHART_MIN_MARK
+    }
+    free = free.filter((o) => !small.includes(o))
   }
-  return out
+  let x = 0
+  return present.map((o) => {
+    const width = widths.get(o.key) ?? 0
+    const seg = { key: o.key, color: o.color, x, width }
+    x += width + GAP
+    return seg
+  })
+}
+
+function ReviewsRowTrack({ row, scale }: { row: ReviewsGiven; scale: (v: number) => number }) {
+  const [ref, width] = useWidth()
+  return (
+    <span ref={ref} className={styles.track} aria-hidden="true">
+      <svg
+        className={styles.svg}
+        viewBox={`0 0 ${width} ${BAR_HEIGHT}`}
+        aria-hidden="true"
+        focusable="false"
+      >
+        {segments(row, (v) => scale(v) * width, width).map((s) => (
+          <Bar
+            key={s.key}
+            data-outcome={s.key}
+            x={s.x}
+            y={0}
+            width={s.width}
+            height={BAR_HEIGHT}
+            fill={s.color}
+          />
+        ))}
+      </svg>
+    </span>
+  )
 }
 
 function ReviewsChart({ rows }: ReviewsChartProps) {
   const [view, setView] = useState<View>('chart')
   const { open, bind } = useChartTooltip<ReviewsGiven>()
   const max = Math.max(0, ...rows.map((r) => r.total))
-  const scale = scaleLinear<number>({ domain: [0, max || 1], range: [0, BAR_UNITS] })
+  // Domain 0..max maps to 0..1 of the track; each row scales it by its width.
+  const unit = scaleLinear<number>({ domain: [0, max || 1], range: [0, 1] })
 
   return (
     <div className={styles.wrap}>
@@ -74,28 +151,7 @@ function ReviewsChart({ rows }: ReviewsChartProps) {
               <span className={styles.name} title={r.login} aria-hidden="true">
                 {r.login}
               </span>
-              <span className={styles.track} aria-hidden="true">
-                <svg
-                  className={styles.svg}
-                  viewBox={`0 0 ${BAR_UNITS} ${BAR_HEIGHT}`}
-                  preserveAspectRatio="none"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  {segments(r, scale).map((s) => (
-                    <Bar
-                      key={s.key}
-                      className={styles.segment}
-                      data-outcome={s.key}
-                      x={s.x}
-                      y={0}
-                      width={s.width}
-                      height={BAR_HEIGHT}
-                      fill={s.color}
-                    />
-                  ))}
-                </svg>
-              </span>
+              <ReviewsRowTrack row={r} scale={unit} />
               <span className={styles.count} aria-hidden="true">
                 {r.total}
               </span>

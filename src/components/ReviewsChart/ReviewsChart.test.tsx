@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { mockElementRect } from '../../test/chart'
 import { CHART_MIN_MARK } from '../ChartFrame'
 import ReviewsChart from './ReviewsChart'
 import css from './ReviewsChart.module.css?inline'
@@ -78,36 +79,69 @@ describe('ReviewsChart', () => {
     ])
     const xs = segs.map((s) => Number(s.getAttribute('x')))
     expect(xs[0]).toBe(0)
-    expect(xs[1]).toBeCloseTo(Number(segs[0].getAttribute('width')))
+    expect(xs[1]).toBeGreaterThan(Number(segs[0].getAttribute('width')))
     expect(xs[2]).toBeGreaterThan(xs[1])
     expect(ada.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
   })
 
-  it('#105 AC1: no stripe or dot fills and a 1px surface-colored gap', () => {
+  it('#105 AC1: no stripe or dot fills and a 1px gap between segments', () => {
     const { container } = render(<ReviewsChart rows={rows} />)
     expect(container.querySelector('pattern, linearGradient')).toBeNull()
     for (const r of container.querySelectorAll('rect')) {
       expect(r.getAttribute('fill')).toMatch(/^var\(--color-(good|caution|bar-muted)\)$/)
     }
     expect(css).not.toMatch(/repeating-linear-gradient|radial-gradient/)
-    expect(css).toMatch(/\._segment_\w+\s*\{[^}]*stroke:\s*var\(--color-surface\)/)
-    expect(css).toMatch(/\._segment_\w+\s*\{[^}]*stroke-width:\s*1px/)
+    const [ada] = Array.from(container.querySelectorAll('ol > li'))
+    const segs = rects(ada).map((s) => ({
+      x: Number(s.getAttribute('x')),
+      w: Number(s.getAttribute('width')),
+    }))
+    expect(segs[1].x - (segs[0].x + segs[0].w)).toBeCloseTo(1)
+    expect(segs[2].x - (segs[1].x + segs[1].w)).toBeCloseTo(1)
   })
 
-  it('#105 AC2: a small non-zero count is at least the min mark and a zero draws nothing', () => {
-    const { container } = render(
-      <ReviewsChart
-        rows={[
-          { login: 'big', approved: 1000, changesRequested: 0, commented: 0, total: 1000 },
-          { login: 'tiny', approved: 1, changesRequested: 0, commented: 1000, total: 1001 },
-        ]}
-      />,
-    )
-    const [big, tiny] = Array.from(container.querySelectorAll('ol > li'))
-    expect(rects(big)).toHaveLength(1)
-    const approved = tiny.querySelector('rect[data-outcome="approved"]')!
-    expect(Number(approved.getAttribute('width'))).toBeGreaterThanOrEqual(CHART_MIN_MARK)
-    expect(tiny.querySelector('rect[data-outcome="changesRequested"]')).toBeNull()
+  describe('with a measured track', () => {
+    const TRACK = 200
+    let restore: () => void
+    beforeEach(() => {
+      restore = mockElementRect({ width: TRACK })
+    })
+    afterEach(() => restore())
+
+    const extent = (li: Element) =>
+      Math.max(...rects(li).map((s) => Number(s.getAttribute('x')) + Number(s.getAttribute('width'))))
+
+    it('#105 AC2: a small non-zero count is at least the min mark in px and a zero draws nothing', () => {
+      const { container } = render(
+        <ReviewsChart
+          rows={[
+            { login: 'big', approved: 1000, changesRequested: 0, commented: 0, total: 1000 },
+            { login: 'tiny', approved: 1, changesRequested: 0, commented: 1000, total: 1001 },
+          ]}
+        />,
+      )
+      const [big, tiny] = Array.from(container.querySelectorAll('ol > li'))
+      expect(rects(big)).toHaveLength(1)
+      expect(tiny.querySelector('svg')).toHaveAttribute('viewBox', `0 0 ${TRACK} 20`)
+      const approved = tiny.querySelector('rect[data-outcome="approved"]')!
+      expect(Number(approved.getAttribute('width'))).toBeGreaterThanOrEqual(CHART_MIN_MARK)
+      expect(tiny.querySelector('rect[data-outcome="changesRequested"]')).toBeNull()
+    })
+
+    it('#105 AC2: the max-total row with tiny segments fits the track and shows every non-zero segment', () => {
+      const { container } = render(
+        <ReviewsChart
+          rows={[{ login: 'max', approved: 997, changesRequested: 1, commented: 2, total: 1000 }]}
+        />,
+      )
+      const [li] = Array.from(container.querySelectorAll('ol > li'))
+      const segs = rects(li)
+      expect(segs).toHaveLength(3)
+      for (const s of segs) {
+        expect(Number(s.getAttribute('width'))).toBeGreaterThanOrEqual(CHART_MIN_MARK)
+      }
+      expect(extent(li)).toBeLessThanOrEqual(TRACK + 1e-9)
+    })
   })
 
   it('#105 AC2: each row shows its total on the right', () => {

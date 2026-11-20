@@ -116,13 +116,6 @@
   height: 100%;
 }
 
-/* 1px surface-colored gap between segments, constant under the stretched viewBox. */
-.segment {
-  stroke: var(--color-surface);
-  stroke-width: 1px;
-  vector-effect: non-scaling-stroke;
-}
-
 .count {
   font-variant-numeric: tabular-nums;
   text-align: right;
