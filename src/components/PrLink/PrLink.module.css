@@ -1,0 +1,27 @@
+.link {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: var(--color-text-muted);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+.link:hover,
+.link:focus-visible {
+  color: var(--color-focus);
+  text-decoration-color: var(--color-focus);
+  text-decoration-thickness: 2px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
