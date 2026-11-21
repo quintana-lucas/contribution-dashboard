@@ -33,6 +33,11 @@
   overflow: visible;
 }
 
+.group:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 .text {
   font-family: var(--font-sans);
   font-size: var(--text-sm);

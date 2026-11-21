@@ -95,7 +95,11 @@ describe('App', () => {
     const prLinks = all.filter((el) => el.tagName === 'A')
     expect(prLinks.length).toBeGreaterThan(0)
     for (const link of prLinks) expect(link.getAttribute('href')).toMatch(/^https:\/\/github\.com\//)
-    const focusable = all.filter((el) => el.tagName !== 'A')
+    // #106: each PR activity bucket is a tab stop (tooltip on focus); checked apart from the fixed controls.
+    const buckets = all.filter((el) => el.getAttribute('data-testid') === 'group')
+    expect(buckets.length).toBeGreaterThan(0)
+    for (const bucket of buckets) expect(bucket.tagName.toLowerCase()).toBe('g')
+    const focusable = all.filter((el) => el.tagName !== 'A' && !buckets.includes(el))
     expect(focusable).toHaveLength(9)
     const tabs = [...focusable].filter((el) => el.getAttribute('role') === 'tab')
     expect(tabs).toHaveLength(2)

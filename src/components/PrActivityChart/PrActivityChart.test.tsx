@@ -1,4 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { PrActivityBucket } from '../../api/prActivity'
 import { CHART_MIN_MARK } from '../ChartFrame'
@@ -14,8 +16,51 @@ describe('PrActivityChart', () => {
     render(<PrActivityChart buckets={buckets} unit="day" />)
     const legend = screen.getByRole('list', { name: 'Legend' })
     for (const name of ['Opened', 'Merged', 'Closed']) {
-      expect(within(legend).getByText(name)).toBeInTheDocument()
+      expect(within(legend).getByText(new RegExp(`^${name}`))).toBeInTheDocument()
     }
+  })
+
+  it('#106 AC6: the legend sits above the plot and shows period totals matching the figcaption', () => {
+    const { container } = render(<PrActivityChart buckets={buckets} unit="day" />)
+    const legend = screen.getByRole('list', { name: 'Legend' })
+    expect(within(legend).getByText('Opened (3)')).toBeInTheDocument()
+    expect(within(legend).getByText('Merged (2)')).toBeInTheDocument()
+    expect(within(legend).getByText('Closed (1)')).toBeInTheDocument()
+    expect(screen.getByText('Pull requests per day: 3 opened, 2 merged, 1 closed.')).toBeInTheDocument()
+    const svg = container.querySelector('svg')!
+    expect(legend.compareDocumentPosition(svg) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('#106 AC5: hover opens the tooltip with the full label and all three rows', async () => {
+    render(<PrActivityChart buckets={buckets} unit="day" />)
+    const [first] = screen.getAllByTestId('group')
+    fireEvent.mouseEnter(first)
+    const tip = await screen.findByRole('tooltip')
+    expect(tip).toHaveTextContent('Jun 1')
+    expect(tip).toHaveTextContent('Opened3')
+    expect(tip).toHaveTextContent('Merged2')
+    expect(tip).toHaveTextContent('Closed1')
+    fireEvent.mouseLeave(first)
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('#106 AC5: buckets are focusable; focus opens the tooltip with zeros and Escape closes it', () => {
+    render(<PrActivityChart buckets={buckets} unit="day" />)
+    const [, empty] = screen.getAllByTestId('group')
+    expect(empty).toHaveAttribute('tabindex', '0')
+    fireEvent.focus(empty)
+    const tip = screen.getByRole('tooltip')
+    expect(tip).toHaveTextContent('Jun 2')
+    expect(tip).toHaveTextContent('Opened0')
+    expect(tip).toHaveTextContent('Merged0')
+    expect(tip).toHaveTextContent('Closed0')
+    fireEvent.keyDown(empty, { key: 'Escape' })
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('#106 AC5: the focused bucket has a visible focus ring', () => {
+    const css = readFileSync(resolve(__dirname, 'PrActivityChart.module.css'), 'utf8')
+    expect(css).toMatch(/\.group:focus-visible\s*\{[^}]*var\(--color-focus\)/)
   })
 
   it('#106 AC1: columns use the token colors and no pattern fills', () => {
@@ -110,6 +155,33 @@ describe('PrActivityChart', () => {
     const y = Number(num.getAttribute('y'))
     expect(y).toBeGreaterThan(Number(opened.getAttribute('y')))
     expect(y).toBeLessThan(Number(opened.getAttribute('y')) + h)
+  })
+
+  it('#106 AC2: the 16px threshold: just below goes above in text color, exactly 16px goes inside in on-accent', () => {
+    // Plot height is 120px, so value 2 of max 15 is 16px and 2 of max 16 is 15px.
+    const at = (max: number): PrActivityBucket[] => [
+      { label: 'Jun 1', fullLabel: 'Jun 1', opened: max, merged: 2, closed: 0 },
+    ]
+    const read = (max: number) => {
+      const { container, unmount } = render(<PrActivityChart buckets={at(max)} unit="day" />)
+      const bar = container.querySelector('[data-series="merged"]')!
+      const num = bar.parentElement!.querySelector('[data-testid="value"]')!
+      const out = {
+        h: Number(bar.getAttribute('height')),
+        placement: num.getAttribute('data-placement'),
+        fill: num.getAttribute('fill'),
+      }
+      unmount()
+      return out
+    }
+    const below = read(16)
+    expect(below.h).toBeLessThan(16)
+    expect(below.placement).toBe('above')
+    expect(below.fill).toBe('var(--color-text)')
+    const exact = read(15)
+    expect(exact.h).toBeGreaterThanOrEqual(16)
+    expect(exact.placement).toBe('inside')
+    expect(exact.fill).toBe('var(--color-on-accent)')
   })
 
   it('#106 AC2: a zero draws no bar and no number', () => {

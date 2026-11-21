@@ -1,8 +1,10 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import type { SVGProps } from 'react'
 import { Bar } from '@visx/shape'
 import { scaleBand, scaleLinear } from '@visx/scale'
 import type { PrActivityBucket } from '../../api/prActivity.ts'
 import ChartFrame, { markSize } from '../ChartFrame'
+import ChartTooltip, { useChartTooltip } from '../ChartTooltip'
 import styles from './PrActivityChart.module.css'
 
 interface PrActivityChartProps {
@@ -49,6 +51,7 @@ function useWidth() {
 
 function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
   const [ref, width] = useWidth()
+  const { open, bind } = useChartTooltip<PrActivityBucket>()
   const max = Math.max(0, ...buckets.flatMap((b) => SERIES.map((s) => b[s.key])))
   const total = (key: (typeof SERIES)[number]['key']) => buckets.reduce((sum, b) => sum + b[key], 0)
   const description = `Pull requests per ${unit}: ${SERIES.map((s) => `${total(s.key)} ${s.label.toLowerCase()}`).join(', ')}.`
@@ -76,7 +79,7 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
           {SERIES.map((s) => (
             <li key={s.key} className={styles.legendItem}>
               <span className={styles.swatch} style={{ background: s.color }} aria-hidden="true" />
-              {s.label}
+              {`${s.label} (${total(s.key)})`}
             </li>
           ))}
         </ul>
@@ -97,7 +100,6 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
           className={styles.svg}
           viewBox={`0 0 ${width} ${HEIGHT}`}
           height={HEIGHT}
-          aria-hidden="true"
           focusable="false"
         >
           <line
@@ -127,7 +129,19 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
             stroke="var(--color-border)"
           />
           {buckets.map((b, i) => (
-            <g key={b.fullLabel} data-testid="group" transform={`translate(${x(b.fullLabel) ?? 0}, 0)`}>
+            <g
+              key={b.fullLabel}
+              data-testid="group"
+              className={styles.group}
+              transform={`translate(${x(b.fullLabel) ?? 0}, 0)`}
+              tabIndex={0}
+              role="img"
+              aria-label={`${b.fullLabel}: ${SERIES.map((s) => `${b[s.key]} ${s.label.toLowerCase()}`).join(', ')}`}
+              // The hook types its handlers for HTMLElement; the tooltip only needs
+              // getBoundingClientRect, which an SVG <g> also has.
+              {...(bind(b) as unknown as SVGProps<SVGGElement>)}
+            >
+              <rect x={0} y={0} width={x.bandwidth()} height={HEIGHT} fill="transparent" />
               {SERIES.map((s) => {
                 const h = markSize(b[s.key], y)
                 const bx = inner(s.key) ?? 0
@@ -171,6 +185,13 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
           ))}
         </svg>
       </div>
+      {open && (
+        <ChartTooltip
+          anchor={open.anchor}
+          title={open.data.fullLabel}
+          rows={SERIES.map((s) => ({ color: s.color, name: s.label, value: open.data[s.key] }))}
+        />
+      )}
     </ChartFrame>
   )
 }
