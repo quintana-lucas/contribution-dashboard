@@ -79,12 +79,6 @@
   overflow-wrap: anywhere;
 }
 
-.number {
-  color: var(--color-text-muted);
-  font-weight: var(--text-sm-weight);
-  white-space: nowrap;
-}
-
 .meta {
   margin: 0;
   color: var(--color-text-muted);

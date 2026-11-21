@@ -77,7 +77,6 @@ describe("WaitingWidget styles", () => {
     for (const m of css.matchAll(/color:\s*([^;]+);/g)) {
       expect(m[1]).toMatch(/^var\(--color-/);
     }
-    expect(rule(".number")).toContain("color: var(--color-text-muted);");
     expect(rule(".title")).toContain("color: var(--color-text);");
   });
 });
