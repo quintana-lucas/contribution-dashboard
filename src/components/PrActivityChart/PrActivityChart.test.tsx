@@ -158,9 +158,10 @@ describe('PrActivityChart', () => {
   })
 
   it('#106 AC2: the 16px threshold: just below goes above in text color, exactly 16px goes inside in on-accent', () => {
-    // Plot height is 120px, so value 2 of max 15 is 16px and 2 of max 16 is 15px.
+    // Plot height is 120px: value 1 of max 7 is ~17.1px (inside), 1 of max 8 is 15px (above).
+    // Both are at least 1px from the 16px threshold, so no float-exactness is involved.
     const at = (max: number): PrActivityBucket[] => [
-      { label: 'Jun 1', fullLabel: 'Jun 1', opened: max, merged: 2, closed: 0 },
+      { label: 'Jun 1', fullLabel: 'Jun 1', opened: max, merged: 1, closed: 0 },
     ]
     const read = (max: number) => {
       const { container, unmount } = render(<PrActivityChart buckets={at(max)} unit="day" />)
@@ -174,14 +175,34 @@ describe('PrActivityChart', () => {
       unmount()
       return out
     }
-    const below = read(16)
-    expect(below.h).toBeLessThan(16)
+    const below = read(8)
+    expect(below.h).toBeLessThan(15.5)
     expect(below.placement).toBe('above')
     expect(below.fill).toBe('var(--color-text)')
-    const exact = read(15)
-    expect(exact.h).toBeGreaterThanOrEqual(16)
-    expect(exact.placement).toBe('inside')
-    expect(exact.fill).toBe('var(--color-on-accent)')
+    const above = read(7)
+    expect(above.h).toBeGreaterThan(16.5)
+    expect(above.placement).toBe('inside')
+    expect(above.fill).toBe('var(--color-on-accent)')
+  })
+
+  it('#106 AC5: a bucket is exposed as a named image outside any aria-hidden ancestor', () => {
+    render(<PrActivityChart buckets={buckets} unit="day" />)
+    const bucket = screen.getByRole('img', { name: /Jun 1: 3 opened/ })
+    expect(bucket).toHaveAccessibleName('Jun 1: 3 opened, 2 merged, 1 closed')
+    expect(bucket).toHaveAttribute('tabindex', '0')
+    for (const g of screen.getAllByTestId('group')) {
+      expect(g.closest('[aria-hidden="true"]')).toBeNull()
+    }
+  })
+
+  it('#106 AC5: non-interactive SVG parts are aria-hidden so nothing is announced twice', () => {
+    const { container } = render(<PrActivityChart buckets={buckets} unit="day" />)
+    const hidden = (el: Element) => el.closest('[aria-hidden="true"]') !== null
+    expect(hidden(screen.getByTestId('baseline'))).toBe(true)
+    expect(hidden(screen.getByTestId('max-gridline'))).toBe(true)
+    expect(hidden(screen.getByTestId('max-label'))).toBe(true)
+    for (const t of container.querySelectorAll('svg text')) expect(hidden(t)).toBe(true)
+    for (const r of container.querySelectorAll('svg rect')) expect(hidden(r)).toBe(true)
   })
 
   it('#106 AC2: a zero draws no bar and no number', () => {

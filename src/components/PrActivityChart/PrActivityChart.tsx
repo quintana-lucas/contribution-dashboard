@@ -73,6 +73,7 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
 
   return (
     <ChartFrame
+      focusableMarks
       description={description}
       legend={
         <ul className={styles.legend} aria-label="Legend">
@@ -104,6 +105,7 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
         >
           <line
             data-testid="max-gridline"
+            aria-hidden="true"
             x1={0}
             x2={width}
             y1={maxY}
@@ -113,6 +115,7 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
           />
           <text
             data-testid="max-label"
+            aria-hidden="true"
             x={0}
             y={maxY - 4}
             className={styles.text}
@@ -122,6 +125,7 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
           </text>
           <line
             data-testid="baseline"
+            aria-hidden="true"
             x1={0}
             x2={width}
             y1={baseline}
@@ -141,14 +145,21 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
               // getBoundingClientRect, which an SVG <g> also has.
               {...(bind(b) as unknown as SVGProps<SVGGElement>)}
             >
-              <rect x={0} y={0} width={x.bandwidth()} height={HEIGHT} fill="transparent" />
+              <rect
+                x={0}
+                y={0}
+                width={x.bandwidth()}
+                height={HEIGHT}
+                fill="transparent"
+                aria-hidden="true"
+              />
               {SERIES.map((s) => {
                 const h = markSize(b[s.key], y)
                 const bx = inner(s.key) ?? 0
                 if (h === 0) return null
                 const inside = h >= INSIDE_MIN
                 return (
-                  <g key={s.key}>
+                  <g key={s.key} aria-hidden="true">
                     <Bar
                       data-series={s.key}
                       x={bx}
@@ -173,6 +184,7 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
                 )
               })}
               <text
+                aria-hidden="true"
                 x={x.bandwidth() / 2}
                 y={baseline + 16}
                 textAnchor="middle"
