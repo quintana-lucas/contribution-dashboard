@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { PrActivityBucket } from '../../api/prActivity'
+import { CHART_MIN_MARK } from '../ChartFrame'
 import PrActivityChart from './PrActivityChart'
 
 const buckets: PrActivityBucket[] = [
@@ -79,5 +80,66 @@ describe('PrActivityChart', () => {
     const { container } = render(<PrActivityChart buckets={buckets} unit="day" />)
     const opened = container.querySelector('[data-series="opened"]')
     expect(opened?.parentElement).toHaveTextContent('3')
+  })
+
+  const wide: PrActivityBucket[] = [
+    { label: 'Jun 1', fullLabel: 'Jun 1', opened: 100, merged: 0, closed: 1 },
+  ]
+
+  it('#106 AC2: a small non-zero value gets the minimum height and its number above in text color', () => {
+    const { container } = render(<PrActivityChart buckets={wide} unit="day" />)
+    const closed = container.querySelector('[data-series="closed"]')!
+    expect(Number(closed.getAttribute('height'))).toBe(CHART_MIN_MARK)
+    const num = closed.parentElement!.querySelector('[data-testid="value"]')!
+    expect(num).toHaveTextContent('1')
+    expect(num.getAttribute('data-placement')).toBe('above')
+    expect(num.getAttribute('fill')).toBe('var(--color-text)')
+    const baselineY = Number(screen.getByTestId('baseline').getAttribute('y1'))
+    expect(Number(num.getAttribute('y'))).toBeLessThan(baselineY - CHART_MIN_MARK)
+  })
+
+  it('#106 AC2: a tall column carries its number inside in the on-accent color', () => {
+    const { container } = render(<PrActivityChart buckets={wide} unit="day" />)
+    const opened = container.querySelector('[data-series="opened"]')!
+    const h = Number(opened.getAttribute('height'))
+    expect(h).toBeGreaterThanOrEqual(16)
+    const num = opened.parentElement!.querySelector('[data-testid="value"]')!
+    expect(num).toHaveTextContent('100')
+    expect(num.getAttribute('data-placement')).toBe('inside')
+    expect(num.getAttribute('fill')).toBe('var(--color-on-accent)')
+    const y = Number(num.getAttribute('y'))
+    expect(y).toBeGreaterThan(Number(opened.getAttribute('y')))
+    expect(y).toBeLessThan(Number(opened.getAttribute('y')) + h)
+  })
+
+  it('#106 AC2: a zero draws no bar and no number', () => {
+    const { container } = render(<PrActivityChart buckets={wide} unit="day" />)
+    expect(container.querySelector('[data-series="merged"]')).toBeNull()
+    expect(container.querySelectorAll('[data-testid="value"]')).toHaveLength(2)
+  })
+
+  const many = (n: number): PrActivityBucket[] =>
+    Array.from({ length: n }, (_, i) => ({
+      label: `D${i}`,
+      fullLabel: `Day ${i}`,
+      opened: 1,
+      merged: 0,
+      closed: 0,
+    }))
+
+  it('#106 AC4: more than 8 buckets hide the label of every odd index', () => {
+    const { container } = render(<PrActivityChart buckets={many(9)} unit="day" />)
+    const shown = [...container.querySelectorAll('svg text')]
+      .map((t) => t.textContent)
+      .filter((t) => t?.startsWith('D'))
+    expect(shown).toEqual(['D0', 'D2', 'D4', 'D6', 'D8'])
+  })
+
+  it('#106 AC4: 8 buckets show every label', () => {
+    const { container } = render(<PrActivityChart buckets={many(8)} unit="day" />)
+    const shown = [...container.querySelectorAll('svg text')]
+      .map((t) => t.textContent)
+      .filter((t) => t?.startsWith('D'))
+    expect(shown).toHaveLength(8)
   })
 })

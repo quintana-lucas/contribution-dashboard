@@ -22,6 +22,8 @@ const TOP = 20
 const PLOT_HEIGHT = 120
 const AXIS_HEIGHT = 24
 const HEIGHT = TOP + PLOT_HEIGHT + AXIS_HEIGHT
+/** Columns at least this tall (px) carry their number inside; shorter ones above. */
+const INSIDE_MIN = 16
 /** Width used when the real one cannot be measured (no layout engine). */
 const FALLBACK_WIDTH = 320
 
@@ -130,6 +132,7 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
                 const h = markSize(b[s.key], y)
                 const bx = inner(s.key) ?? 0
                 if (h === 0) return null
+                const inside = h >= INSIDE_MIN
                 return (
                   <g key={s.key}>
                     <Bar
@@ -141,11 +144,14 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
                       fill={s.color}
                     />
                     <text
+                      data-testid="value"
+                      data-placement={inside ? 'inside' : 'above'}
                       x={bx + inner.bandwidth() / 2}
-                      y={baseline - h - 3}
+                      y={inside ? baseline - h / 2 : baseline - h - 3}
                       textAnchor="middle"
+                      dominantBaseline={inside ? 'central' : undefined}
                       className={styles.text}
-                      fill="var(--color-text)"
+                      fill={inside ? 'var(--color-on-accent)' : 'var(--color-text)'}
                     >
                       {b[s.key]}
                     </text>
