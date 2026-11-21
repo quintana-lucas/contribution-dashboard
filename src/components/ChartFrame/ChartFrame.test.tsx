@@ -34,6 +34,30 @@ describe('ChartFrame', () => {
     expect(screen.getByText('axis').closest('[aria-hidden="true"]')).not.toBeNull()
   })
 
+  it('#106 AC5: focusableMarks false (default) hides the plot, true leaves it exposed', () => {
+    const { rerender } = render(
+      <ChartFrame description="d" table={table}>
+        <span>marks</span>
+      </ChartFrame>,
+    )
+    expect(screen.getByTestId('chart-plot')).toHaveAttribute('aria-hidden', 'true')
+    rerender(
+      <ChartFrame description="d" table={table} focusableMarks={false}>
+        <span>marks</span>
+      </ChartFrame>,
+    )
+    expect(screen.getByTestId('chart-plot')).toHaveAttribute('aria-hidden', 'true')
+    rerender(
+      <ChartFrame description="d" table={table} focusableMarks>
+        <span>marks</span>
+      </ChartFrame>,
+    )
+    expect(screen.getByTestId('chart-plot')).not.toHaveAttribute('aria-hidden')
+    expect(screen.getByText('marks').closest('[aria-hidden="true"]')).toBeNull()
+    expect(screen.getByText('d').tagName).toBe('FIGCAPTION')
+    expect(screen.getByText('Show as table')).toBeTruthy()
+  })
+
   it('AC4: table fallback holds every value, zeros included', () => {
     render(
       <ChartFrame description="d" table={table}>

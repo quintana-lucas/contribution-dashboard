@@ -26,6 +26,12 @@ interface ChartFrameProps {
   /** Axis labels etc., also `aria-hidden` (figure variant only). */
   axis?: ReactNode
   table: ChartFrameTable
+  /**
+   * Figure variant only. When true the plot slot is not `aria-hidden`, because
+   * its marks are keyboard-focusable and need an accessible name; the caller
+   * must then hide the non-interactive parts itself. Defaults to false.
+   */
+  focusableMarks?: boolean
 }
 
 /** Screen-reader-only text for one row of a "rows" chart. */
@@ -40,6 +46,7 @@ function ChartFrame({
   children,
   axis,
   table,
+  focusableMarks = false,
 }: ChartFrameProps) {
   const details = (
     <details className={styles.details}>
@@ -86,7 +93,11 @@ function ChartFrame({
     <figure className={styles.frame}>
       <figcaption className={styles.srOnly}>{description}</figcaption>
       {legend}
-      <div className={styles.plot} data-testid="chart-plot" aria-hidden="true">
+      <div
+        className={styles.plot}
+        data-testid="chart-plot"
+        aria-hidden={focusableMarks ? undefined : 'true'}
+      >
         {children}
       </div>
       {axis ? <div aria-hidden="true">{axis}</div> : null}
