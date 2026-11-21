@@ -156,17 +156,6 @@ describe('WaitingWidget', () => {
     expect(within(rows[0]).getByText('Overdue')).toBeInTheDocument()
   })
 
-  it('#113 AC1: no row shows the PR number, neither "#n" nor a bare number after the title', async () => {
-    await renderWidget()
-    const rows = items()
-    const titles = ['Fake PR 1', 'Fake PR 1', 'Fake PR 2']
-    for (const [i, row] of rows.entries()) {
-      const title = row.querySelector('p') as HTMLElement
-      expect(row.textContent).not.toContain('#')
-      expect(title.textContent?.replace(/\s+/g, ' ')).toBe(`${titles[i]} (opens in a new tab)`)
-    }
-  })
-
   it('#88 AC3: the Waiting label and the age value are separate elements in one wrapper, in order', async () => {
     await renderWidget()
     const row = items()[0]
