@@ -25,8 +25,7 @@ function Row({ pr }: { pr: WaitingPr }) {
       <p className={styles.title}>
         <PrLink repo={pr.repo} number={pr.number}>
           <span className={styles.titleText}>{pr.title}</span>
-        </PrLink>{' '}
-        <span className={styles.number}>{pr.number}</span>
+        </PrLink>
       </p>
       <p className={styles.meta}>
         {pr.repo} · by {pr.author} ·{' '}

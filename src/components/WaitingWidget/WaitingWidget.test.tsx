@@ -71,11 +71,11 @@ describe('WaitingWidget', () => {
     expect(screen.queryByRole('list')).toBeNull()
   })
 
-  it('AC1: lists unreviewed open PRs with title, number, repo, author, lines, reviewers and age', async () => {
+  it('AC1: lists unreviewed open PRs with title, repo, author, lines, reviewers and age', async () => {
     await renderWidget()
     const rows = items()
     expect(rows).toHaveLength(3)
-    expect(rows[0]).toHaveTextContent('Fake PR 1 (opens in a new tab) 1')
+    expect(rows[0]).toHaveTextContent('Fake PR 1 (opens in a new tab)')
     expect(rows[0]).toHaveTextContent('acme/api')
     expect(rows[0]).toHaveTextContent('by ana')
     expect(rows[0]).toHaveTextContent('+40 / -7')
@@ -156,24 +156,14 @@ describe('WaitingWidget', () => {
     expect(within(rows[0]).getByText('Overdue')).toBeInTheDocument()
   })
 
-  it('#88 AC2: the PR number is its own element, separate from the title text', async () => {
-    await renderWidget()
-    const row = items()[0]
-    const number = row.querySelector('[class*="number"]') as HTMLElement
-    const title = within(row).getByText('Fake PR 1')
-    expect(number).not.toBe(title)
-    expect(title.textContent).toBe('Fake PR 1')
-    expect(number.textContent).toBe('1')
-  })
-
-  it('#113 AC1: each row shows the bare PR number, with no "#" anywhere in the row', async () => {
+  it('#113 AC1: no row shows the PR number, neither "#n" nor a bare number after the title', async () => {
     await renderWidget()
     const rows = items()
-    const expected = ['1', '1', '2']
+    const titles = ['Fake PR 1', 'Fake PR 1', 'Fake PR 2']
     for (const [i, row] of rows.entries()) {
-      const number = row.querySelector('[class*="number"]') as HTMLElement
-      expect(number.textContent).toBe(expected[i])
+      const title = row.querySelector('p') as HTMLElement
       expect(row.textContent).not.toContain('#')
+      expect(title.textContent?.replace(/\s+/g, ' ')).toBe(`${titles[i]} (opens in a new tab)`)
     }
   })
 
@@ -265,7 +255,6 @@ describe('WaitingWidget', () => {
       'https://github.com/acme/api/pull/2',
     ])
     expect(within(rows[0]).getByRole('link', { name: 'Fake PR 1 (opens in a new tab)' })).toBeInTheDocument()
-    expect((rows[0].querySelector('[class*="number"]') as HTMLElement).closest('a')).toBeNull()
     expect(within(rows[0]).getAllByRole('link')).toHaveLength(1)
   })
 
@@ -293,7 +282,7 @@ describe('WaitingWidget', () => {
     const rows = items()
     expect(rows).toHaveLength(1)
     expect(within(rows[0]).queryByRole('link')).toBeNull()
-    expect(rows[0]).toHaveTextContent('Fake PR 1 1')
+    expect(rows[0].querySelector('p')!.textContent).toBe('Fake PR 1')
     expect(rows[0]).not.toHaveTextContent('opens in a new tab')
     expect(rows[0]).toHaveTextContent('bad repo')
     expect(rows[0]).toHaveTextContent('by ana')
