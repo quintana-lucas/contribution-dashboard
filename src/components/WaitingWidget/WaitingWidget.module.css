@@ -87,10 +87,6 @@
   line-height: var(--text-sm-line);
 }
 
-.lines {
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
 
 .age {
   white-space: nowrap;

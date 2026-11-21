@@ -1,5 +1,6 @@
 import { OVERDUE_HOURS, type WaitingPr } from '../../api/waiting'
 import { useDashboard } from '../DashboardProvider'
+import LinesDelta from '../LinesDelta'
 import PrLink from '../PrLink'
 import Skeleton from '../Skeleton'
 import WarningIcon from '../WarningIcon'
@@ -29,9 +30,7 @@ function Row({ pr }: { pr: WaitingPr }) {
       </p>
       <p className={styles.meta}>
         {pr.repo} · by {pr.author} ·{' '}
-        <span className={styles.lines}>
-          +{pr.additions} / -{pr.deletions}
-        </span>
+        <LinesDelta additions={pr.additions} deletions={pr.deletions} layout="inline" muteZero={false} />
       </p>
       <p className={styles.meta}>
         Reviewers: {reviewers} ·{' '}
