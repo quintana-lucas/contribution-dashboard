@@ -157,7 +157,7 @@ describe('PrActivityChart', () => {
     expect(y).toBeLessThan(Number(opened.getAttribute('y')) + h)
   })
 
-  it('#106 AC2: the 16px threshold: just below goes above in text color, exactly 16px goes inside in on-accent', () => {
+  it('#106 AC2: the 16px threshold: just below goes above in text color, just above 16px goes inside in on-accent', () => {
     // Plot height is 120px: value 1 of max 7 is ~17.1px (inside), 1 of max 8 is 15px (above).
     // Both are at least 1px from the 16px threshold, so no float-exactness is involved.
     const at = (max: number): PrActivityBucket[] => [
