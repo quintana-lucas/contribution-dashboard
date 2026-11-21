@@ -32,6 +32,18 @@ describe('LinesDelta', () => {
     expect(screen.getByRole('img', { name: '0 added, 0 removed' }).textContent).toBe('+0−0')
   })
 
+  it('AC4: muteZero={false} colors zero figures as add/del, text and label unchanged', () => {
+    render(<LinesDelta additions={0} deletions={0} muteZero={false} />)
+    const root = screen.getByRole('img', { name: '0 added, 0 removed' })
+    const [a, d] = Array.from(root.children)
+    expect(a.textContent).toBe('+0')
+    expect(d.textContent).toBe('−0')
+    expect(a.className).toMatch(/add/)
+    expect(a.className).not.toMatch(/zero/)
+    expect(d.className).toMatch(/del/)
+    expect(d.className).not.toMatch(/zero/)
+  })
+
   it('AC7: aria-label announces formatted numbers', () => {
     render(<LinesDelta additions={120} deletions={1045} />)
     expect(screen.getByRole('img', { name: '120 added, 1,045 removed' })).toBeTruthy()

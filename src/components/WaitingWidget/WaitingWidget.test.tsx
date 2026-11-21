@@ -78,7 +78,7 @@ describe('WaitingWidget', () => {
     expect(rows[0]).toHaveTextContent('Fake PR 1 (opens in a new tab)')
     expect(rows[0]).toHaveTextContent('acme/api')
     expect(rows[0]).toHaveTextContent('by ana')
-    expect(rows[0]).toHaveTextContent('+40 / -7')
+    expect(rows[0]).toHaveTextContent('+40−7')
     expect(rows[0]).toHaveTextContent('Reviewers: dee')
     expect(rows[0]).toHaveTextContent('Waiting 3d')
     expect(rows[1]).toHaveTextContent('Reviewers: core')
@@ -181,12 +181,43 @@ describe('WaitingWidget', () => {
     expect(people).toHaveTextContent('Waiting 3d')
   })
 
-  it('#88 AC6: the +/- figure is in its own single element, last on the identity line', async () => {
+  it('#88 AC6: the lines figure is a single element, last on the identity line', async () => {
     await renderWidget()
     const row = items()[0]
-    const figure = within(row).getByText('+40 / -7')
-    expect(figure.children).toHaveLength(0)
+    const figure = within(row).getByRole('img', { name: '40 added, 7 removed' })
     expect(figure.parentElement?.lastElementChild).toBe(figure)
+    expect(figure.textContent).toBe('+40−7')
+  })
+
+  it('#114 AC1 AC2 AC3: added uses the add tone and deleted the del tone (shared LinesDelta tokens)', async () => {
+    await renderWidget()
+    const row = items()[0]
+    expect(within(row).getByText('+40').className).toMatch(/add/)
+    expect(within(row).getByText('−7').className).toMatch(/del/)
+  })
+
+  it('#114 AC4: zero additions or deletions are shown and colored add/del, not muted', async () => {
+    const deps = makeWaitingDeps()
+    const data = await deps.getRepoData('acme/api')
+    if (!data.ok) throw new Error('fixture')
+    data.data.pullRequests[0].additions = 0
+    data.data.pullRequests[1].deletions = 0
+    deps.getRepoData = vi.fn(async (repo: string) =>
+      repo === 'acme/api' ? data : { ok: true as const, data: storedRepo(repo, '2026-06-15T09:00:00.000Z', []) },
+    )
+    await renderWidget(deps)
+    const rows = items()
+    const zeroAdd = within(rows[0]).getByText('+0')
+    expect(zeroAdd.className).toMatch(/add/)
+    expect(zeroAdd.className).not.toMatch(/zero/)
+    const zeroDel = within(rows[1]).getByText('−0')
+    expect(zeroDel.className).toMatch(/del/)
+    expect(zeroDel.className).not.toMatch(/zero/)
+  })
+
+  it('#114 AC5: the figure has role img and a label naming added and removed', async () => {
+    await renderWidget()
+    expect(within(items()[0]).getByRole('img', { name: '40 added, 7 removed' })).toBeInTheDocument()
   })
 
   it('#84 AC1 AC5: the overdue chip has the warning icon before the word Overdue; the icon adds no text', async () => {

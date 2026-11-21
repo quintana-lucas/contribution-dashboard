@@ -63,11 +63,8 @@ describe("WaitingWidget styles", () => {
     expect(rule(".overdue")).toContain("white-space: nowrap;");
   });
 
-  it("#88 AC6: the +/- figure is demoted by position only, with no colour of its own", () => {
-    const lines = rule(".lines");
-    expect(lines).toContain("white-space: nowrap;");
-    expect(lines).not.toMatch(/color/);
-    expect(lines).not.toMatch(/opacity/);
+  it("#114 AC3: the lines figure takes its colours from the shared LinesDelta, not a local rule", () => {
+    expect(css).not.toMatch(/\.lines\b/);
   });
 
   it("#88 AC11: only the text and muted text tokens are used, with no colour literals", () => {
