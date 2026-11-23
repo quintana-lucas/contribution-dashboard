@@ -3,7 +3,6 @@
 import type { Period } from './dashboard.ts'
 import type { KpiComparison, KpiComparisonMetrics, MetricComparison } from './kpiComparison.ts'
 
-export type TrendRule = 'directional' | 'neutral'
 export type TrendTone = 'good' | 'bad' | 'muted'
 
 export interface TrendView {
@@ -37,11 +36,8 @@ export function metricOf(
   return comparison.status === 'available' ? comparison.metrics[key] : undefined
 }
 
-export function trendView(
-  comparison: MetricComparison | undefined,
-  rule: TrendRule,
-  period: Period,
-): TrendView {
+/** Tone follows the sign of the delta for every metric: + good, - bad, 0 and none muted. */
+export function trendView(comparison: MetricComparison | undefined, period: Period): TrendView {
   if (!comparison || comparison.deltaPct === undefined) {
     return {
       kind: 'none',
@@ -76,6 +72,6 @@ export function trendView(
     figure: `${sign}${abs} (${sign}${pct}%)`,
     label,
     srText: `${up ? 'up' : 'down'} ${srPct} percent versus previous ${period} days`,
-    tone: rule === 'neutral' ? 'muted' : up ? 'good' : 'bad',
+    tone: up ? 'good' : 'bad',
   }
 }

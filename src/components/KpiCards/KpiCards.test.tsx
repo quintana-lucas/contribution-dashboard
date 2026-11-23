@@ -233,7 +233,7 @@ describe('KpiCards', () => {
   })
 
   // #87: acme/api with activity in both the current and the previous window (NOW = 2026-06-15T12:00Z).
-  // 30 days: merged 2 vs 3 (down), reviews 2 vs 1 (up), churn 1,500 vs 500 (up, neutral).
+  // 30 days: merged 2 vs 3 (down), reviews 2 vs 1 (up), churn 1,500 vs 500 (up).
   // 7 days: merged 1 vs 1 (flat).
   function makeTrendDeps() {
     const prev = (n: number, day: string, additions: number) =>
@@ -265,7 +265,7 @@ describe('KpiCards', () => {
     })
   }
 
-  it('#87 AC6: directional trends on merged and reviews, neutral muted trend on lines', async () => {
+  it('#87 AC6: trends on merged, reviews and lines, each colored by the sign of its delta', async () => {
     await renderCards(makeTrendDeps())
     const merged = card('Merged PRs')
     expect(merged).toHaveTextContent('↓ −1 (−33%)vs previous 30 days')
@@ -276,11 +276,34 @@ describe('KpiCards', () => {
     expect(reviews.innerHTML).toMatch(/good/i)
     const lines = card('Lines changed (+/−)')
     expect(lines).toHaveTextContent('↑ +1,000 (+200%)vs previous 30 days')
-    expect(lines.innerHTML).toMatch(/muted/i)
-    expect(lines.innerHTML).not.toMatch(/good|bad/i)
+    expect(lines.innerHTML).toMatch(/good/i)
+    expect(lines.innerHTML).not.toMatch(/bad/i)
   })
 
-  it('#122 AC1, AC2, AC3: merged-PR decline is bad, review increase is good, neutral lines never bad', async () => {
+  it('#122 AC8: a Lines changed decline is bad (red), not muted', async () => {
+    // Current window: 100 lines; previous window: 700 lines (-600, -86%).
+    const deps = makeKpiDeps({
+      'acme/api': repo('acme/api', [
+        pr(2, 'bob', 'merged', '2026-06-12T10:00:00.000Z', {
+          mergedAt: '2026-06-13T10:00:00.000Z',
+          additions: 60,
+          deletions: 40,
+        }),
+        pr(5, 'bob', 'merged', '2026-05-02T10:00:00.000Z', {
+          mergedAt: '2026-05-02T12:00:00.000Z',
+          additions: 500,
+          deletions: 200,
+        }),
+      ], []),
+      'acme/web': repo('acme/web', []),
+    })
+    await renderCards(deps)
+    const row = within(card('Lines changed (+/−)')).getByText('↓ −600 (−86%)').parentElement as HTMLElement
+    expect(row.className).toMatch(/bad/)
+    expect(row.className).not.toMatch(/good|muted/)
+  })
+
+  it('#122 AC1, AC2, AC8: merged-PR decline is bad, review and lines increases are good', async () => {
     await renderCards(makeTrendDeps())
     const mergedRow = within(card('Merged PRs')).getByText('↓ −1 (−33%)').parentElement as HTMLElement
     expect(mergedRow.className).toMatch(/bad/)
@@ -289,7 +312,8 @@ describe('KpiCards', () => {
     expect(reviewsRow.className).toMatch(/good/)
     expect(reviewsRow.className).not.toMatch(/bad/)
     const linesRow = within(card('Lines changed (+/−)')).getByText('↑ +1,000 (+200%)').parentElement as HTMLElement
-    expect(linesRow.className).not.toMatch(/good|bad/)
+    expect(linesRow.className).toMatch(/good/)
+    expect(linesRow.className).not.toMatch(/bad/)
   })
 
   it('#87 AC3: the label follows the period and the values follow the repo selection', async () => {
