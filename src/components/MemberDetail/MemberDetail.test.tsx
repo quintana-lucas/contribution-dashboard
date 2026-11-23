@@ -143,7 +143,7 @@ describe('MemberDetail', () => {
     const values = within(table)
       .getAllByRole('row')
       .slice(1)
-      .map((r) => within(r).getAllByRole('cell')[1].textContent)
+      .map((r) => within(r).getByRole('cell').textContent)
     expect(values).toHaveLength(13)
     expect(values.filter((v) => v === '0')).toHaveLength(12)
     const labels = screen.getAllByTestId('x-label').map((l) => l.textContent)
