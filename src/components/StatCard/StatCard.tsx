@@ -14,9 +14,11 @@ type StatCardProps = {
   srText?: string
   /** Smaller value type, for text values such as "No data yet". */
   compact?: boolean
+  /** Optional trend row (e.g. TrendIndicator), rendered directly under the value. */
+  trend?: ReactNode
 }
 
-function StatCard({ label, value, subline, sublineTone, sublineIcon, srText, compact }:StatCardProps) {
+function StatCard({ label, value, subline, sublineTone, sublineIcon, srText, compact, trend }:StatCardProps) {
   const shown = value === '' ? '…' : value
   return (
     <div className={styles.card}>
@@ -31,6 +33,7 @@ function StatCard({ label, value, subline, sublineTone, sublineIcon, srText, com
           </>
         )}
       </div>
+      {trend ?? null}
       {subline ? (
         <div className={sublineTone === 'caution' ? `${styles.subline} ${styles.sublineCaution}` : styles.subline}>
           {sublineIcon ? <span className={styles.sublineIcon}>{sublineIcon}</span> : null}

@@ -232,6 +232,101 @@ describe('KpiCards', () => {
     expect(deps.getRepoData.mock.calls.length).toBe(dataCalls)
   })
 
+  // #87: acme/api with activity in both the current and the previous window (NOW = 2026-06-15T12:00Z).
+  // 30 days: merged 2 vs 3 (down), reviews 2 vs 1 (up), churn 1,500 vs 500 (up, neutral).
+  // 7 days: merged 1 vs 1 (flat).
+  function makeTrendDeps() {
+    const prev = (n: number, day: string, additions: number) =>
+      pr(n, 'bob', 'merged', `2026-05-0${day}T10:00:00.000Z`, {
+        mergedAt: `2026-05-0${day}T12:00:00.000Z`,
+        additions,
+      })
+    return makeKpiDeps({
+      'acme/api': repo(
+        'acme/api',
+        [
+          pr(2, 'bob', 'merged', '2026-06-12T10:00:00.000Z', {
+            mergedAt: '2026-06-13T10:00:00.000Z',
+            additions: 1200,
+            deletions: 300,
+          }),
+          pr(4, 'bob', 'merged', '2026-06-05T10:00:00.000Z', { mergedAt: '2026-06-05T12:00:00.000Z' }),
+          prev(5, '2', 300),
+          prev(6, '3', 100),
+          prev(7, '4', 100),
+        ],
+        [
+          { id: 'r1', pullRequestNumber: 2, reviewer: 'ana', reviewerIsBot: false, outcome: 'changes_requested', submittedAt: '2026-06-13T08:00:00.000Z' },
+          { id: 'r2', pullRequestNumber: 2, reviewer: 'ana', reviewerIsBot: false, outcome: 'approved', submittedAt: '2026-06-13T09:00:00.000Z' },
+          { id: 'r3', pullRequestNumber: 5, reviewer: 'ana', reviewerIsBot: false, outcome: 'approved', submittedAt: '2026-05-02T13:00:00.000Z' },
+        ],
+      ),
+      'acme/web': repo('acme/web', []),
+    })
+  }
+
+  it('#87 AC6: directional trends on merged and reviews, neutral muted trend on lines', async () => {
+    await renderCards(makeTrendDeps())
+    const merged = card('Merged PRs')
+    expect(merged).toHaveTextContent('↓ −1 (−33%)vs previous 30 days')
+    expect(merged).toHaveTextContent('down 33 percent versus previous 30 days')
+    expect(merged.innerHTML).toMatch(/caution/i)
+    const reviews = card('Code reviews')
+    expect(reviews).toHaveTextContent('↑ +1 (+100%)vs previous 30 days')
+    expect(reviews.innerHTML).toMatch(/good/i)
+    const lines = card('Lines changed (+/−)')
+    expect(lines).toHaveTextContent('↑ +1,000 (+200%)vs previous 30 days')
+    expect(lines.innerHTML).toMatch(/muted/i)
+    expect(lines.innerHTML).not.toMatch(/good|caution/i)
+  })
+
+  it('#87 AC3: the label follows the period and the values follow the repo selection', async () => {
+    await renderCards(makeTrendDeps())
+    fireEvent.click(screen.getByRole('radio', { name: /7/ }))
+    expect(card('Merged PRs')).toHaveTextContent('→ 0 (0%)vs previous 7 days')
+    expect(card('Merged PRs').innerHTML).not.toMatch(/good|caution/i)
+    fireEvent.change(screen.getByLabelText('Repository'), { target: { value: 'acme/web' } })
+    expect(card('Merged PRs')).toHaveTextContent('No comparison')
+    expect(card('Merged PRs')).not.toHaveTextContent('vs previous')
+  })
+
+  it('#87 AC8: insufficient history or a zero previous shows "No comparison" with no figures', async () => {
+    await renderCards(makeTrendDeps())
+    fireEvent.click(screen.getByRole('radio', { name: /90/ }))
+    for (const l of ['Merged PRs', 'Code reviews', 'Lines changed (+/−)']) {
+      expect(card(l)).toHaveTextContent('No comparison')
+      expect(card(l)).not.toHaveTextContent(/[↑↓→]|vs previous/)
+    }
+    expect(document.body).not.toHaveTextContent(/NaN|undefined/)
+  })
+
+  it('#87 AC7: Open PRs, Time to first review and Cycle time have no trend', async () => {
+    await renderCards(makeTrendDeps())
+    for (const l of ['Open PRs', 'Time to first review', 'Cycle time']) {
+      expect(card(l)).not.toHaveTextContent(/vs previous|No comparison|[↑↓→]/)
+    }
+  })
+
+  it('#87 AC7: loading shows a trend skeleton only on merged, reviews and lines', async () => {
+    const deps = makeKpiDeps()
+    deps.listRepos = vi.fn(() => new Promise(() => {})) as never
+    render(
+      <DashboardProvider {...deps}>
+        <KpiCards />
+      </DashboardProvider>,
+    )
+    const skeletons = (l: string) => card(l).querySelectorAll('[class*="keleton"]').length
+    for (const l of ['Merged PRs', 'Code reviews', 'Lines changed (+/−)']) expect(skeletons(l)).toBe(3)
+    for (const l of ['Open PRs', 'Time to first review', 'Cycle time']) expect(skeletons(l)).toBe(2)
+  })
+
+  it('#87 AC7: "No data yet" cards have no trend row', async () => {
+    const deps = makeKpiDeps()
+    deps.getRepoData = vi.fn(async () => ({ ok: true as const, data: null })) as never
+    await renderCards(deps)
+    expect(document.body).not.toHaveTextContent(/vs previous|No comparison/)
+  })
+
   it('AC7: lines value is announced once, via the LinesDelta accessible name', async () => {
     await renderCards()
     expect(screen.getAllByRole('img', { name: '1,200 added, 300 removed' })).toHaveLength(1)

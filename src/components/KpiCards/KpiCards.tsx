@@ -1,8 +1,10 @@
 import { formatDuration } from '../../api/reviewMetrics'
+import { combineComparisons, metricOf, trendView } from '../../api/trendView'
 import { useDashboard } from '../DashboardProvider'
 import LinesDelta from '../LinesDelta'
 import Skeleton from '../Skeleton'
 import StatCard from '../StatCard'
+import TrendIndicator from '../TrendIndicator'
 import WarningIcon from '../WarningIcon'
 import styles from './KpiCards.module.css'
 
@@ -15,10 +17,12 @@ const LABELS = [
   'Time to first review',
   'Cycle time',
 ] as const
+// Cards that show a period-over-period trend (#87); the others are unchanged.
+const TRENDED: ReadonlySet<string> = new Set(['Merged PRs', 'Code reviews', 'Lines changed (+/−)'])
 
 // Overview KPI cards. Reads only the dashboard context (local data); no requests of its own.
 function KpiCards() {
-  const { status, selection, period, kpis } = useDashboard()
+  const { status, selection, period, kpis, comparison } = useDashboard()
   if (status === 'error') return null
   const scope = selection === 'all' ? 'All repositories' : selection
   const label = `Key figures, ${scope}, last ${period} days`
@@ -32,6 +36,7 @@ function KpiCards() {
         label={l}
         value={<Skeleton width="50%" height="calc(var(--text-xl) * var(--text-xl-line))" />}
         subline={<Skeleton width="80%" />}
+        trend={TRENDED.has(l) ? <TrendIndicator loading /> : undefined}
       />
     ))
   } else {
@@ -45,6 +50,10 @@ function KpiCards() {
         k.changesRequestedPercent === null
           ? 'No reviews to measure'
           : `${k.changesRequestedPercent}% requested changes`
+      const cmp = comparison()
+      const additions = metricOf(cmp, 'additions')
+      const deletions = metricOf(cmp, 'deletions')
+      const churn = additions && deletions ? combineComparisons(additions, deletions) : undefined
       cards = [
         <StatCard
           key="open"
@@ -59,13 +68,21 @@ function KpiCards() {
           label="Merged PRs"
           value={fmt.format(k.mergedPrs)}
           subline={`${fmt.format(k.closedWithoutMerge)} closed without merge`}
+          trend={<TrendIndicator view={trendView(metricOf(cmp, 'mergedPrs'), 'directional', period)} />}
         />,
-        <StatCard key="reviews" label="Code reviews" value={fmt.format(k.reviews)} subline={percent} />,
+        <StatCard
+          key="reviews"
+          label="Code reviews"
+          value={fmt.format(k.reviews)}
+          subline={percent}
+          trend={<TrendIndicator view={trendView(metricOf(cmp, 'reviews'), 'directional', period)} />}
+        />,
         <StatCard
           key="lines"
           label="Lines changed (+/−)"
           value={<LinesDelta additions={k.additions} deletions={k.deletions} layout="inline" />}
           subline={`across ${fmt.format(k.prsOpened)} PR${k.prsOpened === 1 ? '' : 's'} opened`}
+          trend={<TrendIndicator view={trendView(churn, 'neutral', period)} />}
         />,
         <StatCard
           key="first-review"

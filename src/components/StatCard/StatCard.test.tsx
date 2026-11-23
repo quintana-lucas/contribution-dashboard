@@ -46,6 +46,19 @@ describe('StatCard', () => {
     expect(sub.querySelector('svg')).toBeNull()
   })
 
+  // #87 AC1
+  it('#87 AC1: renders the trend slot between the value and the sub-line', () => {
+    render(<StatCard label="Merged PRs" value="28" trend={<div data-testid="trend" />} subline="sub" />)
+    const trend = screen.getByTestId('trend')
+    expect(trend.previousElementSibling).toBe(screen.getByText('28'))
+    expect(trend.nextElementSibling).toBe(screen.getByText('sub'))
+  })
+
+  it('#87 AC7: without a trend the card is unchanged', () => {
+    const { container } = render(<StatCard label="Open PRs" value="3" subline="sub" />)
+    expect(container.firstElementChild?.children).toHaveLength(3)
+  })
+
   it('AC4: value is never empty', () => {
     render(<StatCard label="Merged PRs" value="" />)
     expect(screen.getByText('…')).toBeInTheDocument()

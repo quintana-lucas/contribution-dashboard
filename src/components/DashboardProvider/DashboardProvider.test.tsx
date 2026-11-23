@@ -288,6 +288,42 @@ describe('DashboardProvider', () => {
     await waitFor(() => expect(screen.getByTestId('members').textContent).toBe('ready|'))
   })
 
+  it('#87 AC3, AC8: comparison() follows period and repo selection and flags insufficient history', async () => {
+    const deps = makeDeps()
+    deps.getRepoData.mockImplementation(async (repo: string) => {
+      const base = storedRepo(repo, '2026-06-15T09:00:00.000Z', repo === 'acme/api' ? ['ana', 'bob'] : ['ana', 'cy'])
+      // acme/api's second PR sits in the previous 30 day window (Apr 16 - May 16).
+      if (repo === 'acme/api') base.pullRequests[1].createdAt = '2026-05-01T10:00:00.000Z'
+      return { ok: true as const, data: base }
+    })
+    function CompareConsumer() {
+      const { status, comparison, setSelection, setPeriod } = useDashboard()
+      const c = status === 'ready' ? comparison() : null
+      const text =
+        c === null ? 'none' : c.status === 'available' ? `${c.metrics.prsOpened.current}/${c.metrics.prsOpened.previous}` : 'insufficient'
+      return (
+        <div>
+          <p data-testid="cmp">{text}</p>
+          <button onClick={() => setSelection('acme/web')}>web</button>
+          <button onClick={() => setPeriod(7)}>seven</button>
+          <button onClick={() => setPeriod(90)}>ninety</button>
+        </div>
+      )
+    }
+    render(
+      <DashboardProvider {...deps}>
+        <CompareConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('cmp')).toHaveTextContent('3/1'))
+    fireEvent.click(screen.getByText('web'))
+    expect(screen.getByTestId('cmp')).toHaveTextContent('2/0')
+    fireEvent.click(screen.getByText('seven'))
+    expect(screen.getByTestId('cmp')).toHaveTextContent('2/0')
+    fireEvent.click(screen.getByText('ninety'))
+    expect(screen.getByTestId('cmp')).toHaveTextContent('insufficient')
+  })
+
   it('#19 AC3: teamStats() reflects selection and period changes', async () => {
     const { deps } = teamOf(['ana', 'bob'])
     // bob's PR in acme/api is older: inside 30 days, outside 7.
