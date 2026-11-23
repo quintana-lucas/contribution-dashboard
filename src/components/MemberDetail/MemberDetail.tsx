@@ -174,7 +174,7 @@ function MemberDetail({ now }: MemberDetailProps) {
           {totalReviews === 0 ? (
             <p className={styles.empty}>{detail.login} has not given any reviews in this period.</p>
           ) : (
-            <BarList label="Reviews given by outcome" items={outcomes} />
+            <BarList label="Reviews given by outcome" items={outcomes} valueLabel="Reviews" />
           )}
         </div>
       </div>

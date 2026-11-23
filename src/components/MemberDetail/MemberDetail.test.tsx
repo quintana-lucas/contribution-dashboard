@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { buckets } from '../../api/dashboard'
 import type { Period } from '../../api/dashboard'
@@ -157,9 +157,11 @@ describe('MemberDetail', () => {
     expect(caption.textContent).toMatch(/^3 pull requests merged over 5 weeks\. Busiest: .+, 3\.$/)
   })
 
-  it('AC3: shows the three outcomes as labelled text with counts and variants', () => {
+  it('AC3 / #107 AC6: shows the three outcomes as labelled text with counts and variants solid, caution, muted; tooltip row is Reviews', () => {
     renderDetail()
     const list = screen.getByRole('list', { name: 'Reviews given by outcome' })
+    fireEvent.focus(within(list).getAllByRole('listitem')[0])
+    expect(within(screen.getByRole('tooltip')).getByText('Reviews')).toBeInTheDocument()
     expect(within(list).getByText('Approved: 3 of 6 reviews.')).toBeInTheDocument()
     expect(within(list).getByText('Changes requested: 2 of 6 reviews.')).toBeInTheDocument()
     expect(within(list).getByText('Commented: 1 of 6 reviews.')).toBeInTheDocument()

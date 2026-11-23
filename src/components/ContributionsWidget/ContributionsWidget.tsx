@@ -66,6 +66,7 @@ function ContributionsWidget({ onOpenSettings }: ContributionsWidgetProps) {
           <BarList
             label={`Merged pull requests per person, ${scope}, last ${period} days`}
             items={items}
+            valueLabel="Merged PRs"
           />
         )
       }

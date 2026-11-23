@@ -83,7 +83,7 @@ describe('ContributionsWidget', () => {
     expect(screen.getByRole('region', { name: 'Merged PRs per person' })).toBeVisible()
   })
 
-  it('#68 AC5: mixed digit counts share the BarList structure and proportional fills', async () => {
+  it('#107 AC6: Merged PRs tooltip row on focus; #68 AC5: mixed digit counts share the BarList structure and proportional fills', async () => {
     const deps = makeDeps()
     const many = Array.from({ length: 42 }, (_, i) =>
       merged(i + 1, 'ana', '2026-06-10T10:00:00.000Z'),
@@ -112,6 +112,8 @@ describe('ContributionsWidget', () => {
       .getAllByTestId('bar-fill')
       .map((f) => parseFloat(f.getAttribute('width') ?? ''))
     expect(widths[1] / widths[0]).toBeCloseTo(5 / 42)
+    fireEvent.focus(items[0])
+    expect(within(screen.getByRole('tooltip')).getByText('Merged PRs')).toBeInTheDocument()
   })
 
   it('AC2: the list has an accessible name and per-row text', async () => {
