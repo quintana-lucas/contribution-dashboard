@@ -91,9 +91,12 @@ describe("theme tokens", () => {
     }
   });
 
-  it("#82 AC2: no red/critical/danger/error token exists", () => {
+  it("#82 AC2 (amended by #122): no red/critical/danger/error token exists, except the allowed --color-bad", () => {
     for (const map of [light, mediaDark, dark]) {
-      for (const name of Object.keys(map)) expect(name).not.toMatch(/red|critical|danger|error/i);
+      for (const name of Object.keys(map)) {
+        if (name === "--color-bad") continue; // #122: the one sanctioned decline token
+        expect(name).not.toMatch(/red|critical|danger|error/i);
+      }
     }
   });
 

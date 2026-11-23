@@ -280,6 +280,18 @@ describe('KpiCards', () => {
     expect(lines.innerHTML).not.toMatch(/good|bad/i)
   })
 
+  it('#122 AC1, AC2, AC3: merged-PR decline is bad, review increase is good, neutral lines never bad', async () => {
+    await renderCards(makeTrendDeps())
+    const mergedRow = within(card('Merged PRs')).getByText('↓ −1 (−33%)').parentElement as HTMLElement
+    expect(mergedRow.className).toMatch(/bad/)
+    expect(mergedRow.className).not.toMatch(/good/)
+    const reviewsRow = within(card('Code reviews')).getByText('↑ +1 (+100%)').parentElement as HTMLElement
+    expect(reviewsRow.className).toMatch(/good/)
+    expect(reviewsRow.className).not.toMatch(/bad/)
+    const linesRow = within(card('Lines changed (+/−)')).getByText('↑ +1,000 (+200%)').parentElement as HTMLElement
+    expect(linesRow.className).not.toMatch(/good|bad/)
+  })
+
   it('#87 AC3: the label follows the period and the values follow the repo selection', async () => {
     await renderCards(makeTrendDeps())
     fireEvent.click(screen.getByRole('radio', { name: /7/ }))
