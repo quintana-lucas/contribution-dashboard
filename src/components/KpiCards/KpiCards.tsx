@@ -68,21 +68,21 @@ function KpiCards() {
           label="Merged PRs"
           value={fmt.format(k.mergedPrs)}
           subline={`${fmt.format(k.closedWithoutMerge)} closed without merge`}
-          trend={<TrendIndicator view={trendView(metricOf(cmp, 'mergedPrs'), 'directional', period)} />}
+          trend={<TrendIndicator view={trendView(metricOf(cmp, 'mergedPrs'), period)} />}
         />,
         <StatCard
           key="reviews"
           label="Code reviews"
           value={fmt.format(k.reviews)}
           subline={percent}
-          trend={<TrendIndicator view={trendView(metricOf(cmp, 'reviews'), 'directional', period)} />}
+          trend={<TrendIndicator view={trendView(metricOf(cmp, 'reviews'), period)} />}
         />,
         <StatCard
           key="lines"
           label="Lines changed (+/−)"
           value={<LinesDelta additions={k.additions} deletions={k.deletions} layout="inline" />}
           subline={`across ${fmt.format(k.prsOpened)} PR${k.prsOpened === 1 ? '' : 's'} opened`}
-          trend={<TrendIndicator view={trendView(churn, 'neutral', period)} />}
+          trend={<TrendIndicator view={trendView(churn, period)} />}
         />,
         <StatCard
           key="first-review"
