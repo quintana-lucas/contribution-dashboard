@@ -101,6 +101,19 @@ describe("theme tokens", () => {
     for (const name of semanticTokens) expect(mediaDark[name]).toBe(dark[name]);
   });
 
+  it("#122 AC6: --color-bad is a literal hex in all three blocks with dark parity", () => {
+    for (const map of [light, mediaDark, dark]) expect(map["--color-bad"]).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(mediaDark["--color-bad"]).toBe(dark["--color-bad"]);
+  });
+
+  it("#122 AC6: --color-bad is at least 4.5:1 on surface, bg and the card background in both themes", () => {
+    for (const map of [light, dark]) {
+      const c = rgb(map["--color-bad"]);
+      expect(ratio(c, rgb(map["--color-surface"]))).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(c, rgb(map["--color-bg"]))).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it("AC7: the dark set under data-theme matches the media-query dark set", () => {
     expect(mediaDark).toEqual(dark);
   });
