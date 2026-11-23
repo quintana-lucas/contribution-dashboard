@@ -1,9 +1,8 @@
-import { useLayoutEffect, useRef, useState } from 'react'
 import type { SVGProps } from 'react'
 import { Bar } from '@visx/shape'
 import { scaleBand, scaleLinear } from '@visx/scale'
 import type { PrActivityBucket } from '../../api/prActivity.ts'
-import ChartFrame, { markSize } from '../ChartFrame'
+import ChartFrame, { markSize, useWidth } from '../ChartFrame'
 import ChartTooltip, { useChartTooltip } from '../ChartTooltip'
 import styles from './PrActivityChart.module.css'
 
@@ -29,28 +28,8 @@ const INSIDE_MIN = 16
 /** Width used when the real one cannot be measured (no layout engine). */
 const FALLBACK_WIDTH = 320
 
-/** Measures the width in px of the element the returned ref is attached to. */
-function useWidth() {
-  const ref = useRef<HTMLDivElement>(null)
-  const [width, setWidth] = useState(0)
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const read = (w: number) => setWidth((prev) => (prev === w ? prev : w))
-    read(el.getBoundingClientRect().width)
-    if (typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver((entries) => {
-      const entry = entries[entries.length - 1]
-      if (entry) read(entry.contentRect.width)
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-  return [ref, width || FALLBACK_WIDTH] as const
-}
-
 function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
-  const [ref, width] = useWidth()
+  const [ref, width] = useWidth<HTMLDivElement>(FALLBACK_WIDTH)
   const { open, bind } = useChartTooltip<PrActivityBucket>()
   const max = Math.max(0, ...buckets.flatMap((b) => SERIES.map((s) => b[s.key])))
   const total = (key: (typeof SERIES)[number]['key']) => buckets.reduce((sum, b) => sum + b[key], 0)

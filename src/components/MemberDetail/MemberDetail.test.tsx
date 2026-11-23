@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { buckets } from '../../api/dashboard'
 import type { Period } from '../../api/dashboard'
@@ -143,7 +143,7 @@ describe('MemberDetail', () => {
     const values = within(table)
       .getAllByRole('row')
       .slice(1)
-      .map((r) => within(r).getAllByRole('cell')[1].textContent)
+      .map((r) => within(r).getByRole('cell').textContent)
     expect(values).toHaveLength(13)
     expect(values.filter((v) => v === '0')).toHaveLength(12)
     const labels = screen.getAllByTestId('x-label').map((l) => l.textContent)
@@ -157,16 +157,18 @@ describe('MemberDetail', () => {
     expect(caption.textContent).toMatch(/^3 pull requests merged over 5 weeks\. Busiest: .+, 3\.$/)
   })
 
-  it('AC3: shows the three outcomes as labelled text with counts and variants', () => {
+  it('AC3 / #107 AC6: shows the three outcomes as labelled text with counts and variants solid, caution, muted; tooltip row is Reviews', () => {
     renderDetail()
     const list = screen.getByRole('list', { name: 'Reviews given by outcome' })
+    fireEvent.focus(within(list).getAllByRole('listitem')[0])
+    expect(within(screen.getByRole('tooltip')).getByText('Reviews')).toBeInTheDocument()
     expect(within(list).getByText('Approved: 3 of 6 reviews.')).toBeInTheDocument()
     expect(within(list).getByText('Changes requested: 2 of 6 reviews.')).toBeInTheDocument()
     expect(within(list).getByText('Commented: 1 of 6 reviews.')).toBeInTheDocument()
     expect(within(list).getAllByTestId('bar-fill').map((f) => f.getAttribute('data-variant'))).toEqual([
       'solid',
+      'caution',
       'muted',
-      'hatched',
     ])
   })
 
@@ -187,10 +189,10 @@ describe('MemberDetail', () => {
     expect(new Set(counts.map((c) => c.className)).size).toBe(1)
     const widths = within(list)
       .getAllByTestId('bar-fill')
-      .map((f) => parseFloat((f as HTMLElement).style.width))
-    expect(widths[0]).toBeCloseTo(100)
-    expect(widths[1]).toBeCloseTo((5 / 42) * 100)
-    expect(widths[2]).toBe(0)
+      .map((f) => parseFloat(f.getAttribute('width') ?? ''))
+    // the zero-count bar draws nothing
+    expect(widths).toHaveLength(2)
+    expect(widths[1] / widths[0]).toBeCloseTo(5 / 42)
   })
 
   it('AC4: lists recent pull requests with state, repo, title, lines and when', () => {
