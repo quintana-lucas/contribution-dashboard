@@ -1,9 +1,9 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import type { ReviewsGiven } from '../../api/reviews.ts'
 import { Bar } from '@visx/shape'
 import { scaleLinear } from '@visx/scale'
 import ChartTooltip, { useChartTooltip } from '../ChartTooltip'
-import { CHART_MIN_MARK } from '../ChartFrame'
+import { CHART_MIN_MARK, useWidth } from '../ChartFrame'
 import styles from './ReviewsChart.module.css'
 
 interface ReviewsChartProps {
@@ -25,26 +25,6 @@ const BAR_HEIGHT = 20
 const GAP = 1
 /** Track width used when the real one cannot be measured (no layout engine). */
 const FALLBACK_WIDTH = 100
-
-/** Measures the width in px of the element the returned ref is attached to. */
-function useWidth() {
-  const ref = useRef<HTMLSpanElement>(null)
-  const [width, setWidth] = useState(0)
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const read = (w: number) => setWidth((prev) => (prev === w ? prev : w))
-    read(el.getBoundingClientRect().width)
-    if (typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver((entries) => {
-      const entry = entries[entries.length - 1]
-      if (entry) read(entry.contentRect.width)
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-  return [ref, width || FALLBACK_WIDTH] as const
-}
 
 /**
  * Lays out one row in real px. The stack is total * scale wide, but never
@@ -86,7 +66,7 @@ function segments(r: ReviewsGiven, scale: (value: number) => number, trackWidth:
 }
 
 function ReviewsRowTrack({ row, scale }: { row: ReviewsGiven; scale: (v: number) => number }) {
-  const [ref, width] = useWidth()
+  const [ref, width] = useWidth<HTMLSpanElement>(FALLBACK_WIDTH)
   return (
     <span ref={ref} className={styles.track} aria-hidden="true">
       <svg
