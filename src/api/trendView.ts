@@ -4,7 +4,7 @@ import type { Period } from './dashboard.ts'
 import type { KpiComparison, KpiComparisonMetrics, MetricComparison } from './kpiComparison.ts'
 
 export type TrendRule = 'directional' | 'neutral'
-export type TrendTone = 'good' | 'caution' | 'muted'
+export type TrendTone = 'good' | 'bad' | 'muted'
 
 export interface TrendView {
   kind: 'trend' | 'none'
@@ -76,6 +76,6 @@ export function trendView(
     figure: `${sign}${abs} (${sign}${pct}%)`,
     label,
     srText: `${up ? 'up' : 'down'} ${srPct} percent versus previous ${period} days`,
-    tone: rule === 'neutral' ? 'muted' : up ? 'good' : 'caution',
+    tone: rule === 'neutral' ? 'muted' : up ? 'good' : 'bad',
   }
 }

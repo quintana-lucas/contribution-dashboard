@@ -18,11 +18,11 @@ describe('TrendIndicator', () => {
     expect(screen.getByText('↑ +3 (+12%)').parentElement?.className).toMatch(/good/)
   })
 
-  it('AC1, AC4: down on a directional metric uses another glyph, sign and the caution tone', () => {
+  it('AC1, AC4: down on a directional metric uses another glyph, sign and the bad tone', () => {
     render(<TrendIndicator view={trendView(cmp(22, 25), 'directional', 7)} />)
     expect(screen.getByText('↓ −3 (−12%)')).toBeInTheDocument()
     expect(screen.getByText('vs previous 7 days')).toBeInTheDocument()
-    expect(screen.getByText('↓ −3 (−12%)').parentElement?.className).toMatch(/caution/)
+    expect(screen.getByText('↓ −3 (−12%)').parentElement?.className).toMatch(/bad/)
   })
 
   it('AC1: flat shows the arrow and zero figure in the muted tone', () => {
@@ -58,6 +58,40 @@ describe('TrendIndicator', () => {
     expect(screen.getByText('No comparison available for the previous period')).toBeInTheDocument()
   })
 
+  it('#122 AC1: a decline on a directional metric renders in the bad (red) class only', () => {
+    render(<TrendIndicator view={trendView(cmp(22, 25), 'directional', 30)} />)
+    const row = screen.getByText('↓ −3 (−12%)').parentElement
+    expect(row?.className).toMatch(/bad/)
+    expect(row?.className).not.toMatch(/good|muted/)
+  })
+
+  it('#122 AC2: an increase on a directional metric stays good and never bad', () => {
+    render(<TrendIndicator view={trendView(cmp(28, 25), 'directional', 30)} />)
+    const row = screen.getByText('↑ +3 (+12%)').parentElement
+    expect(row?.className).toMatch(/good/)
+    expect(row?.className).not.toMatch(/bad/)
+  })
+
+  it('#122 AC3: a decline on a neutral metric is never bad', () => {
+    render(<TrendIndicator view={trendView(cmp(20, 25), 'neutral', 30)} />)
+    const row = screen.getByText('↓ −5 (−20%)').parentElement
+    expect(row?.className).toMatch(/muted/)
+    expect(row?.className).not.toMatch(/good|bad/)
+  })
+
+  it('#122 AC4: the no-comparison state has no good/bad class and no glyph', () => {
+    const { container } = render(<TrendIndicator view={trendView(undefined, 'directional', 30)} />)
+    const row = container.firstElementChild as HTMLElement
+    expect(row.className).not.toMatch(/good|bad/)
+    expect(container.textContent).not.toMatch(/[↑↓→]/)
+  })
+
+  it('#122 AC5: a red decline still carries the glyph, the sign and the sr sentence', () => {
+    render(<TrendIndicator view={trendView(cmp(22, 25), 'directional', 30)} />)
+    expect(screen.getByText('↓ −3 (−12%)')).toBeInTheDocument()
+    expect(screen.getByText('down 12 percent versus previous 30 days')).toBeInTheDocument()
+  })
+
   it('loading renders a skeleton and no text', () => {
     const { container } = render(<TrendIndicator loading />)
     expect(screen.getByTestId('skeleton')).toHaveStyle({ width: '60%' })
@@ -71,7 +105,7 @@ describe('TrendIndicator', () => {
     )
     expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgb\(|hsl\(/)
     expect(css).toMatch(/var\(--color-good\)/)
-    expect(css).toMatch(/var\(--color-caution\)/)
+    expect(css).toMatch(/var\(--color-bad\)/)
     expect(css).toMatch(/var\(--color-text-muted\)/)
   })
 })

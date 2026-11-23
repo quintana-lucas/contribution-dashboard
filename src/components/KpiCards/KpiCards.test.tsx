@@ -270,21 +270,33 @@ describe('KpiCards', () => {
     const merged = card('Merged PRs')
     expect(merged).toHaveTextContent('↓ −1 (−33%)vs previous 30 days')
     expect(merged).toHaveTextContent('down 33 percent versus previous 30 days')
-    expect(merged.innerHTML).toMatch(/caution/i)
+    expect(merged.innerHTML).toMatch(/bad/i)
     const reviews = card('Code reviews')
     expect(reviews).toHaveTextContent('↑ +1 (+100%)vs previous 30 days')
     expect(reviews.innerHTML).toMatch(/good/i)
     const lines = card('Lines changed (+/−)')
     expect(lines).toHaveTextContent('↑ +1,000 (+200%)vs previous 30 days')
     expect(lines.innerHTML).toMatch(/muted/i)
-    expect(lines.innerHTML).not.toMatch(/good|caution/i)
+    expect(lines.innerHTML).not.toMatch(/good|bad/i)
+  })
+
+  it('#122 AC1, AC2, AC3: merged-PR decline is bad, review increase is good, neutral lines never bad', async () => {
+    await renderCards(makeTrendDeps())
+    const mergedRow = within(card('Merged PRs')).getByText('↓ −1 (−33%)').parentElement as HTMLElement
+    expect(mergedRow.className).toMatch(/bad/)
+    expect(mergedRow.className).not.toMatch(/good/)
+    const reviewsRow = within(card('Code reviews')).getByText('↑ +1 (+100%)').parentElement as HTMLElement
+    expect(reviewsRow.className).toMatch(/good/)
+    expect(reviewsRow.className).not.toMatch(/bad/)
+    const linesRow = within(card('Lines changed (+/−)')).getByText('↑ +1,000 (+200%)').parentElement as HTMLElement
+    expect(linesRow.className).not.toMatch(/good|bad/)
   })
 
   it('#87 AC3: the label follows the period and the values follow the repo selection', async () => {
     await renderCards(makeTrendDeps())
     fireEvent.click(screen.getByRole('radio', { name: /7/ }))
     expect(card('Merged PRs')).toHaveTextContent('→ 0 (0%)vs previous 7 days')
-    expect(card('Merged PRs').innerHTML).not.toMatch(/good|caution/i)
+    expect(card('Merged PRs').innerHTML).not.toMatch(/good|bad/i)
     fireEvent.change(screen.getByLabelText('Repository'), { target: { value: 'acme/web' } })
     expect(card('Merged PRs')).toHaveTextContent('No comparison')
     expect(card('Merged PRs')).not.toHaveTextContent('vs previous')

@@ -48,12 +48,12 @@ describe('trendView', () => {
     expect(trendView(cmp(2, 1), 'directional', 90).label).toBe('vs previous 90 days')
   })
 
-  it('AC4: directional up is good, down is caution', () => {
+  it('#122 AC1: directional up is good, down is bad', () => {
     expect(trendView(cmp(2, 1), 'directional', 30).tone).toBe('good')
-    expect(trendView(cmp(1, 2), 'directional', 30).tone).toBe('caution')
+    expect(trendView(cmp(1, 2), 'directional', 30).tone).toBe('bad')
   })
 
-  it('AC5: neutral rule (PRs opened) is muted in both directions', () => {
+  it('#122 AC3: neutral rule (PRs opened) is muted in both directions, never bad', () => {
     expect(trendView(cmp(2, 1), 'neutral', 30).tone).toBe('muted')
     expect(trendView(cmp(1, 2), 'neutral', 30).tone).toBe('muted')
   })

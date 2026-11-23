@@ -91,14 +91,30 @@ describe("theme tokens", () => {
     }
   });
 
-  it("#82 AC2: no red/critical/danger/error token exists", () => {
+  it("#82 AC2 (amended by #122): no red/critical/danger/error token exists, except the allowed --color-bad", () => {
     for (const map of [light, mediaDark, dark]) {
-      for (const name of Object.keys(map)) expect(name).not.toMatch(/red|critical|danger|error/i);
+      for (const name of Object.keys(map)) {
+        if (name === "--color-bad") continue; // #122: the one sanctioned decline token
+        expect(name).not.toMatch(/red|critical|danger|error/i);
+      }
     }
   });
 
   it("#82 AC5: the semantic tokens have identical values in both dark maps", () => {
     for (const name of semanticTokens) expect(mediaDark[name]).toBe(dark[name]);
+  });
+
+  it("#122 AC6: --color-bad is a literal hex in all three blocks with dark parity", () => {
+    for (const map of [light, mediaDark, dark]) expect(map["--color-bad"]).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(mediaDark["--color-bad"]).toBe(dark["--color-bad"]);
+  });
+
+  it("#122 AC6: --color-bad is at least 4.5:1 on surface, bg and the card background in both themes", () => {
+    for (const map of [light, dark]) {
+      const c = rgb(map["--color-bad"]);
+      expect(ratio(c, rgb(map["--color-surface"]))).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(c, rgb(map["--color-bg"]))).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   it("AC7: the dark set under data-theme matches the media-query dark set", () => {
