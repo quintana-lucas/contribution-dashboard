@@ -24,8 +24,8 @@
   color: var(--color-good);
 }
 
-.caution {
-  color: var(--color-caution);
+.bad {
+  color: var(--color-bad);
 }
 
 .muted {
