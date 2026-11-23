@@ -7,6 +7,8 @@
   font-size: var(--text-sm);
   font-weight: var(--text-sm-weight);
   line-height: var(--text-sm-line);
+  /* Keeps the skeleton row the same height as a loaded row so nothing shifts. */
+  min-height: calc(var(--text-sm) * var(--text-sm-line));
 }
 
 .figure {
