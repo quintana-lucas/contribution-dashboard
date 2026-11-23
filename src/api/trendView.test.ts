@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { MetricComparison } from './kpiComparison.ts'
-import { combineComparisons, trendView } from './trendView.ts'
+import { combineComparisons, metricOf, trendView } from './trendView.ts'
+
+describe('metricOf', () => {
+  it('AC8: returns the metric when available and undefined on insufficient history', () => {
+    const m = { current: 2, previous: 1, delta: 1, deltaPct: 100 }
+    const metrics = { mergedPrs: m, reviews: m, prsOpened: m, additions: m, deletions: m }
+    expect(metricOf({ status: 'available', metrics }, 'reviews')).toBe(m)
+    expect(metricOf({ status: 'insufficient_history' }, 'reviews')).toBeUndefined()
+  })
+})
 
 function cmp(current: number, previous: number): MetricComparison {
   const delta = current - previous

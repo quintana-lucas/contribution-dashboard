@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react'
 import type { StartSyncError, SyncRunState } from '../../api/client'
 import type { Contributions } from '../../api/contributions'
 import type { Activity, Period, RepoEntry, RepoSelection } from '../../api/dashboard'
+import type { KpiComparison } from '../../api/kpiComparison'
 import type { Kpis } from '../../api/kpis'
 import type { MemberDetail } from '../../api/memberDetail'
 import type { PrActivity } from '../../api/prActivity'
@@ -45,6 +46,8 @@ export interface DashboardValue {
   prActivity: () => PrActivity
   /** Overview KPI figures for the current selection, period and team. */
   kpis: () => Kpis
+  /** Period-over-period comparison of the period-based KPIs for the current selection, period and team. */
+  comparison: () => KpiComparison
   /** Selected team logins in their original casing; [] while the team is not chosen. */
   teamMembers: string[]
   /** One row per team member for the current selection and period (unsorted). */

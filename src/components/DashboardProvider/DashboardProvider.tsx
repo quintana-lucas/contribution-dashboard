@@ -23,6 +23,7 @@ import {
 } from '../../api/dashboard'
 import type { Period, RepoEntry, RepoLoadError, RepoSelection } from '../../api/dashboard'
 import type { DamagedRepo, LinkedRepo } from '../../api/types'
+import { kpiComparison } from '../../api/kpiComparison'
 import { kpis as kpisPure } from '../../api/kpis'
 import { memberDetail as memberDetailPure } from '../../api/memberDetail'
 import { prActivity as prActivityPure } from '../../api/prActivity'
@@ -253,6 +254,7 @@ export default function DashboardProvider({
       waiting: () => waitingForReview(entries, selection, nowDate, team),
       prActivity: () => prActivityPure(entries, selection, period, nowDate, team),
       kpis: () => kpisPure(entries, selection, period, nowDate, team),
+      comparison: () => kpiComparison(entries, selection, period, nowDate, team),
       teamMembers,
       teamStats: () => teamStatsPure(entries, selection, period, nowDate, teamMembers),
       memberDetail: () =>
