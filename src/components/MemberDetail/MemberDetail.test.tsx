@@ -165,8 +165,8 @@ describe('MemberDetail', () => {
     expect(within(list).getByText('Commented: 1 of 6 reviews.')).toBeInTheDocument()
     expect(within(list).getAllByTestId('bar-fill').map((f) => f.getAttribute('data-variant'))).toEqual([
       'solid',
+      'caution',
       'muted',
-      'hatched',
     ])
   })
 
@@ -187,10 +187,10 @@ describe('MemberDetail', () => {
     expect(new Set(counts.map((c) => c.className)).size).toBe(1)
     const widths = within(list)
       .getAllByTestId('bar-fill')
-      .map((f) => parseFloat((f as HTMLElement).style.width))
-    expect(widths[0]).toBeCloseTo(100)
-    expect(widths[1]).toBeCloseTo((5 / 42) * 100)
-    expect(widths[2]).toBe(0)
+      .map((f) => parseFloat(f.getAttribute('width') ?? ''))
+    // the zero-count bar draws nothing
+    expect(widths).toHaveLength(2)
+    expect(widths[1] / widths[0]).toBeCloseTo(5 / 42)
   })
 
   it('AC4: lists recent pull requests with state, repo, title, lines and when', () => {

@@ -94,8 +94,8 @@ function MemberDetail({ now }: MemberDetailProps) {
   const totalReviews = approved + changesRequested + commented
   const outcomes = [
     { key: 'approved', label: 'Approved', value: approved, variant: 'solid' as const },
-    { key: 'changes', label: 'Changes requested', value: changesRequested, variant: 'muted' as const },
-    { key: 'commented', label: 'Commented', value: commented, variant: 'hatched' as const },
+    { key: 'changes', label: 'Changes requested', value: changesRequested, variant: 'caution' as const },
+    { key: 'commented', label: 'Commented', value: commented, variant: 'muted' as const },
   ].map((o) => ({ ...o, srText: `${o.label}: ${o.value} of ${totalReviews} reviews.` }))
 
   return (
