@@ -265,7 +265,7 @@ describe('KpiCards', () => {
     })
   }
 
-  it('#87 AC5, AC6: directional trends on merged and reviews, neutral muted trend on lines', async () => {
+  it('#87 AC6: directional trends on merged and reviews, neutral muted trend on lines', async () => {
     await renderCards(makeTrendDeps())
     const merged = card('Merged PRs')
     expect(merged).toHaveTextContent('↓ −1 (−33%)vs previous 30 days')
