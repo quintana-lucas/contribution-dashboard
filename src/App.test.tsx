@@ -253,6 +253,76 @@ describe('App Team tab (#19)', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  // The three trend rows are recognised by their screen-reader sentence (trend or "No comparison").
+  const TREND_ROW = /versus previous|no change versus|No comparison available/
+  const trendRowsIn = (el: HTMLElement) =>
+    [...el.querySelectorAll('span')].filter((s) => TREND_ROW.test(s.textContent ?? ''))
+
+  it('#123 AC3: the Team tab shows three team stat cards with a trend row, above the table', async () => {
+    await openTeam()
+    const region = screen.getByRole('region', { name: 'Team key figures, All repositories, last 30 days' })
+    for (const name of ['Merged PRs', 'Code reviews', 'Lines changed (+/−)']) {
+      expect(within(region).getByText(name)).toBeInTheDocument()
+    }
+    expect(trendRowsIn(region)).toHaveLength(3)
+    expect(
+      region.compareDocumentPosition(screen.getByRole('table')) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('#123 AC3: changing the period or the repository updates the team cards and their labels', async () => {
+    await openTeam()
+    fireEvent.click(screen.getByLabelText('7 days'))
+    let region = screen.getByRole('region', { name: 'Team key figures, All repositories, last 7 days' })
+    expect(trendRowsIn(region)).toHaveLength(3)
+    for (const row of trendRowsIn(region)) {
+      expect(row.textContent).toMatch(/previous 7 days|No comparison/)
+      expect(row.textContent).not.toMatch(/30 days/)
+    }
+    fireEvent.click(screen.getByLabelText('90 days'))
+    region = screen.getByRole('region', { name: 'Team key figures, All repositories, last 90 days' })
+    for (const row of trendRowsIn(region)) {
+      expect(row.textContent).toMatch(/previous 90 days|No comparison/)
+    }
+    fireEvent.change(screen.getByLabelText('Repository'), { target: { value: 'acme/api' } })
+    expect(
+      screen.getByRole('region', { name: 'Team key figures, acme/api, last 90 days' }),
+    ).toBeInTheDocument()
+  })
+
+  it('#123 AC7: the Team table and the member detail show no trend indicator', async () => {
+    await openTeam()
+    fireEvent.click(screen.getByRole('row', { name: /^ana\b/ }))
+    const table = screen.getByRole('table')
+    expect(trendRowsIn(table)).toHaveLength(0)
+    expect(table).not.toHaveTextContent(/[↑↓→]|vs previous/)
+    const detail = screen.getByRole('region', { name: 'ana' })
+    for (const label of [
+      'Reviews received',
+      'Median time to first review',
+      'Average PR size',
+      'Median cycle time',
+    ]) {
+      expect(within(detail).getByText(label)).toBeInTheDocument()
+    }
+    expect(trendRowsIn(detail)).toHaveLength(0)
+    expect(detail).not.toHaveTextContent(/vs previous|versus previous/)
+    // Only the three team cards carry trends.
+    const cards = screen.getByRole('region', { name: /^Team key figures/ })
+    expect(trendRowsIn(cards)).toHaveLength(3)
+    for (const label of ['Open', 'Median time to first review', 'Average PR size', 'Median cycle time']) {
+      expect(within(cards).queryByText(label)).toBeNull()
+    }
+  })
+
+  it('#123 AC3: the Overview tab keeps its own three trend cards and has no team cards', async () => {
+    await openTeam()
+    fireEvent.click(screen.getByRole('tab', { name: 'Overview' }))
+    const overview = screen.getByRole('region', { name: /^Key figures/ })
+    expect(trendRowsIn(overview)).toHaveLength(3)
+    expect(screen.getByRole('region', { name: /^Team key figures/, hidden: true })).not.toBeVisible()
+  })
+
   it('AC6: an empty team shows the message and its button opens Settings on the Team tab', async () => {
     render(<App {...teamDeps([])} />)
     await screen.findByLabelText('Repository')

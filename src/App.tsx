@@ -10,6 +10,7 @@ import KpiCards from './components/KpiCards'
 import MemberDetail from './components/MemberDetail'
 import SettingsDialog from './components/SettingsDialog'
 import Tabs from './components/Tabs'
+import TeamKpiCards from './components/TeamKpiCards'
 import TeamTable from './components/TeamTable'
 import Toolbar from './components/Toolbar'
 import WidgetGrid from './components/WidgetGrid'
@@ -53,6 +54,7 @@ function Content({ onAddRepositories, onChooseTeam, chooseTeamRef, now }: Conten
           label: 'Team',
           content: (
             <div className={styles.teamTab}>
+              <TeamKpiCards />
               <TeamTable onChooseTeam={onChooseTeam} />
               <MemberDetail now={now} />
             </div>
