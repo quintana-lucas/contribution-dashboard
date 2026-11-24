@@ -163,6 +163,38 @@ describe("theme tokens", () => {
     }
   });
 
+  it("#103 AC4: radius, border and shadow tokens drive the pixel style", () => {
+    expect(light["--radius-md"]).toBe("0");
+    expect(light["--radius-pill"]).toBe("0");
+    expect(light["--border-width"]).toMatch(/^\d+px$/);
+    expect(parseInt(light["--border-width"])).toBeGreaterThanOrEqual(2);
+    expect(light["--shadow-pixel"]).toBeDefined();
+    for (const map of [dark, mediaDark]) {
+      expect(map["--radius-md"]).toBeUndefined();
+      expect(map["--border-width"]).toBeUndefined();
+    }
+  });
+
+  it("#103 AC3 AC4: --font-pixel is Press Start 2P and --font-sans points to it", () => {
+    expect(light["--font-pixel"]).toMatch(/"Press Start 2P"/);
+    expect(light["--font-sans"]).toBe("var(--font-pixel)");
+  });
+
+  it("#103 AC3: @font-face is self-hosted: local url, font-display swap, no http(s)", () => {
+    const face = css.match(/@font-face\s*\{[^}]*\}/);
+    expect(face).not.toBeNull();
+    expect(face![0]).not.toMatch(/https?:|\/\//);
+    expect(face![0]).toMatch(/url\(["']?\.\.\/assets\/fonts\/PressStart2P-Regular\.woff2["']?\)/);
+    expect(face![0]).toMatch(/font-display:\s*swap/);
+    expect(existsSync("src/assets/fonts/PressStart2P-Regular.woff2")).toBe(true);
+    expect(existsSync("src/assets/fonts/OFL.txt")).toBe(true);
+  });
+
+  it("#103 AC3: base.css turns font smoothing off", () => {
+    const base = readFileSync("src/styles/base.css", "utf8");
+    expect(base).toMatch(/-webkit-font-smoothing:\s*none/);
+  });
+
   it("#88 AC4: --weight-medium is 500 in :root and not repeated in the dark blocks", () => {
     expect(light["--weight-medium"]).toBe("500");
     expect(dark["--weight-medium"]).toBeUndefined();
