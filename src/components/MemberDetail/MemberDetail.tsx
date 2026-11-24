@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
 import { formatDuration, formatSize } from '../../api/reviewMetrics'
-import { metricOf, trendView } from '../../api/trendView'
+import { combineComparisons, metricOf, trendView } from '../../api/trendView'
 import BarList from '../BarList'
 import ColumnChart from '../ColumnChart'
 import { useDashboard } from '../DashboardProvider'
@@ -25,6 +25,7 @@ const LABELS = [
   'Median time to first review',
   'Average PR size',
   'Median cycle time',
+  'Lines changed (+/−)',
 ]
 
 function plural(n: number, one: string, many: string): string {
@@ -65,12 +66,12 @@ function MemberDetail({ now }: MemberDetailProps) {
           </div>
         </header>
         <div className={styles.tiles}>
-          {Array.from({ length: 6 }, (_, i) => (
+          {Array.from({ length: LABELS.length }, (_, i) => (
             <StatCard
               key={i}
               label={LABELS[i]}
               value={<Skeleton width="50%" height="calc(var(--text-xl) * var(--text-xl-line))" />}
-              trend={i < 2 ? <TrendIndicator loading /> : undefined}
+              trend={i < 2 || i === 6 ? <TrendIndicator loading /> : undefined}
             />
           ))}
         </div>
@@ -104,6 +105,10 @@ function MemberDetail({ now }: MemberDetailProps) {
   const cmp = memberComparison()
   const mergedTrend = trendView(cmp ? metricOf(cmp, 'mergedPrs') : undefined, period)
   const reviewsTrend = trendView(cmp ? metricOf(cmp, 'reviews') : undefined, period)
+  const additions = cmp ? metricOf(cmp, 'additions') : undefined
+  const deletions = cmp ? metricOf(cmp, 'deletions') : undefined
+  const churn = additions && deletions ? combineComparisons(additions, deletions) : undefined
+  const linesTrend = trendView(churn, period)
   const scope = selection === 'all' ? 'All repositories' : selection
   const weekly = period !== 7
   const unit = weekly ? 'week' : 'day'
@@ -156,6 +161,17 @@ function MemberDetail({ now }: MemberDetailProps) {
         <StatCard label="Median time to first review" value={formatDuration(detail.medianFirstReviewMs)} />
         <StatCard label="Average PR size" value={formatSize(detail.avgPrSize)} />
         <StatCard label="Median cycle time" value={formatDuration(detail.medianCycleMs)} />
+        <StatCard
+          label="Lines changed (+/−)"
+          value={
+            additions && deletions ? (
+              <LinesDelta additions={additions.current} deletions={deletions.current} layout="inline" />
+            ) : (
+              '—'
+            )
+          }
+          trend={<TrendIndicator view={linesTrend} />}
+        />
       </div>
 
       <div className={styles.charts}>

@@ -169,6 +169,53 @@ describe('MemberDetail trends (#130)', () => {
     expect(within(box('PRs merged')).getAllByTestId('skeleton')).toHaveLength(2)
     expect(within(box('Reviews given')).getAllByTestId('skeleton')).toHaveLength(2)
     expect(within(box('Reviews received')).getAllByTestId('skeleton')).toHaveLength(1)
+    expect(within(box('Lines changed (+/−)')).getAllByTestId('skeleton')).toHaveLength(2)
+  })
+
+  it('AC6, AC1, AC4: Lines box combines additions and deletions like the Overview', () => {
+    const cmp = available([1, 1], [1, 1])
+    if (cmp.status === 'available') {
+      cmp.metrics.additions = metric(10, 5)
+      cmp.metrics.deletions = metric(4, 1)
+    }
+    renderDetail({ memberComparison: () => cmp })
+    const lines = box('Lines changed (+/−)')
+    // current 14 vs previous 6: +8 (+133%)
+    expect(lines).toHaveTextContent('↑ +8 (+133%)')
+    expect(lines).toHaveTextContent('vs previous 30 days')
+    expect(lines.querySelector('[class*="good"]')).not.toBeNull()
+    expect(within(lines).getByText('up 133 percent versus previous 30 days')).toBeInTheDocument()
+    expect(within(lines).getByRole('img')).toHaveAttribute('aria-label', '10 added, 4 removed')
+  })
+
+  it('AC2: Lines box shows a dash and "No comparison" when history is insufficient or previous is 0', () => {
+    const { unmount } = renderDetail({
+      memberComparison: () => ({ status: 'insufficient_history' }) as unknown as KpiComparison,
+    })
+    expect(box('Lines changed (+/−)')).toHaveTextContent('—')
+    expect(box('Lines changed (+/−)')).toHaveTextContent('No comparison')
+    unmount()
+    const cmp = available([1, 1], [1, 1])
+    if (cmp.status === 'available') {
+      cmp.metrics.additions = metric(3, 0)
+      cmp.metrics.deletions = metric(2, 0)
+    }
+    renderDetail({ memberComparison: () => cmp })
+    expect(box('Lines changed (+/−)')).toHaveTextContent('No comparison')
+    expect(box('Lines changed (+/−)').textContent).not.toMatch(/[↑↓→%]/)
+  })
+
+  it('AC3: Lines trend follows the period', () => {
+    renderDetail({ period: 7, memberComparison: () => available([1, 1], [1, 1]) }, detail({}, 7))
+    expect(box('Lines changed (+/−)')).toHaveTextContent('→ 0 (0%)')
+    expect(box('Lines changed (+/−)')).toHaveTextContent('vs previous 7 days')
+  })
+
+  it('AC5: the four non-trended boxes have no trend text or sr sentence', () => {
+    renderDetail({ memberComparison: () => available([112, 100], [4, 5]) })
+    for (const l of ['Reviews received', 'Median time to first review', 'Average PR size', 'Median cycle time']) {
+      expect(box(l).textContent).not.toMatch(/vs previous|No comparison|percent|[↑↓→]/)
+    }
   })
 })
 
@@ -186,7 +233,7 @@ describe('MemberDetail', () => {
     expect(within(busy as HTMLElement).getAllByTestId('skeleton').length).toBeGreaterThan(6)
     // Only the static box labels (like the Overview cards); no data text.
     expect(container.textContent).toBe(
-      'PRs mergedReviews givenReviews receivedMedian time to first reviewAverage PR sizeMedian cycle time',
+      'PRs mergedReviews givenReviews receivedMedian time to first reviewAverage PR sizeMedian cycle timeLines changed (+/−)',
     )
     expect(screen.queryByText(/loading/i)).toBeNull()
     expect(screen.queryByRole('heading')).toBeNull()
