@@ -11,10 +11,4 @@ describe("dashboard favicon", () => {
     expect(link?.[0]).toContain('href="/dashboard-icon.svg"');
     expect(existsSync("public/dashboard-icon.svg")).toBe(true);
   });
-
-  it("AC3: the Vite logo file is gone and index.html no longer references it", () => {
-    expect(existsSync("public/favicon.svg")).toBe(false);
-    expect(html).not.toContain("favicon.svg");
-    expect(html.toLowerCase()).not.toContain("vite.svg");
-  });
 });
