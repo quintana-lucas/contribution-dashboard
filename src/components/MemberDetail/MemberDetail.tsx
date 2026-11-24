@@ -7,6 +7,7 @@ import LinesDelta from '../LinesDelta'
 import PrLink from '../PrLink'
 import PrStateBadge from '../PrStateBadge'
 import Skeleton from '../Skeleton'
+import StatCard from '../StatCard'
 import { dayLabel, formatFull, formatWhen, weekLabel } from './formatWhen'
 import styles from './MemberDetail.module.css'
 
@@ -14,6 +15,15 @@ interface MemberDetailProps {
   /** Injected clock, for the "when" text. */
   now: () => Date
 }
+
+const LABELS = [
+  'PRs merged',
+  'Reviews given',
+  'Reviews received',
+  'Median time to first review',
+  'Average PR size',
+  'Median cycle time',
+]
 
 function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : many
@@ -46,10 +56,11 @@ function MemberDetail({ now }: MemberDetailProps) {
         </header>
         <div className={styles.tiles}>
           {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className={styles.tile}>
-              <Skeleton width={48} height={28} />
-              <Skeleton width="80%" />
-            </div>
+            <StatCard
+              key={i}
+              label={LABELS[i]}
+              value={<Skeleton width="50%" height="calc(var(--text-xl) * var(--text-xl-line))" />}
+            />
           ))}
         </div>
         <div className={styles.charts}>
@@ -121,30 +132,12 @@ function MemberDetail({ now }: MemberDetailProps) {
       </header>
 
       <div className={styles.tiles}>
-        <div className={styles.tile}>
-          <span className={styles.number}>{detail.merged}</span>
-          <span className={styles.label}>PRs merged</span>
-        </div>
-        <div className={styles.tile}>
-          <span className={styles.number}>{detail.reviewsGiven}</span>
-          <span className={styles.label}>Reviews given</span>
-        </div>
-        <div className={styles.tile}>
-          <span className={styles.number}>{detail.reviewsReceived}</span>
-          <span className={styles.label}>Reviews received</span>
-        </div>
-        <div className={styles.tile}>
-          <span className={styles.number}>{formatDuration(detail.medianFirstReviewMs)}</span>
-          <span className={styles.label}>Median time to first review</span>
-        </div>
-        <div className={styles.tile}>
-          <span className={styles.number}>{formatSize(detail.avgPrSize)}</span>
-          <span className={styles.label}>Average PR size</span>
-        </div>
-        <div className={styles.tile}>
-          <span className={styles.number}>{formatDuration(detail.medianCycleMs)}</span>
-          <span className={styles.label}>Median cycle time</span>
-        </div>
+        <StatCard label="PRs merged" value={detail.merged} />
+        <StatCard label="Reviews given" value={detail.reviewsGiven} />
+        <StatCard label="Reviews received" value={detail.reviewsReceived} />
+        <StatCard label="Median time to first review" value={formatDuration(detail.medianFirstReviewMs)} />
+        <StatCard label="Average PR size" value={formatSize(detail.avgPrSize)} />
+        <StatCard label="Median cycle time" value={formatDuration(detail.medianCycleMs)} />
       </div>
 
       <div className={styles.charts}>

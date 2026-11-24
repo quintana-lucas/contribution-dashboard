@@ -83,7 +83,10 @@ describe('MemberDetail', () => {
     const busy = container.querySelector('[aria-busy="true"]')
     expect(busy).not.toBeNull()
     expect(within(busy as HTMLElement).getAllByTestId('skeleton').length).toBeGreaterThan(6)
-    expect(container).toHaveTextContent('')
+    // Only the static box labels (like the Overview cards); no data text.
+    expect(container.textContent).toBe(
+      'PRs mergedReviews givenReviews receivedMedian time to first reviewAverage PR sizeMedian cycle time',
+    )
     expect(screen.queryByText(/loading/i)).toBeNull()
     expect(screen.queryByRole('heading')).toBeNull()
   })
@@ -99,7 +102,7 @@ describe('MemberDetail', () => {
     expect(within(panel).getByRole('heading', { level: 2, name: 'Ana' })).toBeInTheDocument()
     expect(within(panel).getByText('acme/api · last 30 days')).toBeInTheDocument()
     const tile = (label: string) =>
-      within(panel).getByText(label, { selector: 'span' }).previousElementSibling
+      within(panel).getByText(label, { selector: 'div' }).nextElementSibling
     expect(tile('PRs merged')).toHaveTextContent('3')
     expect(tile('Reviews given')).toHaveTextContent('6')
     expect(tile('Reviews received')).toHaveTextContent('2')
@@ -108,8 +111,17 @@ describe('MemberDetail', () => {
   it('AC3 (#21): shows time to first review, average PR size and cycle time with units', () => {
     renderDetail()
     const panel = screen.getByRole('region', { name: 'Ana' })
-    const tile = (label: string) =>
-      within(panel).getByText(label, { selector: 'span' }).previousElementSibling
+    const tile = (label: string) => within(panel).getByText(label).nextElementSibling
+    expect(tile('Median time to first review')).toHaveTextContent('5.5 h')
+    expect(tile('Average PR size')).toHaveTextContent('320 lines')
+    expect(tile('Median cycle time')).toHaveTextContent('3 days')
+  })
+
+  it('AC5: the four non-trended boxes render value and label', () => {
+    renderDetail()
+    const panel = screen.getByRole('region', { name: 'Ana' })
+    const tile = (label: string) => within(panel).getByText(label).nextElementSibling
+    expect(tile('Reviews received')).toHaveTextContent('2')
     expect(tile('Median time to first review')).toHaveTextContent('5.5 h')
     expect(tile('Average PR size')).toHaveTextContent('320 lines')
     expect(tile('Median cycle time')).toHaveTextContent('3 days')
@@ -118,8 +130,7 @@ describe('MemberDetail', () => {
   it('AC4 (#21): shows n/a when there are no qualifying pull requests', () => {
     renderDetail({}, detail({ ...EMPTY, medianFirstReviewMs: null, avgPrSize: null, medianCycleMs: null }))
     const panel = screen.getByRole('region', { name: 'Ana' })
-    const tile = (label: string) =>
-      within(panel).getByText(label, { selector: 'span' }).previousElementSibling
+    const tile = (label: string) => within(panel).getByText(label).nextElementSibling
     expect(tile('Median time to first review')).toHaveTextContent('n/a')
     expect(tile('Average PR size')).toHaveTextContent('n/a')
     expect(tile('Median cycle time')).toHaveTextContent('n/a')
@@ -351,7 +362,7 @@ describe('MemberDetail', () => {
     expect(screen.getByText('Ana has not given any reviews in this period.')).toBeInTheDocument()
     expect(screen.getByText('Ana has no pull requests in this period.')).toBeInTheDocument()
     expect(screen.queryByRole('figure')).toBeNull()
-    expect(screen.getByText('PRs merged', { selector: 'span' }).previousElementSibling).toHaveTextContent('0')
+    expect(screen.getByText('PRs merged', { selector: 'div' }).nextElementSibling).toHaveTextContent('0')
   })
 
   it('AC6: partial activity only empties the section without data', () => {
