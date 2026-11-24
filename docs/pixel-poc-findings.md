@@ -1,6 +1,14 @@
+POC - not to merge as-is
+
 # Pixel-art style POC: findings
 
-Status: POC (issue #103). Not verified in a browser yet; screenshots come later (T4).
+Status: POC (issue #103). Not verified in a real browser yet.
+
+## Review materials
+
+- Comparison Artifact (current vs pixel): https://claude.ai/artifact/CTS6v3tqkfRaVsz8S9cW1e
+- This Artifact is a mockup with sample data, not captures of the running app. It approximates the look but does not prove how the real components render.
+- Every item under "Could not verify visually" below is still unverified and needs a real-browser check by the owner (1x and 2x displays, 375px width, light and dark mode).
 
 ## What changed in the legibility pass
 
