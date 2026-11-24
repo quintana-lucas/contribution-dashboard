@@ -11,6 +11,8 @@ body {
   font-family: var(--font-sans);
   font-size: var(--text-md);
   font-weight: var(--text-md-weight);
+  /* The pixel font has a single weight; a synthesized bold would smear it. */
+  font-synthesis: none;
   line-height: var(--text-md-line);
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: grayscale;

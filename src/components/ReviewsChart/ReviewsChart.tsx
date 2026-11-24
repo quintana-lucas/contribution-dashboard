@@ -73,6 +73,7 @@ function ReviewsRowTrack({ row, scale }: { row: ReviewsGiven; scale: (v: number)
         className={styles.svg}
         viewBox={`0 0 ${width} ${BAR_HEIGHT}`}
         aria-hidden="true"
+        shapeRendering="crispEdges"
         focusable="false"
       >
         {segments(row, (v) => scale(v) * width, width).map((s) => (

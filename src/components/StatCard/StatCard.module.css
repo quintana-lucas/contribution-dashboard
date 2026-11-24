@@ -16,9 +16,6 @@
   font-size: var(--text-sm);
   font-weight: var(--text-sm-weight);
   line-height: var(--text-sm-line);
-}
-
-.subline {
   overflow-wrap: anywhere;
 }
 
@@ -35,6 +32,7 @@
 
 .value {
   min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--color-text);
   font-size: var(--text-xl);
   font-weight: var(--text-xl-weight);

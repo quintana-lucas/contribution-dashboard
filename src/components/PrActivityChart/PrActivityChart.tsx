@@ -80,6 +80,7 @@ function PrActivityChart({ buckets, unit }: PrActivityChartProps) {
           className={styles.svg}
           viewBox={`0 0 ${width} ${HEIGHT}`}
           height={HEIGHT}
+          shapeRendering="crispEdges"
           focusable="false"
         >
           <line

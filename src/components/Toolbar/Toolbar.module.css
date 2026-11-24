@@ -38,6 +38,7 @@
 }
 
 .select {
+  max-width: 100%;
   min-height: 44px;
   padding: var(--space-2);
   background: var(--color-surface);
@@ -51,6 +52,7 @@
 
 .segments {
   display: flex;
+  flex-wrap: wrap;
 }
 
 .segment {
@@ -106,6 +108,7 @@
 
 .subline {
   margin: var(--space-3) 0 0;
+  overflow-wrap: anywhere;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   font-weight: var(--text-sm-weight);

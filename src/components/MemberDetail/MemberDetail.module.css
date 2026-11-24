@@ -83,6 +83,7 @@
 
 .number {
   display: block;
+  overflow-wrap: anywhere;
   font-size: var(--text-lg);
   font-weight: var(--text-xl-weight);
   line-height: var(--text-xl-line);
@@ -91,6 +92,7 @@
 
 .label {
   display: block;
+  overflow-wrap: anywhere;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   line-height: var(--text-sm-line);

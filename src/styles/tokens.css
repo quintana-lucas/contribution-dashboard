@@ -42,18 +42,21 @@
   --font-pixel: "Press Start 2P", ui-monospace, "Courier New", monospace;
   --font-sans: var(--font-pixel);
 
-  --text-xl: 1.5rem;
+  /* Press Start 2P is drawn on an 8px grid and is about 2x wider than the
+     previous sans. 0.5rem and 1rem are exact multiples; 0.75rem is the one
+     deliberate 1.5x step for body copy (8px is too small, 16px too wide). */
+  --text-xl: 1rem;
   --text-xl-weight: 700;
-  --text-xl-line: 1.25;
-  --text-lg: 1.125rem;
+  --text-xl-line: 1.5;
+  --text-lg: 0.75rem;
   --text-lg-weight: 600;
-  --text-lg-line: 1.3;
-  --text-md: 1rem;
+  --text-lg-line: 1.7;
+  --text-md: 0.75rem;
   --text-md-weight: 400;
-  --text-md-line: 1.5;
-  --text-sm: 0.875rem;
+  --text-md-line: 1.8;
+  --text-sm: 0.5rem;
   --text-sm-weight: 400;
-  --text-sm-line: 1.4;
+  --text-sm-line: 2;
   --weight-medium: 500;
 
   --space-1: 4px;

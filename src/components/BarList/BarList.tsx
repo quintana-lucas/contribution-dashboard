@@ -59,6 +59,7 @@ function BarRow({ item, max, bind }: BarRowProps) {
           className={styles.svg}
           viewBox={`0 0 ${width} ${BAR_HEIGHT}`}
           height={BAR_HEIGHT}
+          shapeRendering="crispEdges"
           focusable="false"
         >
           <rect x={0} y={0} width={width} height={BAR_HEIGHT} fill="var(--color-border)" />
