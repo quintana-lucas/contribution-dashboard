@@ -12,7 +12,9 @@ const LABELS = ['Merged PRs', 'Code reviews', 'Lines changed (+/−)'] as const
 // Team-total stat cards with period-over-period trends (#123). Reads only the dashboard context.
 function TeamKpiCards() {
   const { status, selection, period, kpis, comparison, teamChosen, teamMembers } = useDashboard()
-  if (status === 'error' || !teamChosen || teamMembers.length === 0) return null
+  // Loading is checked first (as in TeamTable) so the skeleton keeps the layout from shifting.
+  if (status === 'error') return null
+  if (status !== 'loading' && (!teamChosen || teamMembers.length === 0)) return null
   const scope = selection === 'all' ? 'All repositories' : selection
   const label = `Team key figures, ${scope}, last ${period} days`
 

@@ -197,8 +197,13 @@ describe('TeamKpiCards', () => {
         <TeamKpiCards />
       </DashboardProvider>,
     )
-    // Team is not known until loaded, so nothing renders while loading.
-    expect(screen.queryByRole('region')).toBeNull()
+    const region = await screen.findByRole('region', { name: /^Team key figures/ })
+    expect(region).toHaveAttribute('aria-busy', 'true')
+    expect(within(region).getAllByRole('listitem')).toHaveLength(3)
+    // Skeleton trend rows: no glyph, delta or comparison text.
+    expect(region).not.toHaveTextContent(/vs previous|No comparison|percent|[↑↓]/)
+    expect(region).not.toHaveTextContent(/\d/)
+    expect(region).not.toHaveTextContent('No data yet')
   })
 
   it('ready without data shows "No data yet" cards with no trend row', async () => {
