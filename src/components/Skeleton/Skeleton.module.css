@@ -2,6 +2,7 @@
   display: block;
   width: 100%;
   background: var(--color-border);
+  box-shadow: var(--shadow-pixel);
   animation: pulse 1.5s ease-in-out infinite;
 }
 

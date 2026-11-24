@@ -17,7 +17,9 @@
   padding: var(--space-6);
   background: var(--color-surface);
   color: var(--color-text);
+  border: var(--border-width) solid var(--color-border-dashed);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pixel);
   font-family: var(--font-sans);
 }
 

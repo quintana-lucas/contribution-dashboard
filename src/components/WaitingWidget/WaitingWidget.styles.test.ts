@@ -19,14 +19,14 @@ describe("WaitingWidget styles", () => {
     expect(item).not.toMatch(/border/);
     expect(item).not.toMatch(/background/);
     expect(item).toContain("padding: var(--space-3) 0;");
-    expect(rule(".item + .item")).toContain("border-top: 1px solid var(--color-border);");
+    expect(rule(".item + .item")).toContain("border-top: var(--border-width) solid var(--color-border);");
     expect(rule(".list")).toContain("gap: 0;");
   });
 
   it("#88 AC4: the Overdue chip is medium weight and keeps its border", () => {
     const overdue = rule(".overdue");
     expect(overdue).toContain("font-weight: var(--weight-medium);");
-    expect(overdue).toContain("border: 1px solid var(--color-caution);");
+    expect(overdue).toContain("border: var(--border-width) solid var(--color-caution);");
     expect(overdue).not.toMatch(/font-weight:\s*700/);
   });
 

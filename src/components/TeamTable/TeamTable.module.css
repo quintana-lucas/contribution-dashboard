@@ -16,7 +16,7 @@
 .skeletonTable {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
 }
@@ -26,7 +26,7 @@
   align-items: center;
   gap: var(--space-6);
   padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: var(--border-width) solid var(--color-border);
 }
 
 .skeletonRow:last-child {
@@ -41,14 +41,14 @@
   gap: var(--space-4);
   min-height: 160px;
   padding: var(--space-4);
-  border: 1px dashed var(--color-border-dashed);
+  border: var(--border-width) dashed var(--color-border-dashed);
   border-radius: var(--radius-md);
   text-align: center;
 }
 
 .button {
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--color-focus);
+  border: var(--border-width) solid var(--color-focus);
   border-radius: var(--radius-md);
   background: var(--color-focus);
   color: var(--color-on-accent);
@@ -69,7 +69,7 @@
   --layer-sticky-corner: 2;
   max-height: var(--table-max-height);
   overflow: auto;
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
 }
@@ -93,7 +93,7 @@
 .table th,
 .table td {
   padding: var(--space-2) var(--space-3);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: var(--border-width) solid var(--color-border);
   background: var(--color-surface);
   white-space: nowrap;
 }
@@ -120,17 +120,17 @@
 
 /* Static edge always present; the shadow only shows once columns scroll beneath. */
 .table th.memberCol {
-  border-right: 1px solid var(--color-border);
+  border-right: var(--border-width) solid var(--color-border);
 }
 
 .scroll[data-scrolled] .table th.memberCol {
-  box-shadow: 4px 0 6px -2px var(--color-scroll-edge);
+  box-shadow: 4px 0 0 var(--color-border);
 }
 
 .scroll[data-scrolled] .selected th.memberCol {
   box-shadow:
-    inset 3px 0 0 var(--color-focus),
-    4px 0 6px -2px var(--color-scroll-edge);
+    inset var(--border-width) 0 0 var(--color-focus),
+    4px 0 0 var(--color-border);
 }
 
 /* Member header is pinned both ways, above the other headers and the body column. */
@@ -203,7 +203,7 @@
 }
 
 .selected th {
-  box-shadow: inset 3px 0 0 var(--color-focus);
+  box-shadow: inset var(--border-width) 0 0 var(--color-focus);
 }
 
 .srOnly {

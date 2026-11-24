@@ -2,8 +2,9 @@
   display: inline-block;
   flex: 0 0 auto;
   padding: 0 var(--space-2);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-pixel);
   font-size: var(--text-sm);
   line-height: var(--text-sm-line);
 }
