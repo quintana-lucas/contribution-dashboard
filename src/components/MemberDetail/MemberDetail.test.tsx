@@ -4,6 +4,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { buckets } from '../../api/dashboard'
 import type { Period } from '../../api/dashboard'
+import type { KpiComparison } from '../../api/kpiComparison'
 import type { MemberDetail as Detail, RecentPr } from '../../api/memberDetail'
 import { DashboardContext } from '../DashboardProvider/context'
 import type { DashboardValue } from '../DashboardProvider'
@@ -62,6 +63,7 @@ function renderDetail(over: Partial<DashboardValue> = {}, d: Detail | null = det
     period: 30,
     selectedMember: d ? d.login : null,
     memberDetail: () => d,
+    memberComparison: () => null,
     ...over,
   } as unknown as DashboardValue
   return render(
@@ -70,6 +72,105 @@ function renderDetail(over: Partial<DashboardValue> = {}, d: Detail | null = det
     </DashboardContext.Provider>,
   )
 }
+
+function metric(current: number, previous: number) {
+  const delta = current - previous
+  return { current, previous, delta, deltaPct: previous === 0 ? undefined : (delta / previous) * 100 }
+}
+
+function available(merged: [number, number], reviews: [number, number]): KpiComparison {
+  return {
+    status: 'available',
+    metrics: {
+      mergedPrs: metric(...merged),
+      reviews: metric(...reviews),
+      prsOpened: metric(1, 1),
+      additions: metric(1, 1),
+      deletions: metric(1, 1),
+    },
+  }
+}
+
+const box = (label: string) => screen.getByText(label, { selector: 'div' }).parentElement as HTMLElement
+
+describe('MemberDetail trends (#130)', () => {
+  it('AC1, AC4: PRs merged and Reviews given show glyph, delta, %, label, tone and sr sentence', () => {
+    renderDetail({ memberComparison: () => available([112, 100], [4, 5]) })
+    const merged = box('PRs merged')
+    expect(merged).toHaveTextContent('↑ +12 (+12%)')
+    expect(merged).toHaveTextContent('vs previous 30 days')
+    expect(merged.querySelector('[class*="good"]')).not.toBeNull()
+    expect(within(merged).getByText('up 12 percent versus previous 30 days')).toBeInTheDocument()
+    const reviews = box('Reviews given')
+    expect(reviews).toHaveTextContent('↓ −1 (−20%)')
+    expect(reviews.querySelector('[class*="bad"]')).not.toBeNull()
+    expect(within(reviews).getByText('down 20 percent versus previous 30 days')).toBeInTheDocument()
+  })
+
+  it('AC2: insufficient history and previous 0 show "No comparison" with no arrow or number', () => {
+    const { unmount } = renderDetail({
+      memberComparison: () => ({ status: 'insufficient_history' }) as unknown as KpiComparison,
+    })
+    for (const l of ['PRs merged', 'Reviews given']) {
+      expect(box(l)).toHaveTextContent('No comparison')
+      expect(box(l).textContent).not.toMatch(/[↑↓→%]/)
+    }
+    unmount()
+    renderDetail({ memberComparison: () => available([3, 0], [0, 0]) })
+    for (const l of ['PRs merged', 'Reviews given']) {
+      expect(box(l)).toHaveTextContent('No comparison')
+      expect(box(l).textContent).not.toMatch(/[↑↓→%]/)
+      expect(box(l).querySelector('[class*="good"], [class*="bad"]')).toBeNull()
+    }
+  })
+
+  it('AC2: no comparison at all (null) shows "No comparison"', () => {
+    renderDetail()
+    expect(box('PRs merged')).toHaveTextContent('No comparison')
+  })
+
+  it('AC3: rerendering with another member, period and selection updates the labels', () => {
+    const mk = (over: Partial<DashboardValue>, d: Detail) =>
+      ({
+        status: 'ready',
+        teamChosen: true,
+        teamMembers: ['Ana', 'bob'],
+        selection: 'all',
+        period: 30,
+        selectedMember: d.login,
+        memberDetail: () => d,
+        ...over,
+      }) as unknown as DashboardValue
+    const ui = (v: DashboardValue) => (
+      <DashboardContext.Provider value={v}>
+        <MemberDetail now={() => NOW} />
+      </DashboardContext.Provider>
+    )
+    const { rerender } = render(ui(mk({ memberComparison: () => available([11, 10], [5, 5]) }, detail())))
+    expect(box('PRs merged')).toHaveTextContent('+1 (+10%)')
+    expect(box('PRs merged')).toHaveTextContent('vs previous 30 days')
+    rerender(
+      ui(
+        mk(
+          { period: 7, selection: 'acme/api', memberComparison: () => available([5, 10], [6, 5]) },
+          detail({ login: 'bob' }, 7),
+        ),
+      ),
+    )
+    expect(screen.getByRole('region', { name: 'bob' })).toBeInTheDocument()
+    expect(box('PRs merged')).toHaveTextContent('−5 (−50%)')
+    expect(box('PRs merged')).toHaveTextContent('vs previous 7 days')
+    expect(box('Reviews given')).toHaveTextContent('+1 (+20%)')
+  })
+
+  it('AC1: loading shows trend skeletons on the two trended boxes only', () => {
+    const { container } = renderDetail({ status: 'loading', selectedMember: null }, null)
+    expect(container.textContent).not.toMatch(/No comparison/)
+    expect(within(box('PRs merged')).getAllByTestId('skeleton')).toHaveLength(2)
+    expect(within(box('Reviews given')).getAllByTestId('skeleton')).toHaveLength(2)
+    expect(within(box('Reviews received')).getAllByTestId('skeleton')).toHaveLength(1)
+  })
+})
 
 describe('MemberDetail', () => {
   it('AC1: shows a hint and no panel when nothing is selected', () => {

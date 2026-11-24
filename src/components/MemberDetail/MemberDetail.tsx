@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
 import { formatDuration, formatSize } from '../../api/reviewMetrics'
+import { metricOf, trendView } from '../../api/trendView'
 import BarList from '../BarList'
 import ColumnChart from '../ColumnChart'
 import { useDashboard } from '../DashboardProvider'
@@ -8,6 +9,7 @@ import PrLink from '../PrLink'
 import PrStateBadge from '../PrStateBadge'
 import Skeleton from '../Skeleton'
 import StatCard from '../StatCard'
+import TrendIndicator from '../TrendIndicator'
 import { dayLabel, formatFull, formatWhen, weekLabel } from './formatWhen'
 import styles from './MemberDetail.module.css'
 
@@ -31,8 +33,16 @@ function plural(n: number, one: string, many: string): string {
 
 // Detail of the member picked in the Team table. Reads only the dashboard context: no fetch.
 function MemberDetail({ now }: MemberDetailProps) {
-  const { status, teamChosen, teamMembers, selectedMember, period, selection, memberDetail } =
-    useDashboard()
+  const {
+    status,
+    teamChosen,
+    teamMembers,
+    selectedMember,
+    period,
+    selection,
+    memberDetail,
+    memberComparison,
+  } = useDashboard()
   const headingId = useId()
   const sectionRef = useRef<HTMLElement>(null)
   const detail = status === 'ready' && selectedMember !== null ? memberDetail() : null
@@ -60,6 +70,7 @@ function MemberDetail({ now }: MemberDetailProps) {
               key={i}
               label={LABELS[i]}
               value={<Skeleton width="50%" height="calc(var(--text-xl) * var(--text-xl-line))" />}
+              trend={i < 2 ? <TrendIndicator loading /> : undefined}
             />
           ))}
         </div>
@@ -90,6 +101,9 @@ function MemberDetail({ now }: MemberDetailProps) {
   if (!detail || !teamMembers.some((m) => m.toLowerCase() === selectedLower)) return null
 
   const nowDate = now()
+  const cmp = memberComparison()
+  const mergedTrend = trendView(cmp ? metricOf(cmp, 'mergedPrs') : undefined, period)
+  const reviewsTrend = trendView(cmp ? metricOf(cmp, 'reviews') : undefined, period)
   const scope = selection === 'all' ? 'All repositories' : selection
   const weekly = period !== 7
   const unit = weekly ? 'week' : 'day'
@@ -132,8 +146,12 @@ function MemberDetail({ now }: MemberDetailProps) {
       </header>
 
       <div className={styles.tiles}>
-        <StatCard label="PRs merged" value={detail.merged} />
-        <StatCard label="Reviews given" value={detail.reviewsGiven} />
+        <StatCard label="PRs merged" value={detail.merged} trend={<TrendIndicator view={mergedTrend} />} />
+        <StatCard
+          label="Reviews given"
+          value={detail.reviewsGiven}
+          trend={<TrendIndicator view={reviewsTrend} />}
+        />
         <StatCard label="Reviews received" value={detail.reviewsReceived} />
         <StatCard label="Median time to first review" value={formatDuration(detail.medianFirstReviewMs)} />
         <StatCard label="Average PR size" value={formatSize(detail.avgPrSize)} />
