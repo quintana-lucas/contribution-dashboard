@@ -54,6 +54,8 @@ export interface DashboardValue {
   teamStats: () => TeamStatsRow[]
   /** Detail of the selected member for the current selection and period; null when none is selected. */
   memberDetail: () => MemberDetail | null
+  /** Period-over-period comparison for the selected member (#134); null when none is selected. */
+  memberComparison: () => KpiComparison | null
   /** The member picked in the Team table (in memory only), or null. */
   selectedMember: string | null
   setSelectedMember: (login: string | null) => void

@@ -25,6 +25,7 @@ import type { Period, RepoEntry, RepoLoadError, RepoSelection } from '../../api/
 import type { DamagedRepo, LinkedRepo } from '../../api/types'
 import { kpiComparison } from '../../api/kpiComparison'
 import { kpis as kpisPure } from '../../api/kpis'
+import { memberComparison as memberComparisonPure } from '../../api/memberComparison'
 import { memberDetail as memberDetailPure } from '../../api/memberDetail'
 import { prActivity as prActivityPure } from '../../api/prActivity'
 import { reviewsPerPerson } from '../../api/reviews'
@@ -259,6 +260,8 @@ export default function DashboardProvider({
       teamStats: () => teamStatsPure(entries, selection, period, nowDate, teamMembers),
       memberDetail: () =>
         selectedMember === null ? null : memberDetailPure(entries, selection, period, nowDate, selectedMember),
+      memberComparison: () =>
+        selectedMember === null ? null : memberComparisonPure(entries, selection, period, nowDate, selectedMember),
       selectedMember,
       setSelectedMember,
       syncState,
