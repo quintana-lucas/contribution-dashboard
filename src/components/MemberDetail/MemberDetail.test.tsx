@@ -4,6 +4,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { buckets } from '../../api/dashboard'
 import type { Period } from '../../api/dashboard'
+import type { KpiComparison } from '../../api/kpiComparison'
 import type { MemberDetail as Detail, RecentPr } from '../../api/memberDetail'
 import { DashboardContext } from '../DashboardProvider/context'
 import type { DashboardValue } from '../DashboardProvider'
@@ -62,6 +63,7 @@ function renderDetail(over: Partial<DashboardValue> = {}, d: Detail | null = det
     period: 30,
     selectedMember: d ? d.login : null,
     memberDetail: () => d,
+    memberComparison: () => null,
     ...over,
   } as unknown as DashboardValue
   return render(
@@ -70,6 +72,152 @@ function renderDetail(over: Partial<DashboardValue> = {}, d: Detail | null = det
     </DashboardContext.Provider>,
   )
 }
+
+function metric(current: number, previous: number) {
+  const delta = current - previous
+  return { current, previous, delta, deltaPct: previous === 0 ? undefined : (delta / previous) * 100 }
+}
+
+function available(merged: [number, number], reviews: [number, number]): KpiComparison {
+  return {
+    status: 'available',
+    metrics: {
+      mergedPrs: metric(...merged),
+      reviews: metric(...reviews),
+      prsOpened: metric(1, 1),
+      additions: metric(1, 1),
+      deletions: metric(1, 1),
+    },
+  }
+}
+
+const box = (label: string) => screen.getByText(label, { selector: 'div' }).parentElement as HTMLElement
+
+describe('MemberDetail trends (#130)', () => {
+  it('AC1, AC4: PRs merged and Reviews given show glyph, delta, %, label, tone and sr sentence', () => {
+    renderDetail({ memberComparison: () => available([112, 100], [4, 5]) })
+    const merged = box('PRs merged')
+    expect(merged).toHaveTextContent('↑ +12 (+12%)')
+    expect(merged).toHaveTextContent('vs previous 30 days')
+    expect(merged.querySelector('[class*="good"]')).not.toBeNull()
+    expect(within(merged).getByText('up 12 percent versus previous 30 days')).toBeInTheDocument()
+    const reviews = box('Reviews given')
+    expect(reviews).toHaveTextContent('↓ −1 (−20%)')
+    expect(reviews.querySelector('[class*="bad"]')).not.toBeNull()
+    expect(within(reviews).getByText('down 20 percent versus previous 30 days')).toBeInTheDocument()
+  })
+
+  it('AC2: insufficient history and previous 0 show "No comparison" with no arrow or number', () => {
+    const { unmount } = renderDetail({
+      memberComparison: () => ({ status: 'insufficient_history' }) as unknown as KpiComparison,
+    })
+    for (const l of ['PRs merged', 'Reviews given']) {
+      expect(box(l)).toHaveTextContent('No comparison')
+      expect(box(l).textContent).not.toMatch(/[↑↓→%]/)
+    }
+    unmount()
+    renderDetail({ memberComparison: () => available([3, 0], [0, 0]) })
+    for (const l of ['PRs merged', 'Reviews given']) {
+      expect(box(l)).toHaveTextContent('No comparison')
+      expect(box(l).textContent).not.toMatch(/[↑↓→%]/)
+      expect(box(l).querySelector('[class*="good"], [class*="bad"]')).toBeNull()
+    }
+  })
+
+  it('AC2: no comparison at all (null) shows "No comparison"', () => {
+    renderDetail()
+    expect(box('PRs merged')).toHaveTextContent('No comparison')
+  })
+
+  it('AC3: rerendering with another member, period and selection updates the labels', () => {
+    const mk = (over: Partial<DashboardValue>, d: Detail) =>
+      ({
+        status: 'ready',
+        teamChosen: true,
+        teamMembers: ['Ana', 'bob'],
+        selection: 'all',
+        period: 30,
+        selectedMember: d.login,
+        memberDetail: () => d,
+        ...over,
+      }) as unknown as DashboardValue
+    const ui = (v: DashboardValue) => (
+      <DashboardContext.Provider value={v}>
+        <MemberDetail now={() => NOW} />
+      </DashboardContext.Provider>
+    )
+    const { rerender } = render(ui(mk({ memberComparison: () => available([11, 10], [5, 5]) }, detail())))
+    expect(box('PRs merged')).toHaveTextContent('+1 (+10%)')
+    expect(box('PRs merged')).toHaveTextContent('vs previous 30 days')
+    rerender(
+      ui(
+        mk(
+          { period: 7, selection: 'acme/api', memberComparison: () => available([5, 10], [6, 5]) },
+          detail({ login: 'bob' }, 7),
+        ),
+      ),
+    )
+    expect(screen.getByRole('region', { name: 'bob' })).toBeInTheDocument()
+    expect(box('PRs merged')).toHaveTextContent('−5 (−50%)')
+    expect(box('PRs merged')).toHaveTextContent('vs previous 7 days')
+    expect(box('Reviews given')).toHaveTextContent('+1 (+20%)')
+  })
+
+  it('AC1: loading shows trend skeletons on the two trended boxes only', () => {
+    const { container } = renderDetail({ status: 'loading', selectedMember: null }, null)
+    expect(container.textContent).not.toMatch(/No comparison/)
+    expect(within(box('PRs merged')).getAllByTestId('skeleton')).toHaveLength(2)
+    expect(within(box('Reviews given')).getAllByTestId('skeleton')).toHaveLength(2)
+    expect(within(box('Reviews received')).getAllByTestId('skeleton')).toHaveLength(1)
+    expect(within(box('Lines changed (+/−)')).getAllByTestId('skeleton')).toHaveLength(2)
+  })
+
+  it('AC6, AC1, AC4: Lines box combines additions and deletions like the Overview', () => {
+    const cmp = available([1, 1], [1, 1])
+    if (cmp.status === 'available') {
+      cmp.metrics.additions = metric(10, 5)
+      cmp.metrics.deletions = metric(4, 1)
+    }
+    renderDetail({ memberComparison: () => cmp })
+    const lines = box('Lines changed (+/−)')
+    // current 14 vs previous 6: +8 (+133%)
+    expect(lines).toHaveTextContent('↑ +8 (+133%)')
+    expect(lines).toHaveTextContent('vs previous 30 days')
+    expect(lines.querySelector('[class*="good"]')).not.toBeNull()
+    expect(within(lines).getByText('up 133 percent versus previous 30 days')).toBeInTheDocument()
+    expect(within(lines).getByRole('img')).toHaveAttribute('aria-label', '10 added, 4 removed')
+  })
+
+  it('AC2: Lines box shows a dash and "No comparison" when history is insufficient or previous is 0', () => {
+    const { unmount } = renderDetail({
+      memberComparison: () => ({ status: 'insufficient_history' }) as unknown as KpiComparison,
+    })
+    expect(box('Lines changed (+/−)')).toHaveTextContent('—')
+    expect(box('Lines changed (+/−)')).toHaveTextContent('No comparison')
+    unmount()
+    const cmp = available([1, 1], [1, 1])
+    if (cmp.status === 'available') {
+      cmp.metrics.additions = metric(3, 0)
+      cmp.metrics.deletions = metric(2, 0)
+    }
+    renderDetail({ memberComparison: () => cmp })
+    expect(box('Lines changed (+/−)')).toHaveTextContent('No comparison')
+    expect(box('Lines changed (+/−)').textContent).not.toMatch(/[↑↓→%]/)
+  })
+
+  it('AC3: Lines trend follows the period', () => {
+    renderDetail({ period: 7, memberComparison: () => available([1, 1], [1, 1]) }, detail({}, 7))
+    expect(box('Lines changed (+/−)')).toHaveTextContent('→ 0 (0%)')
+    expect(box('Lines changed (+/−)')).toHaveTextContent('vs previous 7 days')
+  })
+
+  it('AC5: the four non-trended boxes have no trend text or sr sentence', () => {
+    renderDetail({ memberComparison: () => available([112, 100], [4, 5]) })
+    for (const l of ['Reviews received', 'Median time to first review', 'Average PR size', 'Median cycle time']) {
+      expect(box(l).textContent).not.toMatch(/vs previous|No comparison|percent|[↑↓→]/)
+    }
+  })
+})
 
 describe('MemberDetail', () => {
   it('AC1: shows a hint and no panel when nothing is selected', () => {
@@ -83,7 +231,10 @@ describe('MemberDetail', () => {
     const busy = container.querySelector('[aria-busy="true"]')
     expect(busy).not.toBeNull()
     expect(within(busy as HTMLElement).getAllByTestId('skeleton').length).toBeGreaterThan(6)
-    expect(container).toHaveTextContent('')
+    // Only the static box labels (like the Overview cards); no data text.
+    expect(container.textContent).toBe(
+      'PRs mergedReviews givenReviews receivedMedian time to first reviewAverage PR sizeMedian cycle timeLines changed (+/−)',
+    )
     expect(screen.queryByText(/loading/i)).toBeNull()
     expect(screen.queryByRole('heading')).toBeNull()
   })
@@ -99,7 +250,7 @@ describe('MemberDetail', () => {
     expect(within(panel).getByRole('heading', { level: 2, name: 'Ana' })).toBeInTheDocument()
     expect(within(panel).getByText('acme/api · last 30 days')).toBeInTheDocument()
     const tile = (label: string) =>
-      within(panel).getByText(label, { selector: 'span' }).previousElementSibling
+      within(panel).getByText(label, { selector: 'div' }).nextElementSibling
     expect(tile('PRs merged')).toHaveTextContent('3')
     expect(tile('Reviews given')).toHaveTextContent('6')
     expect(tile('Reviews received')).toHaveTextContent('2')
@@ -108,8 +259,17 @@ describe('MemberDetail', () => {
   it('AC3 (#21): shows time to first review, average PR size and cycle time with units', () => {
     renderDetail()
     const panel = screen.getByRole('region', { name: 'Ana' })
-    const tile = (label: string) =>
-      within(panel).getByText(label, { selector: 'span' }).previousElementSibling
+    const tile = (label: string) => within(panel).getByText(label).nextElementSibling
+    expect(tile('Median time to first review')).toHaveTextContent('5.5 h')
+    expect(tile('Average PR size')).toHaveTextContent('320 lines')
+    expect(tile('Median cycle time')).toHaveTextContent('3 days')
+  })
+
+  it('AC5: the four non-trended boxes render value and label', () => {
+    renderDetail()
+    const panel = screen.getByRole('region', { name: 'Ana' })
+    const tile = (label: string) => within(panel).getByText(label).nextElementSibling
+    expect(tile('Reviews received')).toHaveTextContent('2')
     expect(tile('Median time to first review')).toHaveTextContent('5.5 h')
     expect(tile('Average PR size')).toHaveTextContent('320 lines')
     expect(tile('Median cycle time')).toHaveTextContent('3 days')
@@ -118,8 +278,7 @@ describe('MemberDetail', () => {
   it('AC4 (#21): shows n/a when there are no qualifying pull requests', () => {
     renderDetail({}, detail({ ...EMPTY, medianFirstReviewMs: null, avgPrSize: null, medianCycleMs: null }))
     const panel = screen.getByRole('region', { name: 'Ana' })
-    const tile = (label: string) =>
-      within(panel).getByText(label, { selector: 'span' }).previousElementSibling
+    const tile = (label: string) => within(panel).getByText(label).nextElementSibling
     expect(tile('Median time to first review')).toHaveTextContent('n/a')
     expect(tile('Average PR size')).toHaveTextContent('n/a')
     expect(tile('Median cycle time')).toHaveTextContent('n/a')
@@ -351,7 +510,7 @@ describe('MemberDetail', () => {
     expect(screen.getByText('Ana has not given any reviews in this period.')).toBeInTheDocument()
     expect(screen.getByText('Ana has no pull requests in this period.')).toBeInTheDocument()
     expect(screen.queryByRole('figure')).toBeNull()
-    expect(screen.getByText('PRs merged', { selector: 'span' }).previousElementSibling).toHaveTextContent('0')
+    expect(screen.getByText('PRs merged', { selector: 'div' }).nextElementSibling).toHaveTextContent('0')
   })
 
   it('AC6: partial activity only empties the section without data', () => {
