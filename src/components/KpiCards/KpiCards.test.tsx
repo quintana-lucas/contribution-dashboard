@@ -74,7 +74,7 @@ async function renderCards(deps = makeKpiDeps()) {
   return deps
 }
 
-const card = (label: string) => screen.getByText(label).parentElement as HTMLElement
+const card = (label: string) => screen.getByText(label).parentElement?.parentElement as HTMLElement
 
 describe('KpiCards', () => {
   it('AC1 (#21): time to first review and cycle time cards show medians with units', async () => {

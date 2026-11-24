@@ -20,7 +20,37 @@ describe('StatCard', () => {
 
   it('AC4: renders no sub-line when omitted', () => {
     const { container } = render(<StatCard label="Merged PRs" value="No data yet" />)
-    expect(container.firstElementChild?.children).toHaveLength(2)
+    expect(container.firstElementChild?.children).toHaveLength(1)
+  })
+
+  // AC2
+  it('AC2: the sub-line sits in a footer that is the last child of the card', () => {
+    const { container } = render(<StatCard label="Open PRs" value="3" subline="sub" />)
+    const card = container.firstElementChild as HTMLElement
+    const footer = card.lastElementChild as HTMLElement
+    expect(footer).not.toBe(card.firstElementChild)
+    expect(footer.className).toMatch(/footer/i)
+    expect(footer).toContainElement(screen.getByText('sub'))
+  })
+
+  // AC3
+  it('AC3: label, value and trend live in the body, the first child of the card', () => {
+    const { container } = render(
+      <StatCard label="Merged PRs" value="28" trend={<div data-testid="trend" />} subline="sub" />,
+    )
+    const body = container.firstElementChild?.firstElementChild as HTMLElement
+    expect(body.className).toMatch(/body/i)
+    expect(body).toContainElement(screen.getByText('Merged PRs'))
+    expect(body).toContainElement(screen.getByText('28'))
+    expect(body).toContainElement(screen.getByTestId('trend'))
+    expect(body).not.toContainElement(screen.getByText('sub'))
+  })
+
+  it('AC3: a card without a sub-line has a body and no footer', () => {
+    const { container } = render(<StatCard label="Merged PRs" value="1" />)
+    const card = container.firstElementChild as HTMLElement
+    expect(card.firstElementChild?.className).toMatch(/body/i)
+    expect(card.querySelector('[class*="footer"]')).toBeNull()
   })
 
   // #84 AC3, AC5
@@ -51,12 +81,15 @@ describe('StatCard', () => {
     render(<StatCard label="Merged PRs" value="28" trend={<div data-testid="trend" />} subline="sub" />)
     const trend = screen.getByTestId('trend')
     expect(trend.previousElementSibling).toBe(screen.getByText('28'))
-    expect(trend.nextElementSibling).toBe(screen.getByText('sub'))
+    expect(trend.nextElementSibling).toBeNull()
+    expect(trend.parentElement?.nextElementSibling).toContainElement(screen.getByText('sub'))
   })
 
   it('#87 AC7: without a trend the card is unchanged', () => {
     const { container } = render(<StatCard label="Open PRs" value="3" subline="sub" />)
-    expect(container.firstElementChild?.children).toHaveLength(3)
+    const card = container.firstElementChild as HTMLElement
+    expect(card.children).toHaveLength(2)
+    expect(card.firstElementChild?.children).toHaveLength(2)
   })
 
   it('AC4: value is never empty', () => {

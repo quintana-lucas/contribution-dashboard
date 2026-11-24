@@ -22,22 +22,26 @@ function StatCard({ label, value, subline, sublineTone, sublineIcon, srText, com
   const shown = value === '' ? '…' : value
   return (
     <div className={styles.card}>
-      <div className={styles.label}>{label}</div>
-      <div className={compact ? `${styles.value} ${styles.compact}` : styles.value}>
-        {srText === undefined ? (
-          shown
-        ) : (
-          <>
-            <span aria-hidden="true">{shown}</span>
-            <span className={styles.srOnly}>{srText}</span>
-          </>
-        )}
+      <div className={styles.body}>
+        <div className={styles.label}>{label}</div>
+        <div className={compact ? `${styles.value} ${styles.compact}` : styles.value}>
+          {srText === undefined ? (
+            shown
+          ) : (
+            <>
+              <span aria-hidden="true">{shown}</span>
+              <span className={styles.srOnly}>{srText}</span>
+            </>
+          )}
+        </div>
+        {trend ?? null}
       </div>
-      {trend ?? null}
       {subline ? (
-        <div className={sublineTone === 'caution' ? `${styles.subline} ${styles.sublineCaution}` : styles.subline}>
-          {sublineIcon ? <span className={styles.sublineIcon}>{sublineIcon}</span> : null}
-          {subline}
+        <div className={styles.footer}>
+          <div className={sublineTone === 'caution' ? `${styles.subline} ${styles.sublineCaution}` : styles.subline}>
+            {sublineIcon ? <span className={styles.sublineIcon}>{sublineIcon}</span> : null}
+            {subline}
+          </div>
         </div>
       ) : null}
     </div>
