@@ -363,6 +363,79 @@ describe('KpiCards', () => {
     expect(document.body).not.toHaveTextContent(/vs previous|No comparison/)
   })
 
+  // #129: equal-height boxes with the footer pinned to the bottom (structure only; jsdom has no layout).
+  const LABEL_LIST = ['Open PRs', 'Merged PRs', 'Code reviews', 'Lines changed (+/−)', 'Time to first review', 'Cycle time']
+  const TRENDED_LABELS = ['Merged PRs', 'Code reviews', 'Lines changed (+/−)']
+
+  function expectFooterLast(l: string) {
+    const c = card(l)
+    const footer = c.lastElementChild as HTMLElement
+    expect(footer.className).toMatch(/footer/)
+    expect(c.children).toHaveLength(2)
+    expect((c.firstElementChild as HTMLElement).className).toMatch(/body/)
+    expect(footer.textContent).not.toBe('')
+  }
+
+  it('#129 AC1: the six cards sit in the grid list and the list and items carry the equal-height classes', async () => {
+    await renderCards(makeTrendDeps())
+    const list = screen.getByRole('list')
+    expect(list.className).toMatch(/list/)
+    const items = within(list).getAllByRole('listitem')
+    expect(items).toHaveLength(6)
+    for (const li of items) expect(li.className).toMatch(/item/)
+    for (const l of LABEL_LIST) expect(list).toContainElement(card(l))
+  })
+
+  it('#129 AC1, AC2: every card has its sub-line as the last child (footer); trended and plain cards share the structure', async () => {
+    await renderCards(makeTrendDeps())
+    for (const l of LABEL_LIST) expectFooterLast(l)
+    for (const l of TRENDED_LABELS) {
+      expect((card(l).firstElementChild as HTMLElement).textContent).toMatch(/vs previous/)
+      expect((card(l).lastElementChild as HTMLElement).textContent).not.toMatch(/vs previous/)
+    }
+  })
+
+  it('#129 AC2, AC4: loading state keeps the footer (skeleton sub-line) last and the trend skeleton in the body', async () => {
+    const deps = makeKpiDeps()
+    deps.listRepos = vi.fn(() => new Promise(() => {})) as never
+    render(
+      <DashboardProvider {...deps}>
+        <KpiCards />
+      </DashboardProvider>,
+    )
+    for (const l of LABEL_LIST) {
+      const c = card(l)
+      expect(c.children).toHaveLength(2)
+      expect((c.lastElementChild as HTMLElement).className).toMatch(/footer/)
+      expect(c.lastElementChild?.querySelectorAll('[class*="keleton"]')).toHaveLength(1)
+    }
+    for (const l of TRENDED_LABELS) {
+      expect(card(l).firstElementChild?.querySelectorAll('[class*="keleton"]').length).toBe(2)
+    }
+  })
+
+  it('#129 AC4: "No comparison" trend state keeps body/footer structure on every card', async () => {
+    await renderCards(makeTrendDeps())
+    fireEvent.click(screen.getByRole('radio', { name: /90/ }))
+    for (const l of TRENDED_LABELS) {
+      expect(card(l)).toHaveTextContent('No comparison')
+      expect((card(l).firstElementChild as HTMLElement).textContent).toMatch(/No comparison/)
+    }
+    for (const l of LABEL_LIST) expectFooterLast(l)
+  })
+
+  it('#129 AC4: "No data yet" renders six cards with a body and no footer, without crashing', async () => {
+    const deps = makeKpiDeps()
+    deps.getRepoData = vi.fn(async () => ({ ok: true as const, data: null })) as never
+    await renderCards(deps)
+    for (const l of LABEL_LIST) {
+      const c = card(l)
+      expect(c.children).toHaveLength(1)
+      expect((c.firstElementChild as HTMLElement).className).toMatch(/body/)
+      expect(c.querySelector('[class*="footer"]')).toBeNull()
+    }
+  })
+
   it('AC7: lines value is announced once, via the LinesDelta accessible name', async () => {
     await renderCards()
     expect(screen.getAllByRole('img', { name: '1,200 added, 300 removed' })).toHaveLength(1)
