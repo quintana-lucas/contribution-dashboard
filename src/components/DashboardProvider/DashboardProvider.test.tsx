@@ -405,6 +405,47 @@ describe('DashboardProvider', () => {
     expect(screen.getByTestId('detail')).toHaveTextContent('ANA|1')
   })
 
+  it('#134 AC5: memberComparison() is null without a selection and follows member, period and repo selection', async () => {
+    const { deps } = teamOf(['ana', 'bob'])
+    deps.getRepoData.mockImplementation(async (repo: string) => {
+      const base = storedRepo(repo, '2026-06-15T09:00:00.000Z', repo === 'acme/api' ? ['ana', 'bob'] : ['ana', 'cy'])
+      // bob's PR sits in the previous 30 day window (Apr 16 - May 16).
+      if (repo === 'acme/api') base.pullRequests[1].createdAt = '2026-05-01T10:00:00.000Z'
+      return { ok: true as const, data: base }
+    })
+    function MemberCompareConsumer() {
+      const { status, memberComparison, setSelectedMember, setSelection, setPeriod } = useDashboard()
+      const c = status === 'ready' ? memberComparison() : null
+      const text =
+        c === null ? 'none' : c.status === 'available' ? `${c.metrics.prsOpened.current}/${c.metrics.prsOpened.previous}` : 'insufficient'
+      return (
+        <div>
+          <p data-testid="mcmp">{text}</p>
+          <button onClick={() => setSelectedMember('ANA')}>select ana</button>
+          <button onClick={() => setSelectedMember('bob')}>select bob</button>
+          <button onClick={() => setSelection('acme/web')}>web</button>
+          <button onClick={() => setPeriod(90)}>ninety</button>
+        </div>
+      )
+    }
+    render(
+      <DashboardProvider {...deps}>
+        <MemberCompareConsumer />
+      </DashboardProvider>,
+    )
+    await waitFor(() => expect(deps.getRepoData).toHaveBeenCalled())
+    expect(screen.getByTestId('mcmp')).toHaveTextContent('none')
+    fireEvent.click(screen.getByText('select ana'))
+    expect(screen.getByTestId('mcmp')).toHaveTextContent('2/0')
+    fireEvent.click(screen.getByText('select bob'))
+    expect(screen.getByTestId('mcmp')).toHaveTextContent('0/1')
+    fireEvent.click(screen.getByText('select ana'))
+    fireEvent.click(screen.getByText('web'))
+    expect(screen.getByTestId('mcmp')).toHaveTextContent('1/0')
+    fireEvent.click(screen.getByText('ninety'))
+    expect(screen.getByTestId('mcmp')).toHaveTextContent('insufficient')
+  })
+
   function EntriesConsumer() {
     const { status, entries, setSelection, subline } = useDashboard()
     return (
