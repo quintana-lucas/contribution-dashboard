@@ -9,6 +9,8 @@ import Header from './components/Header'
 import KpiCards from './components/KpiCards'
 import MemberDetail from './components/MemberDetail'
 import SettingsDialog from './components/SettingsDialog'
+import SyncAlert from './components/SyncAlert'
+import SyncControl from './components/SyncControl'
 import Tabs from './components/Tabs'
 import TeamTable from './components/TeamTable'
 import Toolbar from './components/Toolbar'
@@ -99,6 +101,7 @@ function App(deps: DashboardDeps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [initialTab, setInitialTab] = useState<'repositories' | 'team'>('repositories')
   const settingsButton = useRef<HTMLButtonElement>(null)
+  const syncButton = useRef<HTMLButtonElement>(null)
   const chooseTeamButton = useRef<HTMLButtonElement>(null)
   const openSettings = () => {
     setInitialTab('repositories')
@@ -111,9 +114,14 @@ function App(deps: DashboardDeps) {
 
   return (
     <div className={styles.app}>
-      <Header onOpenSettings={openSettings} settingsRef={settingsButton} />
-      <main className={styles.main}>
-        <DashboardProvider {...deps}>
+      <DashboardProvider {...deps}>
+        <Header
+          onOpenSettings={openSettings}
+          settingsRef={settingsButton}
+          actions={<SyncControl syncRef={syncButton} />}
+        />
+        <SyncAlert syncRef={syncButton} settingsRef={settingsButton} />
+        <main className={styles.main}>
           <Toolbar />
           <Content
             onAddRepositories={openSettings}
@@ -128,8 +136,8 @@ function App(deps: DashboardDeps) {
             onClose={() => setSettingsOpen(false)}
             fallbackFocus={() => settingsButton.current}
           />
-        </DashboardProvider>
-      </main>
+        </main>
+      </DashboardProvider>
       <Footer />
     </div>
   )

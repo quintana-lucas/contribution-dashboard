@@ -28,7 +28,9 @@
 }
 
 .settings {
-  padding: var(--space-1) var(--space-3);
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--color-border-dashed);
   border-radius: var(--radius-md);
   background: var(--color-surface);
@@ -51,6 +53,10 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--space-4) var(--space-6);
+  }
+
+  .controls {
+    justify-content: flex-end;
   }
 }
 
