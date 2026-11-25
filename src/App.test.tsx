@@ -54,6 +54,28 @@ describe('App', () => {
     expect(screen.getAllByRole('contentinfo')).toHaveLength(1)
   })
 
+  it('#143 AC3: the Header holds Sync now before Settings and the theme toggle', async () => {
+    await renderApp()
+    const banner = within(screen.getByRole('banner'))
+    const sync = banner.getByRole('button', { name: 'Sync now' })
+    expect(sync.nextElementSibling).toBe(banner.getByRole('button', { name: 'Open settings' }))
+  })
+
+  it('#143 AC4: a failed start shows the strip between the Header and main; Dismiss focuses Header Sync', async () => {
+    const deps = makeDeps()
+    deps.startSync.mockImplementation(async () => ({ ok: false as const, error: 'request_failed' as const }))
+    render(<App {...deps} />)
+    await screen.findByLabelText('Repository')
+    const banner = screen.getByRole('banner')
+    fireEvent.click(within(banner).getByRole('button', { name: 'Sync now' }))
+    const alerts = await screen.findAllByRole('alert')
+    const strip = alerts.find((a) => !screen.getByRole('main').contains(a))!
+    expect(strip).toHaveTextContent('Could not start the sync.')
+    expect(banner.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(within(strip).getByRole('button', { name: 'Dismiss sync result' }))
+    expect(within(banner).getByRole('button', { name: 'Sync now' })).toHaveFocus()
+  })
+
   it('AC1: shows the KPI cards above the widgets and no intro line', async () => {
     await renderApp()
     const main = screen.getByRole('main')
@@ -100,11 +122,14 @@ describe('App', () => {
     expect(buckets.length).toBeGreaterThan(0)
     for (const bucket of buckets) expect(bucket.tagName.toLowerCase()).toBe('g')
     const focusable = all.filter((el) => el.tagName !== 'A' && !buckets.includes(el))
-    expect(focusable).toHaveLength(9)
+    // #143 T2: the Header Sync now comes first. The Toolbar still has its own Sync now until T3
+    // removes it (then this count drops back to 9 and the last BUTTON below goes away).
+    expect(focusable).toHaveLength(10)
     const tabs = [...focusable].filter((el) => el.getAttribute('role') === 'tab')
     expect(tabs).toHaveLength(2)
     const others = [...focusable].filter((el) => el.getAttribute('role') !== 'tab')
     expect(others.map((el) => el.tagName)).toEqual([
+      'BUTTON',
       'BUTTON',
       'BUTTON',
       'SELECT',
@@ -113,8 +138,9 @@ describe('App', () => {
       'INPUT',
       'BUTTON',
     ])
-    expect(others[0]).toHaveAccessibleName('Open settings')
-    expect(others[1]).toHaveAccessibleName('Dark theme')
+    expect(others[0]).toHaveAccessibleName('Sync now')
+    expect(others[1]).toHaveAccessibleName('Open settings')
+    expect(others[2]).toHaveAccessibleName('Dark theme')
   })
 
   it('AC1: shows Overview and Team tabs, Overview selected with the grid', async () => {

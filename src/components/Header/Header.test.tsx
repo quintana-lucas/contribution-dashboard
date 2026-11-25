@@ -37,6 +37,20 @@ describe('Header', () => {
     expect(onOpenSettings).toHaveBeenCalledTimes(1)
   })
 
+  it('#143 AC4: the actions slot renders before Settings and the theme toggle', () => {
+    render(<Header onOpenSettings={() => {}} actions={<button type="button">Sync now</button>} />)
+    const sync = screen.getByRole('button', { name: 'Sync now' })
+    const settings = screen.getByRole('button', { name: 'Open settings' })
+    const toggle = screen.getByRole('button', { name: 'Dark theme' })
+    expect(sync.nextElementSibling).toBe(settings)
+    expect(settings.nextElementSibling).toBe(toggle)
+  })
+
+  it('#143 AC4: renders without an actions slot', () => {
+    render(<Header onOpenSettings={() => {}} />)
+    expect(screen.getAllByRole('button')).toHaveLength(2)
+  })
+
   it('#79 AC1: renders the theme toggle right after the Settings button', () => {
     render(<Header onOpenSettings={() => {}} />)
     const settings = screen.getByRole('button', { name: 'Open settings' })

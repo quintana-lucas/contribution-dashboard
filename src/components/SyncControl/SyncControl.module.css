@@ -1,0 +1,43 @@
+.sync {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-accent);
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  color: var(--color-on-accent);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--text-lg-weight);
+  line-height: var(--text-sm-line);
+  cursor: pointer;
+}
+
+/* Running: outlined, no opacity reduction so contrast holds. */
+.sync[aria-disabled='true'] {
+  background: var(--color-surface);
+  color: var(--color-accent);
+  cursor: progress;
+}
+
+.sync:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* A flex item of the Header controls row: wraps onto its own row below them. */
+.progress {
+  order: 1;
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-line);
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 768px) {
+  .progress {
+    text-align: right;
+  }
+}
