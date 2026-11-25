@@ -122,9 +122,8 @@ describe('App', () => {
     expect(buckets.length).toBeGreaterThan(0)
     for (const bucket of buckets) expect(bucket.tagName.toLowerCase()).toBe('g')
     const focusable = all.filter((el) => el.tagName !== 'A' && !buckets.includes(el))
-    // #143 T2: the Header Sync now comes first. The Toolbar still has its own Sync now until T3
-    // removes it (then this count drops back to 9 and the last BUTTON below goes away).
-    expect(focusable).toHaveLength(10)
+    // #143: Sync now moved to the Header and comes first (before Settings and the theme toggle).
+    expect(focusable).toHaveLength(9)
     const tabs = [...focusable].filter((el) => el.getAttribute('role') === 'tab')
     expect(tabs).toHaveLength(2)
     const others = [...focusable].filter((el) => el.getAttribute('role') !== 'tab')
@@ -136,7 +135,6 @@ describe('App', () => {
       'INPUT',
       'INPUT',
       'INPUT',
-      'BUTTON',
     ])
     expect(others[0]).toHaveAccessibleName('Sync now')
     expect(others[1]).toHaveAccessibleName('Open settings')
