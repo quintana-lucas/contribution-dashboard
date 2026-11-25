@@ -196,22 +196,23 @@ describe('MemberDetail trends (#130)', () => {
 })
 
 describe('MemberDetail Average PR size trend (#137)', () => {
-  it('AC1, AC4, AC5, AC6: shows a rounded neutral trend, sr sentence and the unchanged value', () => {
+  it('AC1, AC3, AC5, AC6: shows a rounded bad trend for a larger size, sr sentence and the unchanged value', () => {
     renderDetail({ memberAvgPrSizeComparison: () => metric(320.4, 285.2) })
     const avg = box('Average PR size')
     expect(avg).toHaveTextContent('320 lines')
     expect(avg).toHaveTextContent('↑ +35 (+12%)')
     expect(avg).toHaveTextContent('vs previous 30 days')
-    expect(avg.querySelector('[class*="good"], [class*="bad"]')).toBeNull()
-    expect(avg.querySelector('[class*="muted"]')).not.toBeNull()
+    expect(avg.querySelector('[class*="bad"]')).not.toBeNull()
+    expect(avg.querySelector('[class*="good"], [class*="muted"]')).toBeNull()
     expect(within(avg).getByText('up 12 percent versus previous 30 days')).toBeInTheDocument()
   })
 
-  it('AC4: a decrease is neutral too', () => {
+  it('AC3: a smaller size is good (green)', () => {
     renderDetail({ memberAvgPrSizeComparison: () => metric(200, 250) })
     const avg = box('Average PR size')
     expect(avg).toHaveTextContent('↓ −50 (−20%)')
-    expect(avg.querySelector('[class*="good"], [class*="bad"]')).toBeNull()
+    expect(avg.querySelector('[class*="good"]')).not.toBeNull()
+    expect(avg.querySelector('[class*="bad"]')).toBeNull()
   })
 
   it('AC2: no comparison shows "No comparison" without arrow or percent', () => {

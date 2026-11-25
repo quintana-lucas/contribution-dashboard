@@ -103,9 +103,9 @@ function MemberDetail({ now }: MemberDetailProps) {
 
   const nowDate = now()
   const cmp = memberComparison()
-  const mergedTrend = trendView(cmp ? metricOf(cmp, 'mergedPrs') : undefined, period)
-  const reviewsTrend = trendView(cmp ? metricOf(cmp, 'reviews') : undefined, period)
-  const avgSizeTrend = trendView(memberAvgPrSizeComparison() ?? undefined, period, { neutral: true })
+  const mergedTrend = trendView('mergedPrs', cmp ? metricOf(cmp, 'mergedPrs') : undefined, period)
+  const reviewsTrend = trendView('reviews', cmp ? metricOf(cmp, 'reviews') : undefined, period)
+  const avgSizeTrend = trendView('avgPrSize', memberAvgPrSizeComparison() ?? undefined, period, { round: true })
   const scope = selection === 'all' ? 'All repositories' : selection
   const weekly = period !== 7
   const unit = weekly ? 'week' : 'day'
