@@ -63,15 +63,61 @@ describe('PrActivityChart', () => {
     expect(css).toMatch(/\.group:focus-visible\s*\{[^}]*var\(--color-focus\)/)
   })
 
-  it('#106 AC1: columns use the token colors and no pattern fills', () => {
+  it('#141 AC1 AC2 AC3: columns use the PR state tokens and no pattern fills', () => {
     const { container } = render(<PrActivityChart buckets={buckets} unit="day" />)
     const fill = (s: string) => container.querySelector(`[data-series="${s}"]`)?.getAttribute('fill')
-    expect(fill('opened')).toBe('var(--color-bar)')
-    expect(fill('merged')).toBe('var(--color-good)')
-    expect(fill('closed')).toBe('var(--color-caution)')
+    expect(fill('opened')).toBe('var(--color-pr-open)')
+    expect(fill('merged')).toBe('var(--color-pr-merged)')
+    expect(fill('closed')).toBe('var(--color-pr-closed)')
     expect(container.querySelector('pattern')).toBeNull()
     for (const el of container.querySelectorAll('[fill]')) {
       expect(el.getAttribute('fill')).not.toMatch(/url\(|gradient/)
+    }
+  })
+
+  const TOKENS = {
+    Opened: 'var(--color-pr-open)',
+    Merged: 'var(--color-pr-merged)',
+    Closed: 'var(--color-pr-closed)',
+  }
+
+  it('#141 AC4: each legend swatch uses its series token', () => {
+    render(<PrActivityChart buckets={buckets} unit="day" />)
+    const legend = screen.getByRole('list', { name: 'Legend' })
+    for (const [name, token] of Object.entries(TOKENS)) {
+      const item = within(legend).getByText(new RegExp(`^${name}`))
+      const swatch = item.querySelector('span')!
+      expect(swatch.getAttribute('style')).toContain(token)
+    }
+  })
+
+  it('#141 AC4: each tooltip row swatch uses its series token', async () => {
+    render(<PrActivityChart buckets={buckets} unit="day" />)
+    fireEvent.mouseEnter(screen.getAllByTestId('group')[0])
+    const tip = await screen.findByRole('tooltip')
+    const html = tip.innerHTML
+    for (const token of Object.values(TOKENS)) {
+      expect(html).toContain(token)
+    }
+    const swatches = [...tip.querySelectorAll('[style]')].map((e) => e.getAttribute('style'))
+    expect(swatches).toHaveLength(3)
+    Object.values(TOKENS).forEach((token, i) => expect(swatches[i]).toContain(token))
+  })
+
+  it('#141 AC5 AC6: no hex colors in the chart files and the tokens exist in both themes', () => {
+    const dir = __dirname
+    for (const f of ['PrActivityChart.tsx', 'PrActivityChart.module.css']) {
+      expect(readFileSync(resolve(dir, f), 'utf8')).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
+    }
+    const tokens = readFileSync(resolve(dir, '../../styles/tokens.css'), 'utf8')
+    const darkStart = tokens.indexOf('prefers-color-scheme: dark')
+    expect(darkStart).toBeGreaterThan(0)
+    const light = tokens.slice(0, darkStart)
+    const dark = tokens.slice(darkStart)
+    for (const name of ['open', 'merged', 'closed']) {
+      const decl = new RegExp(`--color-pr-${name}:\\s*#`)
+      expect(light).toMatch(decl)
+      expect(dark).toMatch(decl)
     }
   })
 

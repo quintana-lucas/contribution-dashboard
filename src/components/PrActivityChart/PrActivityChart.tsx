@@ -13,9 +13,9 @@ interface PrActivityChartProps {
 }
 
 const SERIES = [
-  { key: 'opened', label: 'Opened', color: 'var(--color-bar)' },
-  { key: 'merged', label: 'Merged', color: 'var(--color-good)' },
-  { key: 'closed', label: 'Closed', color: 'var(--color-caution)' },
+  { key: 'opened', label: 'Opened', color: 'var(--color-pr-open)' },
+  { key: 'merged', label: 'Merged', color: 'var(--color-pr-merged)' },
+  { key: 'closed', label: 'Closed', color: 'var(--color-pr-closed)' },
 ] as const
 
 /** Room above the plot for the number over the tallest column and the max label. */
