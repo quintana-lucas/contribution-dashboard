@@ -36,21 +36,37 @@ export function metricOf(
   return comparison.status === 'available' ? comparison.metrics[key] : undefined
 }
 
-export interface TrendViewOptions {
-  /** Direction is neither good nor bad: tone stays muted, and the delta is rounded to a whole number. */
-  neutral?: boolean
+/** Every metric that shows a trend, on both the Overview and the member tab. */
+export type TrendMetric = 'mergedPrs' | 'reviews' | 'linesChanged' | 'avgPrSize'
+
+/** Single source of truth: which direction of change is good for each metric. */
+export const GOOD_DIRECTION: Record<TrendMetric, 'up' | 'down'> = {
+  mergedPrs: 'up',
+  reviews: 'up',
+  linesChanged: 'up',
+  avgPrSize: 'down',
 }
 
-/**
- * Tone follows the sign of the delta for every metric: + good, - bad, 0 and none muted. With
- * `{ neutral: true }` the tone is always muted and the delta is rounded to a whole number.
- */
+/** good when the delta moves in the metric's good direction, bad against it, muted when 0. */
+export function toneFor(metric: TrendMetric, delta: number): TrendTone {
+  if (delta === 0) return 'muted'
+  const up = delta > 0
+  return up === (GOOD_DIRECTION[metric] === 'up') ? 'good' : 'bad'
+}
+
+export interface TrendViewOptions {
+  /** Format only: round the delta to a whole number. Never affects the tone. */
+  round?: boolean
+}
+
+/** The tone comes only from `toneFor(metric, delta)`; `none` and a zero delta are muted. */
 export function trendView(
+  metric: TrendMetric,
   comparison: MetricComparison | undefined,
   period: Period,
   options: TrendViewOptions = {},
 ): TrendView {
-  const neutral = options.neutral === true
+  const round = options.round === true
   if (!comparison || comparison.deltaPct === undefined) {
     return {
       kind: 'none',
@@ -77,7 +93,7 @@ export function trendView(
   const sign = up ? '+' : MINUS
   const rounded = Math.round(Math.abs(deltaPct))
   const pct = rounded === 0 ? '<1' : rounded.toLocaleString('en-US')
-  const abs = (neutral ? Math.round(Math.abs(delta)) : Math.abs(delta)).toLocaleString('en-US')
+  const abs = (round ? Math.round(Math.abs(delta)) : Math.abs(delta)).toLocaleString('en-US')
   const srPct = rounded === 0 ? 'less than 1' : rounded.toLocaleString('en-US')
   return {
     kind: 'trend',
@@ -85,6 +101,6 @@ export function trendView(
     figure: `${sign}${abs} (${sign}${pct}%)`,
     label,
     srText: `${up ? 'up' : 'down'} ${srPct} percent versus previous ${period} days`,
-    tone: neutral ? 'muted' : up ? 'good' : 'bad',
+    tone: toneFor(metric, delta),
   }
 }
