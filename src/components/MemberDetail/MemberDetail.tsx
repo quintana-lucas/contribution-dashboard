@@ -42,6 +42,7 @@ function MemberDetail({ now }: MemberDetailProps) {
     selection,
     memberDetail,
     memberComparison,
+    memberAvgPrSizeComparison,
   } = useDashboard()
   const headingId = useId()
   const sectionRef = useRef<HTMLElement>(null)
@@ -70,7 +71,7 @@ function MemberDetail({ now }: MemberDetailProps) {
               key={i}
               label={LABELS[i]}
               value={<Skeleton width="50%" height="calc(var(--text-xl) * var(--text-xl-line))" />}
-              trend={i < 2 ? <TrendIndicator loading /> : undefined}
+              trend={i < 2 || i === 4 ? <TrendIndicator loading /> : undefined}
             />
           ))}
         </div>
@@ -104,6 +105,7 @@ function MemberDetail({ now }: MemberDetailProps) {
   const cmp = memberComparison()
   const mergedTrend = trendView(cmp ? metricOf(cmp, 'mergedPrs') : undefined, period)
   const reviewsTrend = trendView(cmp ? metricOf(cmp, 'reviews') : undefined, period)
+  const avgSizeTrend = trendView(memberAvgPrSizeComparison() ?? undefined, period, { neutral: true })
   const scope = selection === 'all' ? 'All repositories' : selection
   const weekly = period !== 7
   const unit = weekly ? 'week' : 'day'
@@ -154,7 +156,11 @@ function MemberDetail({ now }: MemberDetailProps) {
         />
         <StatCard label="Reviews received" value={detail.reviewsReceived} />
         <StatCard label="Median time to first review" value={formatDuration(detail.medianFirstReviewMs)} />
-        <StatCard label="Average PR size" value={formatSize(detail.avgPrSize)} />
+        <StatCard
+          label="Average PR size"
+          value={formatSize(detail.avgPrSize)}
+          trend={<TrendIndicator view={avgSizeTrend} />}
+        />
         <StatCard label="Median cycle time" value={formatDuration(detail.medianCycleMs)} />
       </div>
 

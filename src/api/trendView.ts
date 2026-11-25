@@ -36,12 +36,15 @@ export function metricOf(
   return comparison.status === 'available' ? comparison.metrics[key] : undefined
 }
 
-/** Tone follows the sign of the delta for every metric: + good, - bad, 0 and none muted. */
 export interface TrendViewOptions {
   /** Direction is neither good nor bad: tone stays muted, and the delta is rounded to a whole number. */
   neutral?: boolean
 }
 
+/**
+ * Tone follows the sign of the delta for every metric: + good, - bad, 0 and none muted. With
+ * `{ neutral: true }` the tone is always muted and the delta is rounded to a whole number.
+ */
 export function trendView(
   comparison: MetricComparison | undefined,
   period: Period,

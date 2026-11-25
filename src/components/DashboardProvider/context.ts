@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 import type { StartSyncError, SyncRunState } from '../../api/client'
 import type { Contributions } from '../../api/contributions'
 import type { Activity, Period, RepoEntry, RepoSelection } from '../../api/dashboard'
-import type { KpiComparison } from '../../api/kpiComparison'
+import type { KpiComparison, MetricComparison } from '../../api/kpiComparison'
 import type { Kpis } from '../../api/kpis'
 import type { MemberDetail } from '../../api/memberDetail'
 import type { PrActivity } from '../../api/prActivity'
@@ -56,6 +56,8 @@ export interface DashboardValue {
   memberDetail: () => MemberDetail | null
   /** Period-over-period comparison for the selected member (#134); null when none is selected. */
   memberComparison: () => KpiComparison | null
+  /** Average PR size comparison for the selected member (#137); null when none selected or no comparison. */
+  memberAvgPrSizeComparison: () => MetricComparison | null
   /** The member picked in the Team table (in memory only), or null. */
   selectedMember: string | null
   setSelectedMember: (login: string | null) => void
