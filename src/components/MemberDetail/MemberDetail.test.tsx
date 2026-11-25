@@ -643,3 +643,22 @@ describe('MemberDetail', () => {
     delete Element.prototype.scrollIntoView
   })
 })
+
+describe('MemberDetail merged chart color (#140)', () => {
+  it('AC1, AC5: the PRs merged chart bars use the merged token, not a hex', () => {
+    renderDetail()
+    const bars = screen.getAllByTestId('column-bar')
+    expect(bars.length).toBeGreaterThan(0)
+    for (const b of bars) {
+      expect(b.getAttribute('fill')).toBe('var(--color-pr-merged)')
+      expect(b.getAttribute('fill')).not.toMatch(/#|rgb/i)
+    }
+  })
+
+  it('AC4: the chart tooltip swatch uses the merged token', async () => {
+    renderDetail()
+    fireEvent.mouseEnter(screen.getAllByTestId('column')[0])
+    const swatch = (await screen.findByRole('tooltip')).querySelector('span[aria-hidden="true"]')
+    expect(swatch?.getAttribute('style')).toContain('var(--color-pr-merged)')
+  })
+})

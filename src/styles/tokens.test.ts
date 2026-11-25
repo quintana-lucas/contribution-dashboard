@@ -64,6 +64,11 @@ describe("theme tokens", () => {
     }
   });
 
+  it("#140 AC2: --color-pr-merged has the same dark value in both dark maps", () => {
+    expect(dark["--color-pr-merged"]).toBeDefined();
+    expect(mediaDark["--color-pr-merged"]).toBe(dark["--color-pr-merged"]);
+  });
+
   it("AC6: existing caution/add/del values are unchanged", () => {
     expect(light["--color-caution"]).toBe("#8f5300");
     expect(light["--color-add"]).toBe("#0b6b3a");
@@ -277,6 +282,10 @@ describe("theme tokens", () => {
           expect(ratio(c, resolve(t, t[`--color-pr-${s}-bg`]))).toBeGreaterThanOrEqual(4.5);
         });
       }
+
+      it("#140 AC1 AC2: --color-pr-merged is at least 3:1 on surface (chart graphic)", () => {
+        expect(ratio(resolve(t, t["--color-pr-merged"]), surface)).toBeGreaterThanOrEqual(3);
+      });
 
       it("AC9: dashed border is at least 3:1 on surface", () => {
         expect(ratio(rgb(t["--color-border-dashed"]), surface)).toBeGreaterThanOrEqual(3);
