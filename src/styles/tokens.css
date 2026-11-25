@@ -17,6 +17,7 @@
   --color-bad: #b42318;
   --color-good-bg: color-mix(in srgb, var(--color-good) 10%, var(--color-surface));
   --color-caution-bg: color-mix(in srgb, var(--color-caution) 10%, var(--color-surface));
+  --color-bad-bg: color-mix(in srgb, var(--color-bad) 10%, var(--color-surface));
   --color-add: #0b6b3a;
   --color-del: #c2344d;
   --color-pr-open: #17722f;
@@ -86,6 +87,7 @@
     --color-bad: #ff8a80;
     --color-good-bg: color-mix(in srgb, var(--color-good) 12%, var(--color-surface));
     --color-caution-bg: color-mix(in srgb, var(--color-caution) 12%, var(--color-surface));
+    --color-bad-bg: color-mix(in srgb, var(--color-bad) 12%, var(--color-surface));
     --color-add: #6fd6a0;
     --color-del: #f08a9c;
     --color-pr-open: #3fb950;
@@ -119,6 +121,7 @@
   --color-bad: #ff8a80;
   --color-good-bg: color-mix(in srgb, var(--color-good) 12%, var(--color-surface));
   --color-caution-bg: color-mix(in srgb, var(--color-caution) 12%, var(--color-surface));
+  --color-bad-bg: color-mix(in srgb, var(--color-bad) 12%, var(--color-surface));
   --color-add: #6fd6a0;
   --color-del: #f08a9c;
   --color-pr-open: #3fb950;
