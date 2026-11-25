@@ -37,7 +37,17 @@ export function metricOf(
 }
 
 /** Tone follows the sign of the delta for every metric: + good, - bad, 0 and none muted. */
-export function trendView(comparison: MetricComparison | undefined, period: Period): TrendView {
+export interface TrendViewOptions {
+  /** Direction is neither good nor bad: tone stays muted, and the delta is rounded to a whole number. */
+  neutral?: boolean
+}
+
+export function trendView(
+  comparison: MetricComparison | undefined,
+  period: Period,
+  options: TrendViewOptions = {},
+): TrendView {
+  const neutral = options.neutral === true
   if (!comparison || comparison.deltaPct === undefined) {
     return {
       kind: 'none',
@@ -64,7 +74,7 @@ export function trendView(comparison: MetricComparison | undefined, period: Peri
   const sign = up ? '+' : MINUS
   const rounded = Math.round(Math.abs(deltaPct))
   const pct = rounded === 0 ? '<1' : rounded.toLocaleString('en-US')
-  const abs = Math.abs(delta).toLocaleString('en-US')
+  const abs = (neutral ? Math.round(Math.abs(delta)) : Math.abs(delta)).toLocaleString('en-US')
   const srPct = rounded === 0 ? 'less than 1' : rounded.toLocaleString('en-US')
   return {
     kind: 'trend',
@@ -72,6 +82,6 @@ export function trendView(comparison: MetricComparison | undefined, period: Peri
     figure: `${sign}${abs} (${sign}${pct}%)`,
     label,
     srText: `${up ? 'up' : 'down'} ${srPct} percent versus previous ${period} days`,
-    tone: up ? 'good' : 'bad',
+    tone: neutral ? 'muted' : up ? 'good' : 'bad',
   }
 }
