@@ -18,6 +18,8 @@ interface ColumnChartProps {
   tableCaption: string
   labelHeader: string
   valueHeader: string
+  /** CSS color for the bars and the tooltip swatch, e.g. `var(--color-bar)`. */
+  color: string
   /** Show only every Nth x label (the table keeps all of them). */
   labelEvery?: number
 }
@@ -39,6 +41,7 @@ function ColumnChart({
   tableCaption,
   labelHeader,
   valueHeader,
+  color,
   labelEvery = 1,
 }: ColumnChartProps) {
   const [ref, width] = useWidth<HTMLDivElement>(FALLBACK_WIDTH)
@@ -113,7 +116,7 @@ function ColumnChart({
                       y={BASELINE - h}
                       width={x.bandwidth()}
                       height={h}
-                      fill="var(--color-good)"
+                      fill={color}
                     />
                     {showNumbers && (
                       <text
@@ -149,7 +152,7 @@ function ColumnChart({
         <ChartTooltip
           anchor={open.anchor}
           title={open.data.label}
-          rows={[{ color: 'var(--color-good)', name: valueHeader, value: open.data.value }]}
+          rows={[{ color, name: valueHeader, value: open.data.value }]}
         />
       )}
     </ChartFrame>
