@@ -2,7 +2,33 @@
 // restricted to one login, so windows, boundaries and the "insufficient history" signal match the
 // team-level comparison. Pure: no React, no fetch, no clock reads.
 import type { Period, RepoEntry, RepoSelection } from './dashboard.ts'
-import { kpiComparison, type KpiComparison } from './kpiComparison.ts'
+import { hasPreviousWindowHistory, kpiComparison, type KpiComparison, type MetricComparison } from './kpiComparison.ts'
+import { teamStats } from './teamStats.ts'
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * Average PR size of one member, current window versus the previous one (#137). Both averages come
+ * from `teamStats` (the figure `memberDetail.avgPrSize` shows), the previous one on a clock shifted
+ * by `period` days. Returns null ("No comparison") when the previous window is not covered by synced
+ * history or when either average is null (no PRs opened in that window). Previous average 0 gives
+ * `deltaPct` undefined. Delta and percentage are computed from the unrounded averages.
+ */
+export function memberAvgPrSizeComparison(
+  entries: RepoEntry[],
+  selection: RepoSelection,
+  period: Period,
+  now: Date,
+  login: string,
+): MetricComparison | null {
+  if (!hasPreviousWindowHistory(entries, selection, period, now)) return null
+  const current = teamStats(entries, selection, period, now, [login])[0]?.avgPrSize ?? null
+  const previous =
+    teamStats(entries, selection, period, new Date(now.getTime() - period * DAY_MS), [login])[0]?.avgPrSize ?? null
+  if (current === null || previous === null) return null
+  const delta = current - previous
+  return { current, previous, delta, deltaPct: previous === 0 ? undefined : (delta / previous) * 100 }
+}
 
 /**
  * Compares one member's current window (now-P, now] with the previous one (now-2P, now-P].
