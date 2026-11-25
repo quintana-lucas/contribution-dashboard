@@ -316,6 +316,60 @@ describe('KpiCards', () => {
     expect(linesRow.className).not.toMatch(/bad/)
   })
 
+  // #142 AC5: every trended Overview card, per direction. All three metrics are "up is good".
+  // Each window gets `merged` PRs; the first carries the lines and the reviews.
+  function dirDeps(cur: [number, number, number], prev: [number, number, number]) {
+    const win = (base: number, day: string, [merged, reviews, lines]: [number, number, number]) => {
+      const prs = Array.from({ length: merged }, (_, i) =>
+        pr(base + i, 'bob', 'merged', `${day}T10:00:00.000Z`, {
+          mergedAt: `${day}T12:00:00.000Z`,
+          additions: i === 0 ? lines : 0,
+        }),
+      )
+      const revs = Array.from({ length: reviews }, (_, i) => ({
+        id: `r${base}-${i}`,
+        pullRequestNumber: base,
+        reviewer: 'ana',
+        reviewerIsBot: false,
+        outcome: 'approved' as const,
+        submittedAt: `${day}T13:00:00.000Z`,
+      }))
+      return { prs, revs }
+    }
+    const c = win(10, '2026-06-12', cur)
+    const p = win(100, '2026-05-02', prev)
+    return makeKpiDeps({
+      'acme/api': repo('acme/api', [...c.prs, ...p.prs], [...c.revs, ...p.revs]),
+      'acme/web': repo('acme/web', []),
+    })
+  }
+
+  const trendRow = (l: string) => within(card(l)).getByText(/^[↑↓→]/).parentElement as HTMLElement
+
+  it.each([
+    ['up', [2, 3, 200], [1, 1, 100], 'good'],
+    ['down', [1, 1, 100], [2, 3, 200], 'bad'],
+    ['zero', [2, 2, 100], [2, 2, 100], 'muted'],
+  ] as const)('#142 AC5, AC2: Merged PRs, Code reviews and Lines changed going %s are %s', async (_d, cur, prev, tone) => {
+    await renderCards(dirDeps([...cur], [...prev]))
+    for (const l of ['Merged PRs', 'Code reviews', 'Lines changed (+/−)']) {
+      const cls = trendRow(l).className
+      expect(cls, l).toMatch(new RegExp(tone))
+      for (const other of ['good', 'bad', 'muted'].filter((t) => t !== tone)) {
+        expect(cls, l).not.toMatch(new RegExp(other))
+      }
+    }
+  })
+
+  it('#142 AC4, AC5: no comparison on every trended card is neither good nor bad', async () => {
+    await renderCards(dirDeps([2, 2, 100], [1, 1, 100]))
+    fireEvent.click(screen.getByRole('radio', { name: /90/ }))
+    for (const l of ['Merged PRs', 'Code reviews', 'Lines changed (+/−)']) {
+      expect(card(l)).toHaveTextContent('No comparison')
+      expect(card(l).innerHTML).not.toMatch(/good|bad/i)
+    }
+  })
+
   it('#87 AC3: the label follows the period and the values follow the repo selection', async () => {
     await renderCards(makeTrendDeps())
     fireEvent.click(screen.getByRole('radio', { name: /7/ }))

@@ -195,6 +195,60 @@ describe('MemberDetail trends (#130)', () => {
   })
 })
 
+describe('MemberDetail trend tones (#142)', () => {
+  const row = (label: string) =>
+    within(box(label)).getByText(/^[↑↓→]/).parentElement as HTMLElement
+  const expectTone = (label: string, tone: 'good' | 'bad' | 'muted') => {
+    const cls = row(label).className
+    expect(cls, label).toMatch(new RegExp(tone))
+    for (const other of ['good', 'bad', 'muted'].filter((t) => t !== tone)) {
+      expect(cls, label).not.toMatch(new RegExp(other))
+    }
+  }
+
+  it.each([
+    ['up', [12, 10], [6, 5], [120, 100], 'good', 'good', 'bad'],
+    ['down', [8, 10], [4, 5], [80, 100], 'bad', 'bad', 'good'],
+    ['zero', [10, 10], [5, 5], [100, 100], 'muted', 'muted', 'muted'],
+  ] as const)(
+    'AC5, AC3: %s moves PRs merged, Reviews given and Average PR size to %s, %s and %s',
+    (_d, merged, reviews, avg, mergedTone, reviewsTone, avgTone) => {
+      renderDetail({
+        memberComparison: () => available([...merged], [...reviews]),
+        memberAvgPrSizeComparison: () => metric(avg[0], avg[1]),
+      })
+      expectTone('PRs merged', mergedTone)
+      expectTone('Reviews given', reviewsTone)
+      expectTone('Average PR size', avgTone)
+    },
+  )
+
+  it('AC4, AC5: no comparison on every trended box is neither good nor bad', () => {
+    renderDetail({ memberComparison: () => null, memberAvgPrSizeComparison: () => null })
+    for (const l of ['PRs merged', 'Reviews given', 'Average PR size']) {
+      expect(box(l)).toHaveTextContent('No comparison')
+      expect(box(l).querySelector('[class*="good"], [class*="bad"]')).toBeNull()
+    }
+  })
+
+  it('AC2: the components never decide a tone themselves', () => {
+    for (const f of ['MemberDetail', 'KpiCards']) {
+      const source = readFileSync(join(__dirname, '..', f, `${f}.tsx`), 'utf8')
+      expect(source, f).not.toMatch(/'good'|'bad'|tone:/)
+    }
+  })
+
+  it('AC6: good and bad trends use the theme tokens, in light and dark', () => {
+    const css = readFileSync(join(__dirname, '..', 'TrendIndicator', 'TrendIndicator.module.css'), 'utf8')
+    expect(css).toMatch(/\.good\s*\{[^}]*var\(--color-good\)/)
+    expect(css).toMatch(/\.bad\s*\{[^}]*var\(--color-bad\)/)
+    const tokens = readFileSync(join(__dirname, '..', '..', 'styles', 'tokens.css'), 'utf8')
+    // light (:root) plus the dark media query and the dark attribute override
+    expect(tokens.match(/--color-good:/g)!.length).toBeGreaterThanOrEqual(2)
+    expect(tokens.match(/--color-bad:/g)!.length).toBeGreaterThanOrEqual(2)
+  })
+})
+
 describe('MemberDetail Average PR size trend (#137)', () => {
   it('AC1, AC3, AC5, AC6: shows a rounded bad trend for a larger size, sr sentence and the unchanged value', () => {
     renderDetail({ memberAvgPrSizeComparison: () => metric(320.4, 285.2) })
