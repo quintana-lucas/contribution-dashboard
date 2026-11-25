@@ -64,6 +64,7 @@ function renderDetail(over: Partial<DashboardValue> = {}, d: Detail | null = det
     selectedMember: d ? d.login : null,
     memberDetail: () => d,
     memberComparison: () => null,
+    memberAvgPrSizeComparison: () => null,
     ...over,
   } as unknown as DashboardValue
   return render(
@@ -139,6 +140,7 @@ describe('MemberDetail trends (#130)', () => {
         period: 30,
         selectedMember: d.login,
         memberDetail: () => d,
+        memberAvgPrSizeComparison: () => null,
         ...over,
       }) as unknown as DashboardValue
     const ui = (v: DashboardValue) => (
@@ -182,11 +184,81 @@ describe('MemberDetail trends (#130)', () => {
     expect(screen.queryByText(/Lines changed/)).toBeNull()
   })
 
-  it('AC5: the four non-trended boxes have no trend text or sr sentence', () => {
-    renderDetail({ memberComparison: () => available([112, 100], [4, 5]) })
-    for (const l of ['Reviews received', 'Median time to first review', 'Average PR size', 'Median cycle time']) {
+  it('AC5: the three non-trended boxes have no trend text or sr sentence', () => {
+    renderDetail({
+      memberComparison: () => available([112, 100], [4, 5]),
+      memberAvgPrSizeComparison: () => metric(120, 100),
+    })
+    for (const l of ['Reviews received', 'Median time to first review', 'Median cycle time']) {
       expect(box(l).textContent).not.toMatch(/vs previous|No comparison|percent|[↑↓→]/)
     }
+  })
+})
+
+describe('MemberDetail Average PR size trend (#137)', () => {
+  it('AC1, AC4, AC5, AC6: shows a rounded neutral trend, sr sentence and the unchanged value', () => {
+    renderDetail({ memberAvgPrSizeComparison: () => metric(320.4, 285.2) })
+    const avg = box('Average PR size')
+    expect(avg).toHaveTextContent('320 lines')
+    expect(avg).toHaveTextContent('↑ +35 (+12%)')
+    expect(avg).toHaveTextContent('vs previous 30 days')
+    expect(avg.querySelector('[class*="good"], [class*="bad"]')).toBeNull()
+    expect(avg.querySelector('[class*="muted"]')).not.toBeNull()
+    expect(within(avg).getByText('up 12 percent versus previous 30 days')).toBeInTheDocument()
+  })
+
+  it('AC4: a decrease is neutral too', () => {
+    renderDetail({ memberAvgPrSizeComparison: () => metric(200, 250) })
+    const avg = box('Average PR size')
+    expect(avg).toHaveTextContent('↓ −50 (−20%)')
+    expect(avg.querySelector('[class*="good"], [class*="bad"]')).toBeNull()
+  })
+
+  it('AC2: no comparison shows "No comparison" without arrow or percent', () => {
+    renderDetail({ memberAvgPrSizeComparison: () => null })
+    expect(box('Average PR size')).toHaveTextContent('No comparison')
+    expect(box('Average PR size').textContent).not.toMatch(/[↑↓→%]/)
+    renderDetail({ memberAvgPrSizeComparison: () => metric(10, 0) })
+    expect(screen.getAllByText('No comparison').length).toBeGreaterThan(1)
+  })
+
+  it('AC3: follows member, period and selection on rerender', () => {
+    const mk = (over: Partial<DashboardValue>, d: Detail) =>
+      ({
+        status: 'ready',
+        teamChosen: true,
+        teamMembers: ['Ana', 'bob'],
+        selection: 'all',
+        period: 30,
+        selectedMember: d.login,
+        memberDetail: () => d,
+        memberComparison: () => null,
+        ...over,
+      }) as unknown as DashboardValue
+    const ui = (v: DashboardValue) => (
+      <DashboardContext.Provider value={v}>
+        <MemberDetail now={() => NOW} />
+      </DashboardContext.Provider>
+    )
+    const { rerender } = render(ui(mk({ memberAvgPrSizeComparison: () => metric(110, 100) }, detail())))
+    expect(box('Average PR size')).toHaveTextContent('+10 (+10%)')
+    expect(box('Average PR size')).toHaveTextContent('vs previous 30 days')
+    rerender(
+      ui(
+        mk(
+          { period: 7, selection: 'acme/api', memberAvgPrSizeComparison: () => metric(50, 100) },
+          detail({ login: 'bob' }, 7),
+        ),
+      ),
+    )
+    expect(box('Average PR size')).toHaveTextContent('−50 (−50%)')
+    expect(box('Average PR size')).toHaveTextContent('vs previous 7 days')
+  })
+
+  it('AC7: loading shows the trend placeholder on Average PR size', () => {
+    renderDetail({ status: 'loading', selectedMember: null }, null)
+    expect(within(box('Average PR size')).getAllByTestId('skeleton')).toHaveLength(2)
+    expect(within(box('Median cycle time')).getAllByTestId('skeleton')).toHaveLength(1)
   })
 })
 

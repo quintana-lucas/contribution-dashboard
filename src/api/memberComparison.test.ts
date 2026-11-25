@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { RepoEntry } from './dashboard.ts'
 import { kpiComparison } from './kpiComparison.ts'
-import { memberComparison } from './memberComparison.ts'
+import { memberAvgPrSizeComparison, memberComparison } from './memberComparison.ts'
+import { memberDetail } from './memberDetail.ts'
 import type { StoredPullRequest, StoredReview } from './types.ts'
 
 const NOW = new Date('2026-06-30T12:00:00Z')
@@ -73,6 +74,77 @@ function fixture(): RepoEntry {
     ],
   )
 }
+
+describe('memberAvgPrSizeComparison', () => {
+  const mk = (n: number, createdAt: string, size: number, author = 'alice') =>
+    mergedPr(createdAt, { number: n, author, createdAt, additions: size, deletions: 0 })
+
+  it('AC1: current and previous average with delta and unrounded percentage', () => {
+    // 7 days: current (06-23 12:00, 06-30 12:00], previous (06-16 12:00, 06-23 12:00]
+    const r = memberAvgPrSizeComparison([fixture()], 'all', 7, NOW, 'alice')
+    expect(r?.current).toBe(25)
+    expect(r?.previous).toBe(30)
+    expect(r?.delta).toBe(-5)
+    expect(r?.deltaPct).toBeCloseTo(-16.6667, 3)
+  })
+
+  it('AC3: windows follow the period (7, 30, 90) and case-insensitive login', () => {
+    const e = repoEntry('o/a', [
+      mk(1, '2026-06-28T00:00:00Z', 10), // current 7/30
+      mk(2, '2026-06-20T00:00:00Z', 30), // previous 7, current 30
+      mk(3, '2026-05-20T00:00:00Z', 20), // previous 30
+    ])
+    const p7 = memberAvgPrSizeComparison([e], 'all', 7, NOW, 'ALICE')
+    expect(p7).toEqual({ current: 10, previous: 30, delta: -20, deltaPct: (-20 / 30) * 100 })
+    const p30 = memberAvgPrSizeComparison([e], 'all', 30, NOW, 'alice')
+    expect(p30).toEqual({ current: 20, previous: 20, delta: 0, deltaPct: 0 })
+    expect(memberAvgPrSizeComparison([e], 'all', 90, NOW, 'alice')).toBeNull()
+  })
+
+  it('AC3: respects repo selection', () => {
+    const a = repoEntry('o/a', [mk(1, '2026-06-28T00:00:00Z', 10), mk(2, '2026-06-20T00:00:00Z', 20)])
+    const b = repoEntry('o/b', [mk(1, '2026-06-28T00:00:00Z', 50), mk(2, '2026-06-20T00:00:00Z', 20)])
+    expect(memberAvgPrSizeComparison([a, b], 'o/a', 7, NOW, 'alice')?.current).toBe(10)
+    expect(memberAvgPrSizeComparison([a, b], 'all', 7, NOW, 'alice')?.current).toBe(30)
+  })
+
+  it('AC2: insufficient history returns null', () => {
+    expect(memberAvgPrSizeComparison([fixture()], 'all', 90, NOW, 'alice')).toBeNull()
+    expect(memberAvgPrSizeComparison([], 'all', 7, NOW, 'alice')).toBeNull()
+  })
+
+  it('AC2: no PRs in the previous or current window returns null', () => {
+    const onlyCurrent = repoEntry('o/a', [mk(1, '2026-06-28T00:00:00Z', 10)])
+    expect(memberAvgPrSizeComparison([onlyCurrent], 'all', 7, NOW, 'alice')).toBeNull()
+    const onlyPrevious = repoEntry('o/a', [mk(1, '2026-06-20T00:00:00Z', 10)])
+    expect(memberAvgPrSizeComparison([onlyPrevious], 'all', 7, NOW, 'alice')).toBeNull()
+    expect(memberAvgPrSizeComparison([fixture()], 'all', 7, NOW, 'nobody')).toBeNull()
+  })
+
+  it('AC2: previous average 0 gives deltaPct undefined', () => {
+    const e = repoEntry('o/a', [mk(1, '2026-06-28T00:00:00Z', 10), mk(2, '2026-06-20T00:00:00Z', 0)])
+    expect(memberAvgPrSizeComparison([e], 'all', 7, NOW, 'alice')).toEqual({
+      current: 10,
+      previous: 0,
+      delta: 10,
+      deltaPct: undefined,
+    })
+  })
+
+  it('AC6: current value equals memberDetail.avgPrSize and inputs are not mutated', () => {
+    const e = fixture()
+    const snapshot = JSON.stringify(e)
+    for (const period of [7, 30] as const) {
+      const r = memberAvgPrSizeComparison([e], 'all', period, NOW, 'alice')
+      const detail = memberDetail([e], 'all', period, NOW, 'alice')
+      if (r) expect(r.current).toBe(detail.avgPrSize)
+    }
+    expect(memberAvgPrSizeComparison([e], 'all', 7, NOW, 'alice')?.current).toBe(
+      memberDetail([e], 'all', 7, NOW, 'alice').avgPrSize,
+    )
+    expect(JSON.stringify(e)).toBe(snapshot)
+  })
+})
 
 describe('memberComparison', () => {
   it('AC1: returns current, previous and delta for the four metrics of one member', () => {

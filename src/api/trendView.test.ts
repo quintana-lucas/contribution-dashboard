@@ -89,6 +89,34 @@ describe('trendView', () => {
     expect(v.tone).toBe('muted')
   })
 
+  it('AC4: neutral option keeps tone muted for increase, decrease and zero', () => {
+    expect(trendView(cmp(200, 100), 30, { neutral: true }).tone).toBe('muted')
+    expect(trendView(cmp(100, 200), 30, { neutral: true }).tone).toBe('muted')
+    expect(trendView(cmp(100, 100), 30, { neutral: true }).tone).toBe('muted')
+  })
+
+  it('AC5: neutral keeps glyph and srText shape', () => {
+    const up = trendView(cmp(112, 100), 30, { neutral: true })
+    expect(up.glyph).toBe('↑')
+    expect(up.srText).toBe('up 12 percent versus previous 30 days')
+    const down = trendView(cmp(88, 100), 7, { neutral: true })
+    expect(down.glyph).toBe('↓')
+    expect(down.srText).toBe('down 12 percent versus previous 7 days')
+    expect(trendView(cmp(5, 5), 30, { neutral: true }).srText).toBe('no change versus previous 30 days')
+  })
+
+  it('AC1: neutral rounds fractional delta and percent to whole numbers', () => {
+    const v = trendView(cmp(112.6, 100.2), 30, { neutral: true })
+    expect(v.figure).toBe('+12 (+12%)')
+    expect(trendView(cmp(87.4, 100.2), 30, { neutral: true }).figure).toBe('−13 (−13%)')
+    expect(trendView(cmp(100.3, 100), 30, { neutral: true }).figure).toBe('+0 (+<1%)')
+  })
+
+  it('AC1: neutral none state is unchanged', () => {
+    expect(trendView(cmp(4, 0), 30, { neutral: true }).kind).toBe('none')
+    expect(trendView(undefined, 30, { neutral: true }).label).toBe('No comparison')
+  })
+
   it('AC11: screen-reader sentences', () => {
     expect(trendView(cmp(28, 25), 30).srText).toBe('up 12 percent versus previous 30 days')
     expect(trendView(cmp(22, 25), 30).srText).toBe('down 12 percent versus previous 30 days')
