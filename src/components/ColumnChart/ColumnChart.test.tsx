@@ -16,6 +16,7 @@ const common = {
   tableCaption: 'PRs merged per day by ada',
   labelHeader: 'Day',
   valueHeader: 'PRs merged',
+  color: 'var(--color-test-series)',
 }
 
 const fills = (container: HTMLElement) =>
@@ -47,14 +48,14 @@ describe('ColumnChart', () => {
     expect(screen.getByText('Show as table').closest('details')).not.toBeNull()
   })
 
-  it('#107 AC4: zero draws no column; others scale from 0 to the max, in the good color', () => {
+  it('#107 AC4: zero draws no column; others scale from 0 to the max, in the given color (AC3)', () => {
     const { container } = render(<ColumnChart {...common} bars={bars} />)
     expect(screen.getAllByTestId('column')).toHaveLength(3)
     const marks = fills(container)
     expect(marks).toHaveLength(2)
     const h = marks.map((m) => Number(m.getAttribute('height')))
     expect(h[0]).toBeCloseTo(h[1] / 2)
-    for (const m of marks) expect(m.getAttribute('fill')).toBe('var(--color-good)')
+    for (const m of marks) expect(m.getAttribute('fill')).toBe('var(--color-test-series)')
     const baselineY = Number(screen.getByTestId('baseline').getAttribute('y1'))
     expect(Number(marks[1].getAttribute('y')) + h[1]).toBeCloseTo(baselineY)
   })
@@ -127,6 +128,13 @@ describe('ColumnChart', () => {
     expect(tip).toHaveTextContent('PRs merged2')
     fireEvent.mouseLeave(first)
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+  })
+
+  it('#140 AC4: the tooltip swatch uses the color prop', async () => {
+    render(<ColumnChart {...common} bars={bars} />)
+    fireEvent.mouseEnter(screen.getAllByTestId('column')[0])
+    const swatch = (await screen.findByRole('tooltip')).querySelector('span[aria-hidden="true"]')
+    expect(swatch?.getAttribute('style')).toContain('var(--color-test-series)')
   })
 
   it('#107 AC5: columns are focusable; focus opens the tooltip with zeros and Escape closes it', () => {

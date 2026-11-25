@@ -182,6 +182,7 @@ function MemberDetail({ now }: MemberDetailProps) {
               tableCaption={`PRs merged per ${unit} by ${detail.login}`}
               labelHeader={weekly ? 'Week of' : 'Day'}
               valueHeader="PRs merged"
+              color="var(--color-pr-merged)"
             />
           )}
         </div>
