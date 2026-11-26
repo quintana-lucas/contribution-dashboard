@@ -1,5 +1,5 @@
 import { createRef } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { StartSyncResult, SyncRunState } from '../../api/client'
 import DashboardProvider, { useDashboard } from '../DashboardProvider'
@@ -154,6 +154,30 @@ describe('SyncAlert', () => {
       </DashboardProvider>,
     )
     expect(container).toBeEmptyDOMElement()
+  })
+
+  it('#148 AC4: Dismiss has the unchanged accessible name and type=button in good, caution and bad strips', async () => {
+    const cases: [SyncRunState['results'], string][] = [
+      [[{ repo: 'acme/api', ok: true }], 'status'],
+      [
+        [
+          { repo: 'acme/api', ok: true },
+          { repo: 'acme/web', ok: false, code: 'forbidden' },
+        ],
+        'alert',
+      ],
+      [[{ repo: 'acme/api', ok: false, code: 'unauthorized' }], 'alert'],
+    ]
+    for (const [results, role] of cases) {
+      const deps = depsWith([run({ total: results.length, index: results.length, results })], startRunning(results.length))
+      await setup(deps)
+      await screen.findByRole(role, {}, { timeout: 3000 })
+      const buttons = screen.getAllByRole('button', { name: 'Dismiss sync result' })
+      expect(buttons).toHaveLength(1)
+      expect(buttons[0]).toHaveAttribute('type', 'button')
+      expect(buttons[0]).toHaveAccessibleName('Dismiss sync result')
+      cleanup()
+    }
   })
 
   it('#143 AC7: Dismiss removes the strip and focuses Sync now', async () => {
